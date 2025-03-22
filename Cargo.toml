@@ -1,0 +1,14 @@
+[package]
+authors = ["Ian Cleary <rust@iancleary.me>"]
+description = "A Touchstone Parser for RF Modeling"
+documentation = "https://docs.rs/touchstone"
+edition = "2021"
+homepage = "https://github.com/iancleary/touchstone"
+license = "MIT"
+name = "touchstone"
+repository = "https://github.com/iancleary/touchstone"
+version = "0.0.1"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
