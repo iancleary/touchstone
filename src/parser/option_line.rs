@@ -85,7 +85,7 @@ pub fn parse_option_line(option_line: String, options: &mut Options) {
         // Touchstone files are case-insensitive
         let lowercase_option = option.to_string().to_lowercase();
 
-        match lowercase_option.to_lowercase().as_str() {
+        match lowercase_option.as_str() {
             "#" => {}
 
             "hz" => options.frequency_unit = "Hz".to_string(),
