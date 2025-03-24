@@ -35,6 +35,12 @@ mod tests {
     use super::read_file;
     #[test]
     fn parse_2port() {
-        let contents = read_file("files/2port.s2p".to_string());
+        let options = read_file("files/2port.s2p".to_string());
+        
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
     }
 }

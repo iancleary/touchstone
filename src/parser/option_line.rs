@@ -1,11 +1,11 @@
 
 #[derive(Debug)]
 pub struct Options {
-  frequency_unit: String,
-  parameter: String,
-  format: String,
-  resistance_string: String, // "R"
-  reference_resistance: String,  // If "R" is not present, this is 50
+  pub frequency_unit: String,
+  pub parameter: String,
+  pub format: String,
+  pub resistance_string: String, // "R"
+  pub reference_resistance: String,  // If "R" is not present, this is 50
 }
 
 // FROM docs/touchstone_ver2_1.pdf (Page 6)
