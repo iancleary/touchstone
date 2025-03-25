@@ -1,3 +1,4 @@
+use crate::parser::data_line;
 use crate::parser::option_line;
 use std::fs;
 
@@ -10,14 +11,30 @@ pub fn read_file(file_path: String) -> option_line::Options {
     let mut found_first_option_line = false;
 
     for line in contents.lines() {
-        // println!("\nWith line: {line}");
         // println!("\nWith line: ");
-        if line.starts_with("#") {
+
+        let is_option_line = line.starts_with("#");
+        let is_comment = line.starts_with("!");
+
+        if is_option_line {
             if found_first_option_line == false {
                 found_first_option_line = true;
 
+                println!("\nWith options: {line}");
                 // mutate options as they are parsed
                 option_line::parse_option_line(line.to_string(), &mut parsed_options)
+            }
+        } else {
+            if is_comment {
+                println!("\nWith comment: {line}");
+            } else {
+                // is_data is true (not a variable, just communicating in terms of the pattern)
+
+                // println!("\nWith data: {line}");
+                // let parts = line.split_whitespace().collect::<Vec<_>>();
+                // println!("Data (len: {}):\n{:?}", parts.len(), parts);
+
+                data_line::parse_data_line(line.to_string(), &parsed_options.format);
             }
         }
     }
