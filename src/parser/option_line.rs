@@ -64,7 +64,7 @@ impl Options {
             parameter: "S".to_string(),
             format: "MA".to_string(),
             resistance_string: "R".to_string(),
-            reference_resistance: "50.0".to_string(),
+            reference_resistance: "50".to_string(),
         }
     }
 }
@@ -96,6 +96,8 @@ pub fn parse_option_line(option_line: String, options: &mut Options) {
             "s" => options.parameter = "S".to_string(),
             "y" => options.parameter = "Y".to_string(),
             "z" => options.parameter = "Z".to_string(),
+            "h" => options.parameter = "H".to_string(),
+            "g" => options.parameter = "G".to_string(),
 
             "db" => options.format = "DB".to_string(),
             "ma" => options.format = "MA".to_string(),
@@ -105,5 +107,215 @@ pub fn parse_option_line(option_line: String, options: &mut Options) {
 
             _ => options.reference_resistance = lowercase_option.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn parse_S_ri_R_50() {
+        let mut options = Options::default();
+        parse_option_line("# ghz S ri R 50".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_Y_ri_R_50() {
+        let mut options = Options::default();
+        parse_option_line("# ghz Y ri R 50".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Y");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_Z_ri_R_50() {
+        let mut options = Options::default();
+        parse_option_line("# ghz Z ri R 50".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Z");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_H_ri_R_50() {
+        let mut options = Options::default();
+        parse_option_line("# ghz H ri R 50".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "H");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_G_ri_R_50() {
+        let mut options = Options::default();
+        parse_option_line("# ghz G ri R 50".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "G");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_S_ri_R_100() {
+        let mut options = Options::default();
+        parse_option_line("# ghz S ri R 100".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn parse_S_ri() {
+        let mut options = Options::default();
+        parse_option_line("# ghz S ri".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_S_ri_mixed_case() {
+        let mut options = Options::default();
+        parse_option_line("# GHZ s RI".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_S_ri_R_50_mixed_case() {
+        let mut options = Options::default();
+        parse_option_line("# GHZ s RI r 50".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_S_ri_R_50_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# s r 50 RI GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_S_ri_R_100_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# s r 100 RI GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn parse_S_ri_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# s RI GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "S");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "50");
+    }
+
+    #[test]
+    fn parse_Y_ri_R_100_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# Y r 100 RI GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Y");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn parse_Z_ri_R_100_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# Y r 100 RI GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Y");
+        assert_eq!(options.format, "RI");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn parse_Z_ma_R_100_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# Y r 100 MA gHz".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Y");
+        assert_eq!(options.format, "MA");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn parse_Z_MA_R_100_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# Y r 100 ma GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Y");
+        assert_eq!(options.format, "MA");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn parse_Z_DB_R_100_mixed_case_out_of_order() {
+        let mut options = Options::default();
+        parse_option_line("# Y r 100 DB GHZ".to_string(), &mut options);
+
+        assert_eq!(options.frequency_unit, "GHz");
+        assert_eq!(options.parameter, "Y");
+        assert_eq!(options.format, "DB");
+        assert_eq!(options.resistance_string, "R");
+        assert_eq!(options.reference_resistance, "100");
     }
 }
