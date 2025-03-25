@@ -1,3 +1,4 @@
+use crate::parser::data_line;
 use crate::parser::option_line;
 use std::fs;
 
@@ -32,6 +33,8 @@ pub fn read_file(file_path: String) -> option_line::Options {
                 // println!("\nWith data: {line}");
                 let parts = line.split_whitespace().collect::<Vec<_>>();
                 println!("Data (len: {}):\n{:?}", parts.len(), parts);
+
+                data_line::parse_data_line(line.to_string(), &parsed_options.format);
             }
         }
     }
