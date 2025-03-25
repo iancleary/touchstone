@@ -31,8 +31,8 @@ pub fn read_file(file_path: String) -> option_line::Options {
                 // is_data is true (not a variable, just communicating in terms of the pattern)
 
                 // println!("\nWith data: {line}");
-                let parts = line.split_whitespace().collect::<Vec<_>>();
-                println!("Data (len: {}):\n{:?}", parts.len(), parts);
+                // let parts = line.split_whitespace().collect::<Vec<_>>();
+                // println!("Data (len: {}):\n{:?}", parts.len(), parts);
 
                 data_line::parse_data_line(line.to_string(), &parsed_options.format);
             }

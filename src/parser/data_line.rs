@@ -11,8 +11,23 @@
 #[derive(Debug)]
 struct MagnitudeAngle(f32, f32);
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 struct RealImaginary(f32, f32);
+
+impl RealImaginary {
+    pub fn decibel(self) -> f32 {
+        20.0 * (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0))
+            .sqrt()
+            .log10()
+    }
+    pub fn magnitude(self) -> f32 {
+        (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0)).sqrt()
+    }
+
+    pub fn angle(self) -> f32 {
+        (self.1 / self.0).atan()
+    }
+}
 
 #[derive(Debug)]
 struct DecibelAngle(f32, f32);
@@ -26,10 +41,10 @@ fn str_to_f32(x: &str) -> f32 {
 }
 
 pub fn parse_data_line(data_line: String, format: &String) {
-    println!("\n\n");
-    println!("format:\n{:?}", *format);
+    println!("\n");
+    // println!("format:\n{:?}", *format);
 
-    println!("Data Line: {data_line}");
+    // println!("Data Line: {data_line}");
     let parts = data_line.split_whitespace().collect::<Vec<_>>();
 
     let f32_parts: Vec<_> = parts.clone().into_iter().map(str_to_f32).collect();
@@ -37,9 +52,19 @@ pub fn parse_data_line(data_line: String, format: &String) {
     let len_parts = f32_parts.len();
 
     // println!("{}", len_parts);
-    println!("f32_parts (len {}): {:?}", len_parts, f32_parts);
+    // println!("f32_parts (len {}): {:?}", len_parts, f32_parts);
 
     let mut frequency = "";
+
+    // FROM docs/touchstone_ver2_1.pdf (Page 16)
+    //
+    // 2-port data (line)
+    // <frequency value>  <N11> <N12> <N21> <N22>
+
+    // where
+    // frequency value  frequency at which the network parameter data was taken or derived.
+
+    // N11, N12, N21, N22   network parameter data points, where Nij represents a pair of data values
 
     // Assuming only two port right now
     match len_parts.to_string().as_str() {
@@ -52,7 +77,14 @@ pub fn parse_data_line(data_line: String, format: &String) {
                 RealImaginary(f32_parts[7], f32_parts[8]),
             );
 
-            println!("{}, {:?}", frequency, real_imaginary_matrix)
+            println!("{}, {:?}", frequency, real_imaginary_matrix);
+
+            println!(
+                "mag/dB, angle, {}/{} dB, {} degrees",
+                real_imaginary_matrix.0.magnitude(),
+                real_imaginary_matrix.0.decibel(),
+                real_imaginary_matrix.0.angle()
+            );
         }
         _ => {} // Do nothing (should raise error on unsupported cases)
     }
