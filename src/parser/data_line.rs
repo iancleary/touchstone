@@ -16,7 +16,8 @@ struct RealImaginary(f32, f32);
 
 impl RealImaginary {
     pub fn decibel(self) -> f32 {
-        20.0 * (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0))
+        // need to resolve file from 2010 on if this should be 20
+        10.0 * (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0))
             .sqrt()
             .log10()
     }
@@ -35,6 +36,17 @@ struct DecibelAngle(f32, f32);
 
 #[derive(Debug)]
 struct RealImaginaryMatrix(RealImaginary, RealImaginary, RealImaginary, RealImaginary);
+
+#[derive(Debug)]
+struct MagnitudeAngleMatrix(
+    MagnitudeAngle,
+    MagnitudeAngle,
+    MagnitudeAngle,
+    MagnitudeAngle,
+);
+
+#[derive(Debug)]
+struct DecibelAngleMatrix(DecibelAngle, DecibelAngle, DecibelAngle, DecibelAngle);
 
 fn str_to_f32(x: &str) -> f32 {
     x.parse::<f32>().expect("Failed to parse {x} into f32")
@@ -77,14 +89,54 @@ pub fn parse_data_line(data_line: String, format: &String) {
                 RealImaginary(f32_parts[7], f32_parts[8]),
             );
 
-            println!("{}, {:?}", frequency, real_imaginary_matrix);
-
-            println!(
-                "mag/dB, angle, {}/{} dB, {} degrees",
-                real_imaginary_matrix.0.magnitude(),
-                real_imaginary_matrix.0.decibel(),
-                real_imaginary_matrix.0.angle()
+            let magnitude_angle_matrix = MagnitudeAngleMatrix(
+                MagnitudeAngle(
+                    real_imaginary_matrix.0.magnitude(),
+                    real_imaginary_matrix.0.angle(),
+                ),
+                MagnitudeAngle(
+                    real_imaginary_matrix.1.magnitude(),
+                    real_imaginary_matrix.1.angle(),
+                ),
+                MagnitudeAngle(
+                    real_imaginary_matrix.2.magnitude(),
+                    real_imaginary_matrix.2.angle(),
+                ),
+                MagnitudeAngle(
+                    real_imaginary_matrix.3.magnitude(),
+                    real_imaginary_matrix.3.angle(),
+                ),
             );
+
+            let decibel_angle_matrix = DecibelAngleMatrix(
+                DecibelAngle(
+                    real_imaginary_matrix.0.decibel(),
+                    real_imaginary_matrix.0.angle(),
+                ),
+                DecibelAngle(
+                    real_imaginary_matrix.1.decibel(),
+                    real_imaginary_matrix.1.angle(),
+                ),
+                DecibelAngle(
+                    real_imaginary_matrix.2.decibel(),
+                    real_imaginary_matrix.2.angle(),
+                ),
+                DecibelAngle(
+                    real_imaginary_matrix.3.decibel(),
+                    real_imaginary_matrix.3.angle(),
+                ),
+            );
+
+            // println!(
+            //     "mag/dB, angle, {}/{} dB, {} degrees",
+            //     real_imaginary_matrix.0.magnitude(),
+            //     real_imaginary_matrix.0.decibel(),
+            //     real_imaginary_matrix.0.angle()
+            // );
+
+            println!("{}, {:?}", frequency, real_imaginary_matrix);
+            println!("{}, {:?}", frequency, magnitude_angle_matrix);
+            println!("{}, {:?}", frequency, decibel_angle_matrix);
         }
         _ => {} // Do nothing (should raise error on unsupported cases)
     }
