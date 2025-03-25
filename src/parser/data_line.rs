@@ -17,6 +17,8 @@ struct RealImaginary(f32, f32);
 impl RealImaginary {
     pub fn decibel(self) -> f32 {
         // need to resolve file from 2010 on if this should be 20
+        // TODO: I think the s2p file is old/bad in this regard
+        // (look into this after I sleep and think about it)
         10.0 * (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0))
             .sqrt()
             .log10()
