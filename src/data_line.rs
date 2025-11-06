@@ -9,10 +9,10 @@
 // specification).  The default value is MA.
 
 #[derive(Debug)]
-struct MagnitudeAngle(f32, f32);
+pub(super) struct MagnitudeAngle(pub f32, pub f32);
 
 #[derive(Clone, Copy, Debug)]
-struct RealImaginary(f32, f32);
+pub(crate) struct RealImaginary(pub f32, pub f32);
 
 impl RealImaginary {
     pub fn decibel(self) -> f32 {
@@ -33,23 +33,23 @@ impl RealImaginary {
 }
 
 #[derive(Debug)]
-struct DecibelAngle(f32, f32);
+pub(crate) struct DecibelAngle(pub f32, pub f32);
 // As specified, this is dB20, not dB10
 
 #[derive(Debug)]
-struct RealImaginaryMatrix(
-    (RealImaginary, RealImaginary),
-    (RealImaginary, RealImaginary),
+pub(crate) struct RealImaginaryMatrix(
+    pub (RealImaginary, RealImaginary),
+    pub (RealImaginary, RealImaginary),
 );
 
 #[derive(Debug)]
-struct MagnitudeAngleMatrix(
-    (MagnitudeAngle, MagnitudeAngle),
-    (MagnitudeAngle, MagnitudeAngle),
+pub(crate) struct MagnitudeAngleMatrix(
+    pub (MagnitudeAngle, MagnitudeAngle),
+    pub (MagnitudeAngle, MagnitudeAngle),
 );
 
 #[derive(Debug)]
-struct DecibelAngleMatrix((DecibelAngle, DecibelAngle), (DecibelAngle, DecibelAngle));
+pub(crate) struct DecibelAngleMatrix(pub (DecibelAngle, DecibelAngle), pub (DecibelAngle, DecibelAngle));
 
 fn str_to_f32(x: &str) -> f32 {
     x.parse::<f32>().expect("Failed to parse {x} into f32")
