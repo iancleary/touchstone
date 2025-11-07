@@ -10,6 +10,8 @@ pub struct Network {
     pub frequency_unit: String,
     pub name: String,
     pub options: option_line::Options,
+    pub comments: Vec<String>,
+    pub data_lines: Vec<String>,
 
 }
 
@@ -20,6 +22,9 @@ fn read_file(file_path: String) -> Network {
     println!("default options:\n{:?}", parsed_options);
 
     let mut found_first_option_line = false;
+
+    let mut comment_lines: Vec<String> = Vec::new();
+    let mut data_lines: Vec<String> = Vec::new();
 
     for line in contents.lines() {
         // println!("\nWith line: ");
@@ -38,6 +43,7 @@ fn read_file(file_path: String) -> Network {
         } else {
             if is_comment {
                 println!("\nWith comment: {line}");
+                comment_lines.push(line.to_string());
             } else {
                 // is_data is true (not a variable, just communicating in terms of the pattern)
 
@@ -46,6 +52,7 @@ fn read_file(file_path: String) -> Network {
                 println!("Data (len: {}):\n{:?}", parts.len(), parts);
 
                 data_line::parse_data_line(line.to_string(), &parsed_options.format);
+                data_lines.push(line.to_string());
             }
         }
     }
@@ -60,6 +67,8 @@ fn read_file(file_path: String) -> Network {
         frequency_unit: parsed_options.frequency_unit.clone(),
         name: String::from(file_path),
         options: parsed_options,
+        comments: comment_lines,
+        data_lines: data_lines,
     }
 }
 
@@ -85,5 +94,8 @@ mod tests {
         assert_eq!(network.z0, 50.0);
         assert_eq!(network.frequency_unit, "GHz");
         assert_eq!(network.name, "files/2port.s2p".to_string());
+
+        assert_eq!(network.comments.len(), 4);
+        assert_eq!(network.data_lines.len(), 91);
     }
 }
