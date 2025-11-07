@@ -9,11 +9,12 @@ pub struct Network {
     pub z0: f64,
     pub frequency_unit: String,
     pub name: String,
+    pub options: option_line::Options,
 
 }
 
-fn read_file(file_path: String) -> option_line::Options {
-    let contents = fs::read_to_string(file_path).expect("Should have been able to read the file");
+fn read_file(file_path: String) -> Network {
+    let contents = fs::read_to_string(&file_path).expect("Should have been able to read the file");
 
     let mut parsed_options = option_line::Options::default();
     println!("default options:\n{:?}", parsed_options);
@@ -50,26 +51,21 @@ fn read_file(file_path: String) -> option_line::Options {
     }
     println!("parsed options:\n{:?}", parsed_options);
 
-    parsed_options
+    Network {
+        // s: MagnitudeAngleMatrix(
+        //     (crate::data_line::MagnitudeAngle(0.0, 0.0), crate::data_line::MagnitudeAngle(0.0, 0.0)),
+        //     (crate::data_line::MagnitudeAngle(0.0, 0.0), crate::data_line::MagnitudeAngle(0.0, 0.0)),
+        // ),
+        z0: parsed_options.reference_resistance.parse::<f64>().unwrap_or(50.0),
+        frequency_unit: parsed_options.frequency_unit.clone(),
+        name: String::from(file_path),
+        options: parsed_options,
+    }
 }
 
 impl Network {
     pub fn new(file_path: String) -> Self {
-
-        
-        let options = crate::read_file(file_path);
-        let name = String::from("Unnamed Network");
-        let frequency_unit = options.frequency_unit;
-        let z0 = options.reference_resistance.parse::<f64>().unwrap_or(50.0);
-        Network { 
-            // s: MagnitudeAngleMatrix(
-            //     (crate::data_line::MagnitudeAngle(0.0, 0.0), crate::data_line::MagnitudeAngle(0.0, 0.0)),
-            //     (crate::data_line::MagnitudeAngle(0.0, 0.0), crate::data_line::MagnitudeAngle(0.0, 0.0)),
-            // ),
-            z0,
-            frequency_unit,
-            name,
-         }
+        read_file(file_path)
     }
 }
 
@@ -78,12 +74,16 @@ impl Network {
 mod tests {
     #[test]
     fn parse_2port() {
-        let options = crate::read_file("files/2port.s2p".to_string());
+        let network = crate::read_file("files/2port.s2p".to_string());
 
-        assert_eq!(options.frequency_unit, "GHz");
-        assert_eq!(options.parameter, "S");
-        assert_eq!(options.format, "RI");
-        assert_eq!(options.resistance_string, "R");
-        assert_eq!(options.reference_resistance, "50");
+        assert_eq!(network.options.frequency_unit, "GHz");
+        assert_eq!(network.options.parameter, "S");
+        assert_eq!(network.options.format, "RI");
+        assert_eq!(network.options.resistance_string, "R");
+        assert_eq!(network.options.reference_resistance, "50");
+
+        assert_eq!(network.z0, 50.0);
+        assert_eq!(network.frequency_unit, "GHz");
+        assert_eq!(network.name, "files/2port.s2p".to_string());
     }
 }
