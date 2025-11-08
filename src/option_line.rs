@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub struct Options {
+pub(crate) struct Options {
     pub frequency_unit: String,
     pub parameter: String,
     pub format: String,
@@ -69,7 +69,7 @@ impl Options {
     }
 }
 
-pub fn parse_option_line(option_line: String, options: &mut Options) {
+pub(crate) fn parse_option_line(option_line: String, options: &mut Options) {
     println!("\n\n");
     println!("Default options:\n{:?}", options);
 

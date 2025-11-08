@@ -58,7 +58,7 @@ fn str_to_f32(x: &str) -> f32 {
     x.parse::<f32>().expect("Failed to parse {x} into f32")
 }
 
-pub fn parse_data_line(data_line: String, format: &String, n: &i32) {
+pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) {
     // println!("\n");
     // println!("format:\n{:?}", *format);
     // println!("n (number of ports): {:?}", *n);
