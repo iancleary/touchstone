@@ -14,10 +14,10 @@ pub struct Network {
 }
 
 fn is_valid_file_type(file_type: &str) -> bool {
-    println!("Validating file type: {file_type}");
+    // println!("Validating file type: {file_type}");
     let file_type_length = file_type.len();
 
-    println!("file type length: {file_type_length}");
+    // println!("file type length: {file_type_length}");
     if file_type_length < 1 {
         return false;
     }
@@ -56,7 +56,7 @@ fn is_valid_file_type(file_type: &str) -> bool {
         return false;
     }
 
-    println!("middle chars: {middle_chars}");
+    // println!("middle chars: {middle_chars}");
     let middle_chars_as_int = middle_chars
         .parse::<i32>()
         .expect("Failed to parse middle chars as int {middle_chars}");
@@ -78,7 +78,7 @@ fn read_file(file_path: String) -> Network {
 
     if !file_type_is_valid {
         panic!(
-            "File type not supported: {}, only sNp supported.",
+            "File type not supported: {}, only sNp supported, where n is an integer without leading zeros.",
             file_type
         );
     }
@@ -89,7 +89,7 @@ fn read_file(file_path: String) -> Network {
         .expect("Failed to parse number of ports from file type");
 
     let mut parsed_options = option_line::Options::default();
-    println!("default options:\n{:?}", parsed_options);
+    // println!("default options:\n{:?}", parsed_options);
 
     let mut found_first_option_line = false;
 
