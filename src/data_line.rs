@@ -49,15 +49,22 @@ pub(crate) struct MagnitudeAngleMatrix(
 );
 
 #[derive(Debug)]
-pub(crate) struct DecibelAngleMatrix(pub (DecibelAngle, DecibelAngle), pub (DecibelAngle, DecibelAngle));
+pub(crate) struct DecibelAngleMatrix(
+    pub (DecibelAngle, DecibelAngle),
+    pub (DecibelAngle, DecibelAngle),
+);
 
 fn str_to_f32(x: &str) -> f32 {
     x.parse::<f32>().expect("Failed to parse {x} into f32")
 }
 
-pub fn parse_data_line(data_line: String, format: &String) {
+pub fn parse_data_line(data_line: String, format: &String, n: &i32) {
     println!("\n");
     println!("format:\n{:?}", *format);
+    println!("n (number of ports): {:?}", *n);
+
+    let expect_number_of_parts = 1 + (n * 2);
+    println!("expected number of parts: {:?}", expect_number_of_parts);
 
     // println!("Data Line: {data_line}");
     let parts = data_line.split_whitespace().collect::<Vec<_>>();
@@ -65,6 +72,7 @@ pub fn parse_data_line(data_line: String, format: &String) {
     let f32_parts: Vec<_> = parts.clone().into_iter().map(str_to_f32).collect();
 
     let len_parts = f32_parts.len();
+    println!("actual number of parts: {:?}", len_parts.clone());
 
     // println!("{}", len_parts);
     // println!("f32_parts (len {}): {:?}", len_parts, f32_parts);

@@ -11,12 +11,12 @@ impl Config {
         if args.len() < 2 {
             return Err("not enough arguments");
         }
+        // cargo run arg[1], such as cargo run files/2port.sh
         let file_path = args[1].clone();
 
         Ok(Config { file_path })
     }
 }
-
 
 fn main() {
     let args: Vec<String> = env::args().collect();
