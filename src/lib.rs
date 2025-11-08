@@ -1,7 +1,7 @@
 use std::fs;
 mod data_line;
-mod option_line;
 mod file_extension;
+mod option_line;
 
 #[derive(Debug)]
 pub struct Network {

@@ -51,7 +51,6 @@ pub(crate) fn is_valid_file_extension(file_type: &str) -> bool {
     n_ports_valid
 }
 
-
 #[cfg(test)]
 mod tests {
     #[test]
