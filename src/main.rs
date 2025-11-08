@@ -2,7 +2,7 @@ use std::env;
 use std::process;
 
 // this cannot be crate::Network because of how Cargo works,
-// since cargo/rust treats lib.rs and mod.rs as separate crates
+// since cargo/rust treats lib.rs and main.rs as separate crates
 use touchstone::Network;
 
 struct Config {
