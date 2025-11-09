@@ -178,31 +178,31 @@ pub(crate) fn parse_data_line(
         );
     }
 
-    let mut frequency = str_to_f32(parts[0]);
+    let mut frequency = crate::utils::str_to_f32(parts[0]);
 
     if frequency_unit == "THz" {
         // convert to Hz
         // println!("Converting frequency from THz to Hz");
         // println!("Original frequency: {} THz", frequency);
-        frequency = frequency * 1_000_000_000_000.0;
+        frequency = crate::frequency::thz_to_hz(frequency);
         println!("Converted frequency: {} Hz", frequency);
     } else if frequency_unit == "GHz" {
         // convert to Hz
         // println!("Converting frequency from GHz to Hz");
         // println!("Original frequency: {} GHz", frequency);
-        frequency = frequency * 1_000_000_000.0;
+        frequency = crate::frequency::ghz_to_hz(frequency);
         // println!("Converted frequency: {} Hz", frequency);
     } else if frequency_unit == "MHz" {
         // convert to Hz
         // println!("Converting frequency from MHz to Hz");
         // println!("Original frequency: {} MHz", frequency);
-        frequency = frequency * 1_000_000.0;
+        frequency = crate::frequency::mhz_to_hz(frequency);
         // println!("Converted frequency: {} Hz", frequency);
     } else if frequency_unit == "kHz" {
         // convert to Hz
         // println!("Converting frequency from kHz to Hz");
         // println!("Original frequency: {} kHz", frequency);
-        frequency = frequency * 1_000.0;
+        frequency = crate::frequency::khz_to_hz(frequency);
         // println!("Converted frequency: {} Hz", frequency);
     } else if frequency_unit == "Hz" {
         // no conversion needed
@@ -358,24 +358,5 @@ pub(crate) fn parse_data_line(
         };
     } else {
         panic!("Unsupported format: {}", format);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_str_to_f32() {
-        let x = "3.14";
-        let y = super::str_to_f32(x);
-        assert_eq!(y, 3.14);
-    }
-
-    #[test]
-    fn test_str_to_f32_invalid() {
-        let x = "abc";
-        let result = std::panic::catch_unwind(|| {
-            super::str_to_f32(x);
-        });
-        assert!(result.is_err());
     }
 }

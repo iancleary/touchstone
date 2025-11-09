@@ -1,7 +1,9 @@
 use std::fs;
 mod data_line;
 mod file_extension;
+mod frequency;
 mod option_line;
+mod utils;
 
 #[derive(Debug)]
 pub struct Network {
@@ -68,7 +70,7 @@ fn read_file(file_path: String) -> Network {
                 // is_data is true (not a variable, just communicating in terms of the pattern)
 
                 // println!("\nWith data: {line}");
-                let parts = line.split_whitespace().collect::<Vec<_>>();
+                // let parts = line.split_whitespace().collect::<Vec<_>>();
                 // println!("Data (len: {}):\n{:?}", parts.len(), parts);
 
                 let line_matrix_data = data_line::parse_data_line(
