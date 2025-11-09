@@ -117,6 +117,7 @@ fn str_to_f32(x: &str) -> f32 {
     x.parse::<f32>().expect("Failed to parse {x} into f32")
 }
 
+#[derive(Debug)]
 pub(crate) struct ParsedDataLine {
     frequency: String,
     s_ri: RealImaginaryMatrix,

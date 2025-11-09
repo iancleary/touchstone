@@ -12,6 +12,7 @@ pub struct Network {
     pub options: option_line::Options,
     pub comments: Vec<String>,
     pub data_lines: Vec<String>,
+    pub s: Vec<data_line::ParsedDataLine>,
 }
 
 fn read_file(file_path: String) -> Network {
@@ -43,6 +44,7 @@ fn read_file(file_path: String) -> Network {
 
     let mut comment_lines: Vec<String> = Vec::new();
     let mut data_lines: Vec<String> = Vec::new();
+    let mut s: Vec<data_line::ParsedDataLine> = Vec::new();
 
     for line in contents.lines() {
         // println!("\nWith line: ");
@@ -69,8 +71,9 @@ fn read_file(file_path: String) -> Network {
                 let parts = line.split_whitespace().collect::<Vec<_>>();
                 // println!("Data (len: {}):\n{:?}", parts.len(), parts);
 
-                data_line::parse_data_line(line.to_string(), &parsed_options.format, &n_ports);
+                let line_matrix_data = data_line::parse_data_line(line.to_string(), &parsed_options.format, &n_ports);
                 data_lines.push(line.to_string());
+                s.push(line_matrix_data);
             }
         }
     }
@@ -90,6 +93,7 @@ fn read_file(file_path: String) -> Network {
         options: parsed_options,
         comments: comment_lines,
         data_lines: data_lines,
+        s: s,
     }
 }
 
