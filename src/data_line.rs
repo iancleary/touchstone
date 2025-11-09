@@ -51,10 +51,7 @@ impl RealImaginary {
     }
 
     pub fn from_magnitude_angle(ma: MagnitudeAngle) -> Self {
-        RealImaginary(
-            ma.real(),
-            ma.imaginary(),
-        )
+        RealImaginary(ma.real(), ma.imaginary())
     }
 
     pub fn decibel_angle(self) -> DecibelAngle {
@@ -62,10 +59,7 @@ impl RealImaginary {
     }
 
     pub fn from_decibel_angle(da: DecibelAngle) -> Self {
-        RealImaginary(
-            da.real(),
-            da.imaginary(),
-        )
+        RealImaginary(da.real(), da.imaginary())
     }
 }
 
@@ -126,10 +120,7 @@ impl DecibelAngle {
     }
 
     pub fn real_imaginary(self) -> RealImaginary {
-        RealImaginary(
-            self.real(),
-            self.imaginary(),
-        )
+        RealImaginary(self.real(), self.imaginary())
     }
 
     pub fn from_real_imaginary(ri: RealImaginary) -> Self {
@@ -162,8 +153,6 @@ pub struct DecibelAngleMatrix(
     pub (DecibelAngle, DecibelAngle),
     pub (DecibelAngle, DecibelAngle),
 );
-
-
 
 #[derive(Debug)]
 pub struct ParsedDataLine {
@@ -274,23 +263,23 @@ pub(crate) fn parse_data_line(
 
         let s_db = DecibelAngleMatrix(
             (
-                DecibelAngle(s_ri.0 .0.decibel(), s_ri.0 .0.angle()),
-                DecibelAngle(s_ri.0 .1.decibel(), s_ri.0 .1.angle()),
+                DecibelAngle::from_real_imaginary(s_ri.0 .0),
+                DecibelAngle::from_real_imaginary(s_ri.0 .1),
             ),
             (
-                DecibelAngle(s_ri.1 .0.decibel(), s_ri.1 .0.angle()),
-                DecibelAngle(s_ri.1 .1.decibel(), s_ri.1 .1.angle()),
+                DecibelAngle::from_real_imaginary(s_ri.1 .0),
+                DecibelAngle::from_real_imaginary(s_ri.1 .1),
             ),
         );
 
         let s_ma = MagnitudeAngleMatrix(
             (
-                MagnitudeAngle(s_ri.0 .0.magnitude(), s_ri.0 .0.angle()),
-                MagnitudeAngle(s_ri.0 .1.magnitude(), s_ri.0 .1.angle()),
+                MagnitudeAngle::from_real_imaginary(s_ri.0 .0),
+                MagnitudeAngle::from_real_imaginary(s_ri.0 .1),
             ),
             (
-                MagnitudeAngle(s_ri.1 .0.magnitude(), s_ri.1 .0.angle()),
-                MagnitudeAngle(s_ri.1 .1.magnitude(), s_ri.1 .1.angle()),
+                MagnitudeAngle::from_real_imaginary(s_ri.1 .0),
+                MagnitudeAngle::from_real_imaginary(s_ri.1 .1),
             ),
         );
 
@@ -315,35 +304,23 @@ pub(crate) fn parse_data_line(
 
         let s_ri = RealImaginaryMatrix(
             (
-                RealImaginary(
-                    s_ma.0 .0 .0 * s_ma.0 .0 .0.cos(),
-                    s_ma.0 .0 .0 * s_ma.0 .0 .0.sin(),
-                ),
-                RealImaginary(
-                    s_ma.0 .1 .0 * s_ma.0 .1 .0.cos(),
-                    s_ma.0 .1 .0 * s_ma.0 .1 .0.sin(),
-                ),
+                RealImaginary::from_magnitude_angle(s_ma.0 .0),
+                RealImaginary::from_magnitude_angle(s_ma.0 .1),
             ),
             (
-                RealImaginary(
-                    s_ma.1 .0 .0 * s_ma.1 .0 .0.cos(),
-                    s_ma.1 .0 .0 * s_ma.1 .0 .0.sin(),
-                ),
-                RealImaginary(
-                    s_ma.1 .1 .0 * s_ma.1 .1 .0.cos(),
-                    s_ma.1 .1 .0 * s_ma.1 .1 .0.sin(),
-                ),
+                RealImaginary::from_magnitude_angle(s_ma.1 .0),
+                RealImaginary::from_magnitude_angle(s_ma.1 .1),
             ),
         );
 
         let s_db = DecibelAngleMatrix(
             (
-                DecibelAngle(s_ma.0 .0.decibel(), s_ma.0 .0.angle()),
-                DecibelAngle(s_ma.0 .1.decibel(), s_ma.0 .1.angle()),
+                DecibelAngle::from_magnitude_angle(s_ma.0 .0),
+                DecibelAngle::from_magnitude_angle(s_ma.0 .1),
             ),
             (
-                DecibelAngle(s_ma.1 .0.decibel(), s_ma.1 .0.angle()),
-                DecibelAngle(s_ma.1 .1.decibel(), s_ma.1 .1.angle()),
+                DecibelAngle::from_magnitude_angle(s_ma.1 .0),
+                DecibelAngle::from_magnitude_angle(s_ma.1 .1),
             ),
         );
         return ParsedDataLine {
@@ -367,35 +344,23 @@ pub(crate) fn parse_data_line(
 
         let s_ri = RealImaginaryMatrix(
             (
-                RealImaginary(
-                    10f64.powf(s_db.0 .0 .0 / 20.0) * s_db.0 .0 .1.cos(),
-                    10f64.powf(s_db.0 .0 .0 / 20.0) * s_db.0 .0 .1.sin(),
-                ),
-                RealImaginary(
-                    10f64.powf(s_db.0 .1 .0 / 20.0) * s_db.0 .1 .1.cos(),
-                    10f64.powf(s_db.0 .1 .0 / 20.0) * s_db.0 .1 .1.sin(),
-                ),
+                RealImaginary::from_decibel_angle(s_db.0 .0),
+                RealImaginary::from_decibel_angle(s_db.0 .1),
             ),
             (
-                RealImaginary(
-                    10f64.powf(s_db.1 .0 .0 / 20.0) * s_db.1 .0 .1.cos(),
-                    10f64.powf(s_db.1 .0 .0 / 20.0) * s_db.1 .0 .1.sin(),
-                ),
-                RealImaginary(
-                    10f64.powf(s_db.1 .1 .0 / 20.0) * s_db.1 .1 .1.cos(),
-                    10f64.powf(s_db.1 .1 .0 / 20.0) * s_db.1 .1 .1.sin(),
-                ),
+                RealImaginary::from_decibel_angle(s_db.1 .0),
+                RealImaginary::from_decibel_angle(s_db.1 .1),
             ),
         );
 
         let s_ma = MagnitudeAngleMatrix(
             (
-                MagnitudeAngle(s_db.0 .0.magnitude(), s_db.0 .0.angle()),
-                MagnitudeAngle(s_db.0 .1.magnitude(), s_db.0 .1.angle()),
+                MagnitudeAngle::from_decibel_angle(s_db.0 .0),
+                MagnitudeAngle::from_decibel_angle(s_db.0 .1),
             ),
             (
-                MagnitudeAngle(s_db.1 .0.magnitude(), s_db.1 .0.angle()),
-                MagnitudeAngle(s_db.1 .1.magnitude(), s_db.1 .1.angle()),
+                MagnitudeAngle::from_decibel_angle(s_db.1 .0),
+                MagnitudeAngle::from_decibel_angle(s_db.1 .1),
             ),
         );
         return ParsedDataLine {
