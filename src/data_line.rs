@@ -8,23 +8,35 @@
 // parameters (refer to the “Noise Parameter Data” section later in this
 // specification).  The default value is MA.
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(super) struct MagnitudeAngle(pub f32, pub f32);
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct RealImaginary(pub f32, pub f32);
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct DecibelAngle(pub f32, pub f32);
+// As specified, this is dB20, not dB10
+
 impl RealImaginary {
+    pub fn real(self) -> f32 {
+        self.0
+    }
+    pub fn imaginary(self) -> f32 {
+        self.1
+    }
+
+    pub fn magnitude(self) -> f32 {
+        (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0)).sqrt()
+    }
+
     pub fn decibel(self) -> f32 {
         // need to resolve file from 2010 on if this should be 20
         // TODO: I think the s2p file is old/bad in this regard
         // (look into this after I sleep and think about it)
-        10.0 * (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0))
+        20.0 * (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0))
             .sqrt()
             .log10()
-    }
-    pub fn magnitude(self) -> f32 {
-        (f32::powf(self.0, 2.0) + f32::powf(self.1, 2.0)).sqrt()
     }
 
     pub fn angle(self) -> f32 {
@@ -32,9 +44,56 @@ impl RealImaginary {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct DecibelAngle(pub f32, pub f32);
-// As specified, this is dB20, not dB10
+impl MagnitudeAngle {
+    pub fn real(self) -> f32 {
+        self.0 * self.1.cos()
+    }
+
+    pub fn real_imaginary(self) -> RealImaginary {
+        RealImaginary(self.0 * self.1.cos(), self.0 * self.1.sin())
+    }
+
+    pub fn from_real_imaginary(ri: RealImaginary) -> Self {
+        MagnitudeAngle(ri.magnitude(), ri.angle())
+    }
+
+    pub fn decibel(self) -> f32 {
+        self.0.log10() * 20.0
+    }
+
+    pub fn magnitude(self) -> f32 {
+        self.0
+    }
+
+    pub fn angle(self) -> f32 {
+        self.1
+    }
+}
+
+impl DecibelAngle {
+    pub fn magnitude(self) -> f32 {
+        10f32.powf(self.0 / 20.0)
+    }
+
+    pub fn angle(self) -> f32 {
+        self.1
+    }
+
+    pub fn real_imaginary(self) -> RealImaginary {
+        RealImaginary(
+            self.magnitude() * self.angle().cos(),
+            self.magnitude() * self.angle().sin(),
+        )
+    }
+
+    pub fn real(self) -> f32 {
+        self.magnitude() * self.angle().cos()
+    }
+
+    pub fn imaginary(self) -> f32 {
+        self.magnitude() * self.angle().sin()
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct RealImaginaryMatrix(
@@ -49,27 +108,32 @@ pub(crate) struct MagnitudeAngleMatrix(
 );
 
 #[derive(Debug)]
-pub(crate) struct DecibelAngleMatrix(pub (DecibelAngle, DecibelAngle), pub (DecibelAngle, DecibelAngle));
+pub(crate) struct DecibelAngleMatrix(
+    pub (DecibelAngle, DecibelAngle),
+    pub (DecibelAngle, DecibelAngle),
+);
 
 fn str_to_f32(x: &str) -> f32 {
     x.parse::<f32>().expect("Failed to parse {x} into f32")
 }
 
-pub fn parse_data_line(data_line: String, format: &String) {
-    println!("\n");
-    println!("format:\n{:?}", *format);
+#[derive(Debug)]
+pub struct ParsedDataLine {
+    pub frequency: f32,
+    pub s_ri: RealImaginaryMatrix,
+    pub s_db: DecibelAngleMatrix,
+    pub s_ma: MagnitudeAngleMatrix,
+}
 
-    // println!("Data Line: {data_line}");
-    let parts = data_line.split_whitespace().collect::<Vec<_>>();
-
-    let f32_parts: Vec<_> = parts.clone().into_iter().map(str_to_f32).collect();
-
-    let len_parts = f32_parts.len();
-
-    // println!("{}", len_parts);
-    // println!("f32_parts (len {}): {:?}", len_parts, f32_parts);
-
-    let mut frequency = "";
+pub(crate) fn parse_data_line(
+    data_line: String,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+) -> ParsedDataLine {
+    // println!("\n");
+    // println!("format:\n{:?}", *format);
+    // println!("n (number of ports): {:?}", *n);
 
     // FROM docs/touchstone_ver2_1.pdf (Page 16)
     //
@@ -80,79 +144,238 @@ pub fn parse_data_line(data_line: String, format: &String) {
     // frequency value  frequency at which the network parameter data was taken or derived.
 
     // N11, N12, N21, N22   network parameter data points, where Nij represents a pair of data values
+    //
+    // for the network parameter from port i to port j. Each Nij consists of two numeric
+    // values, whose meaning is determined by the format option specified in the option line.
+    // therefore, the total number of numeric values on a 2-port data line is 1 + (2 × (2^2)) = 9.
+    // generally, for an n-port data line, the total number of numeric values is 1 + (2 × (n^2)).
+    let expect_number_of_parts = 1 + (2 * (n * n));
+    // println!("expected number of parts: {:?}", expect_number_of_parts);
 
-    // Assuming only two port right now
-    match len_parts.to_string().as_str() {
-        "9" => {
-            frequency = parts[0];
-            let real_imaginary_matrix = RealImaginaryMatrix(
-                (
-                    RealImaginary(f32_parts[1], f32_parts[2]),
-                    RealImaginary(f32_parts[3], f32_parts[4]),
-                ),
-                (
-                    RealImaginary(f32_parts[5], f32_parts[6]),
-                    RealImaginary(f32_parts[7], f32_parts[8]),
-                ),
-            );
+    // println!("Data Line: {data_line}");
+    let parts = data_line.split_whitespace().collect::<Vec<_>>();
 
-            let magnitude_angle_matrix = MagnitudeAngleMatrix(
-                (
-                    MagnitudeAngle(
-                        real_imaginary_matrix.0 .0.magnitude(),
-                        real_imaginary_matrix.0 .0.angle(),
-                    ),
-                    MagnitudeAngle(
-                        real_imaginary_matrix.0 .1.magnitude(),
-                        real_imaginary_matrix.0 .1.angle(),
-                    ),
-                ),
-                (
-                    MagnitudeAngle(
-                        real_imaginary_matrix.1 .0.magnitude(),
-                        real_imaginary_matrix.1 .0.angle(),
-                    ),
-                    MagnitudeAngle(
-                        real_imaginary_matrix.1 .1.magnitude(),
-                        real_imaginary_matrix.1 .1.angle(),
-                    ),
-                ),
-            );
+    let len_parts = parts.len();
+    // println!("Data Line Parts (len {}): {:?}", len_parts, parts);
 
-            let decibel_angle_matrix = DecibelAngleMatrix(
-                (
-                    DecibelAngle(
-                        real_imaginary_matrix.0 .0.decibel(),
-                        real_imaginary_matrix.0 .0.angle(),
-                    ),
-                    DecibelAngle(
-                        real_imaginary_matrix.0 .1.decibel(),
-                        real_imaginary_matrix.0 .1.angle(),
-                    ),
-                ),
-                (
-                    DecibelAngle(
-                        real_imaginary_matrix.1 .0.decibel(),
-                        real_imaginary_matrix.1 .0.angle(),
-                    ),
-                    DecibelAngle(
-                        real_imaginary_matrix.1 .1.decibel(),
-                        real_imaginary_matrix.1 .1.angle(),
-                    ),
-                ),
-            );
+    if len_parts != expect_number_of_parts as usize {
+        panic!(
+            "Data line has unexpected number of parts. Expected {}, got {}",
+            expect_number_of_parts, len_parts
+        );
+    }
 
-            // println!(
-            //     "mag/dB, angle, {}/{} dB, {} degrees",
-            //     real_imaginary_matrix.0.0.magnitude(),
-            //     real_imaginary_matrix.0.0.decibel(),
-            //     real_imaginary_matrix.0.0.angle()
-            // );
+    // split into f32 parts, after checking the expected length
+    let f32_parts: Vec<_> = parts.clone().into_iter().map(str_to_f32).collect();
 
-            println!("{}, {:?}", frequency, real_imaginary_matrix);
-            println!("{}, {:?}", frequency, magnitude_angle_matrix);
-            println!("{}, {:?}", frequency, decibel_angle_matrix);
-        }
-        _ => {} // Do nothing (should raise error on unsupported cases)
+    // println!("{}", len_parts);
+    // println!("f32_parts (len {}): {:?}", len_parts, f32_parts);
+
+    if n != &2 {
+        panic!(
+            "Only 2-port data lines are currently supported. Found {}-port data line.",
+            n
+        );
+    }
+
+    let mut frequency = str_to_f32(parts[0]);
+
+    if frequency_unit == "THz" {
+        // convert to Hz
+        // println!("Converting frequency from THz to Hz");
+        // println!("Original frequency: {} THz", frequency);
+        frequency = frequency * 1_000_000_000_000.0;
+        println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "GHz" {
+        // convert to Hz
+        // println!("Converting frequency from GHz to Hz");
+        // println!("Original frequency: {} GHz", frequency);
+        frequency = frequency * 1_000_000_000.0;
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "MHz" {
+        // convert to Hz
+        // println!("Converting frequency from MHz to Hz");
+        // println!("Original frequency: {} MHz", frequency);
+        frequency = frequency * 1_000_000.0;
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "kHz" {
+        // convert to Hz
+        // println!("Converting frequency from kHz to Hz");
+        // println!("Original frequency: {} kHz", frequency);
+        frequency = frequency * 1_000.0;
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "Hz" {
+        // no conversion needed
+        // println!("Frequency is already in Hz: {} Hz", frequency);
+    } else {
+        panic!("Unsupported frequency unit: {}", frequency_unit);
+    }
+
+    if format == "RI" {
+        // Real-Imaginary format
+        let s_ri = RealImaginaryMatrix(
+            (
+                RealImaginary(f32_parts[1], f32_parts[2]),
+                RealImaginary(f32_parts[3], f32_parts[4]),
+            ),
+            (
+                RealImaginary(f32_parts[5], f32_parts[6]),
+                RealImaginary(f32_parts[7], f32_parts[8]),
+            ),
+        );
+
+        let s_db = DecibelAngleMatrix(
+            (
+                DecibelAngle(s_ri.0 .0.decibel(), s_ri.0 .0.angle()),
+                DecibelAngle(s_ri.0 .1.decibel(), s_ri.0 .1.angle()),
+            ),
+            (
+                DecibelAngle(s_ri.1 .0.decibel(), s_ri.1 .0.angle()),
+                DecibelAngle(s_ri.1 .1.decibel(), s_ri.1 .1.angle()),
+            ),
+        );
+
+        let s_ma = MagnitudeAngleMatrix(
+            (
+                MagnitudeAngle(s_ri.0 .0.magnitude(), s_ri.0 .0.angle()),
+                MagnitudeAngle(s_ri.0 .1.magnitude(), s_ri.0 .1.angle()),
+            ),
+            (
+                MagnitudeAngle(s_ri.1 .0.magnitude(), s_ri.1 .0.angle()),
+                MagnitudeAngle(s_ri.1 .1.magnitude(), s_ri.1 .1.angle()),
+            ),
+        );
+
+        return ParsedDataLine {
+            frequency: frequency,
+            s_ri,
+            s_db,
+            s_ma,
+        };
+    } else if format == "MA" {
+        // Magnitude-Angle format
+        let s_ma = MagnitudeAngleMatrix(
+            (
+                MagnitudeAngle(f32_parts[1], f32_parts[2]),
+                MagnitudeAngle(f32_parts[3], f32_parts[4]),
+            ),
+            (
+                MagnitudeAngle(f32_parts[5], f32_parts[6]),
+                MagnitudeAngle(f32_parts[7], f32_parts[8]),
+            ),
+        );
+
+        let s_ri = RealImaginaryMatrix(
+            (
+                RealImaginary(
+                    s_ma.0 .0 .0 * s_ma.0 .0 .0.cos(),
+                    s_ma.0 .0 .0 * s_ma.0 .0 .0.sin(),
+                ),
+                RealImaginary(
+                    s_ma.0 .1 .0 * s_ma.0 .1 .0.cos(),
+                    s_ma.0 .1 .0 * s_ma.0 .1 .0.sin(),
+                ),
+            ),
+            (
+                RealImaginary(
+                    s_ma.1 .0 .0 * s_ma.1 .0 .0.cos(),
+                    s_ma.1 .0 .0 * s_ma.1 .0 .0.sin(),
+                ),
+                RealImaginary(
+                    s_ma.1 .1 .0 * s_ma.1 .1 .0.cos(),
+                    s_ma.1 .1 .0 * s_ma.1 .1 .0.sin(),
+                ),
+            ),
+        );
+
+        let s_db = DecibelAngleMatrix(
+            (
+                DecibelAngle(s_ma.0 .0.decibel(), s_ma.0 .0.angle()),
+                DecibelAngle(s_ma.0 .1.decibel(), s_ma.0 .1.angle()),
+            ),
+            (
+                DecibelAngle(s_ma.1 .0.decibel(), s_ma.1 .0.angle()),
+                DecibelAngle(s_ma.1 .1.decibel(), s_ma.1 .1.angle()),
+            ),
+        );
+        return ParsedDataLine {
+            frequency: frequency,
+            s_ri,
+            s_db,
+            s_ma,
+        };
+    } else if format == "DB" {
+        // Decibel-Angle format
+        let s_db = DecibelAngleMatrix(
+            (
+                DecibelAngle(f32_parts[1], f32_parts[2]),
+                DecibelAngle(f32_parts[3], f32_parts[4]),
+            ),
+            (
+                DecibelAngle(f32_parts[5], f32_parts[6]),
+                DecibelAngle(f32_parts[7], f32_parts[8]),
+            ),
+        );
+
+        let s_ri = RealImaginaryMatrix(
+            (
+                RealImaginary(
+                    10f32.powf(s_db.0 .0 .0 / 20.0) * s_db.0 .0 .1.cos(),
+                    10f32.powf(s_db.0 .0 .0 / 20.0) * s_db.0 .0 .1.sin(),
+                ),
+                RealImaginary(
+                    10f32.powf(s_db.0 .1 .0 / 20.0) * s_db.0 .1 .1.cos(),
+                    10f32.powf(s_db.0 .1 .0 / 20.0) * s_db.0 .1 .1.sin(),
+                ),
+            ),
+            (
+                RealImaginary(
+                    10f32.powf(s_db.1 .0 .0 / 20.0) * s_db.1 .0 .1.cos(),
+                    10f32.powf(s_db.1 .0 .0 / 20.0) * s_db.1 .0 .1.sin(),
+                ),
+                RealImaginary(
+                    10f32.powf(s_db.1 .1 .0 / 20.0) * s_db.1 .1 .1.cos(),
+                    10f32.powf(s_db.1 .1 .0 / 20.0) * s_db.1 .1 .1.sin(),
+                ),
+            ),
+        );
+
+        let s_ma = MagnitudeAngleMatrix(
+            (
+                MagnitudeAngle(s_db.0 .0.magnitude(), s_db.0 .0.angle()),
+                MagnitudeAngle(s_db.0 .1.magnitude(), s_db.0 .1.angle()),
+            ),
+            (
+                MagnitudeAngle(s_db.1 .0.magnitude(), s_db.1 .0.angle()),
+                MagnitudeAngle(s_db.1 .1.magnitude(), s_db.1 .1.angle()),
+            ),
+        );
+        return ParsedDataLine {
+            frequency: frequency,
+            s_ri,
+            s_db,
+            s_ma,
+        };
+    } else {
+        panic!("Unsupported format: {}", format);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_str_to_f32() {
+        let x = "3.14";
+        let y = super::str_to_f32(x);
+        assert_eq!(y, 3.14);
+    }
+
+    #[test]
+    fn test_str_to_f32_invalid() {
+        let x = "abc";
+        let result = std::panic::catch_unwind(|| {
+            super::str_to_f32(x);
+        });
+        assert!(result.is_err());
     }
 }
