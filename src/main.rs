@@ -38,4 +38,17 @@ fn run(file_path: String) {
     let s2p = Network::new(file_path);
     println!("Network created.");
     println!("Frequency Unit: {}", s2p.frequency_unit);
+
+    println!("First 5 S-parameters:\n");
+    for i in 0..5 {
+        println!("{:?}", s2p.data_lines[i]);
+        println!("{:?}", s2p.s[i]);
+    }
+
+    println!("Last 5 S-parameters:\n");
+    let n = s2p.data_lines.len();
+    for i in n - 5..n {
+        println!("{:?}", s2p.data_lines[i]);
+        println!("{:?}", s2p.s[i]);
+    }
 }

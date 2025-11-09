@@ -118,18 +118,23 @@ fn str_to_f32(x: &str) -> f32 {
 }
 
 #[derive(Debug)]
-pub(crate) struct ParsedDataLine {
-    frequency: String,
-    s_ri: RealImaginaryMatrix,
-    s_db: DecibelAngleMatrix,
-    s_ma: MagnitudeAngleMatrix,
+pub struct ParsedDataLine {
+    pub frequency: f32,
+    pub s_ri: RealImaginaryMatrix,
+    pub s_db: DecibelAngleMatrix,
+    pub s_ma: MagnitudeAngleMatrix,
 }
 
-pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) -> ParsedDataLine {
-    println!("\n");
-    println!("format:\n{:?}", *format);
-    println!("n (number of ports): {:?}", *n);
-    
+pub(crate) fn parse_data_line(
+    data_line: String,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+) -> ParsedDataLine {
+    // println!("\n");
+    // println!("format:\n{:?}", *format);
+    // println!("n (number of ports): {:?}", *n);
+
     // FROM docs/touchstone_ver2_1.pdf (Page 16)
     //
     // 2-port data (line)
@@ -145,13 +150,13 @@ pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) -> Pa
     // therefore, the total number of numeric values on a 2-port data line is 1 + (2 × (2^2)) = 9.
     // generally, for an n-port data line, the total number of numeric values is 1 + (2 × (n^2)).
     let expect_number_of_parts = 1 + (2 * (n * n));
-    println!("expected number of parts: {:?}", expect_number_of_parts);
+    // println!("expected number of parts: {:?}", expect_number_of_parts);
 
-    println!("Data Line: {data_line}");
+    // println!("Data Line: {data_line}");
     let parts = data_line.split_whitespace().collect::<Vec<_>>();
 
     let len_parts = parts.len();
-    println!("Data Line Parts (len {}): {:?}", len_parts, parts);
+    // println!("Data Line Parts (len {}): {:?}", len_parts, parts);
 
     if len_parts != expect_number_of_parts as usize {
         panic!(
@@ -167,10 +172,45 @@ pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) -> Pa
     // println!("f32_parts (len {}): {:?}", len_parts, f32_parts);
 
     if n != &2 {
-        panic!("Only 2-port data lines are currently supported. Found {}-port data line.", n);
+        panic!(
+            "Only 2-port data lines are currently supported. Found {}-port data line.",
+            n
+        );
     }
 
-    let frequency = parts[0];
+    let mut frequency = str_to_f32(parts[0]);
+
+    if frequency_unit == "THz" {
+        // convert to Hz
+        // println!("Converting frequency from THz to Hz");
+        // println!("Original frequency: {} THz", frequency);
+        frequency = frequency * 1_000_000_000_000.0;
+        println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "GHz" {
+        // convert to Hz
+        // println!("Converting frequency from GHz to Hz");
+        // println!("Original frequency: {} GHz", frequency);
+        frequency = frequency * 1_000_000_000.0;
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "MHz" {
+        // convert to Hz
+        // println!("Converting frequency from MHz to Hz");
+        // println!("Original frequency: {} MHz", frequency);
+        frequency = frequency * 1_000_000.0;
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "kHz" {
+        // convert to Hz
+        // println!("Converting frequency from kHz to Hz");
+        // println!("Original frequency: {} kHz", frequency);
+        frequency = frequency * 1_000.0;
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "Hz" {
+        // no conversion needed
+        // println!("Frequency is already in Hz: {} Hz", frequency);
+    } else {
+        panic!("Unsupported frequency unit: {}", frequency_unit);
+    }
+
     if format == "RI" {
         // Real-Imaginary format
         let s_ri = RealImaginaryMatrix(
@@ -207,7 +247,7 @@ pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) -> Pa
         );
 
         return ParsedDataLine {
-            frequency: frequency.to_string(),
+            frequency: frequency,
             s_ri,
             s_db,
             s_ma,
@@ -259,7 +299,7 @@ pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) -> Pa
             ),
         );
         return ParsedDataLine {
-            frequency: frequency.to_string(),
+            frequency: frequency,
             s_ri,
             s_db,
             s_ma,
@@ -311,12 +351,12 @@ pub(crate) fn parse_data_line(data_line: String, format: &String, n: &i32) -> Pa
             ),
         );
         return ParsedDataLine {
-            frequency: frequency.to_string(),
+            frequency: frequency,
             s_ri,
             s_db,
             s_ma,
         };
-    }else {
+    } else {
         panic!("Unsupported format: {}", format);
     }
 }

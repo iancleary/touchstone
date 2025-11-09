@@ -71,7 +71,12 @@ fn read_file(file_path: String) -> Network {
                 let parts = line.split_whitespace().collect::<Vec<_>>();
                 // println!("Data (len: {}):\n{:?}", parts.len(), parts);
 
-                let line_matrix_data = data_line::parse_data_line(line.to_string(), &parsed_options.format, &n_ports);
+                let line_matrix_data = data_line::parse_data_line(
+                    line.to_string(),
+                    &parsed_options.format,
+                    &n_ports,
+                    &parsed_options.frequency_unit,
+                );
                 data_lines.push(line.to_string());
                 s.push(line_matrix_data);
             }
