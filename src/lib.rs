@@ -1,7 +1,6 @@
 use std::fs;
 mod data_line;
 mod file_extension;
-mod frequency;
 mod option_line;
 mod utils;
 
@@ -87,10 +86,6 @@ fn read_file(file_path: String) -> Network {
     println!("parsed options:\n{:?}", parsed_options);
 
     Network {
-        // s: MagnitudeAngleMatrix(
-        //     (crate::data_line::MagnitudeAngle(0.0, 0.0), crate::data_line::MagnitudeAngle(0.0, 0.0)),
-        //     (crate::data_line::MagnitudeAngle(0.0, 0.0), crate::data_line::MagnitudeAngle(0.0, 0.0)),
-        // ),
         z0: parsed_options
             .reference_resistance
             .parse::<f64>()

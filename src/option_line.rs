@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub(crate) struct Options {
+pub struct Options {
     pub frequency_unit: String,
     pub parameter: String,
     pub format: String,
