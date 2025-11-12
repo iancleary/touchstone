@@ -52,3 +52,30 @@ fn run(file_path: String) {
         println!("{:?}", s2p.s[i]);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_config_build() {
+        let args = vec![
+            String::from("program_name"),
+            String::from("files/2port.sh"),
+        ];
+        let config = Config::build(&args).unwrap();
+        assert_eq!(config.file_path, "files/2port.sh");
+    }   
+
+    #[test]
+    fn test_config_build_not_enough_args() {
+        let args = vec![String::from("program_name")];
+        let result = Config::build(&args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_run_function() {
+        let file_path = String::from("files/2port.s2p");
+        run(file_path);
+    }
+}
