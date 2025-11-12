@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "rfconversions"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8854fbc7b10ff324312c56ae63331cefe3e32428536fcc389b411cc4e636047f"
+checksum = "e21a6960f5f68dadef99bd8b50f105cc86b16efecf6dba421175ecdde215277a"
 
 [[package]]
 name = "touchstone"
