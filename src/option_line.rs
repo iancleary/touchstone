@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Options {
     pub frequency_unit: String,
     pub parameter: String,

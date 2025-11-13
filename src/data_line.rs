@@ -13,12 +13,33 @@ use crate::utils::str_to_f64;
 #[derive(Clone, Copy, Debug)]
 pub struct MagnitudeAngle(pub f64, pub f64);
 
+impl PartialEq for MagnitudeAngle {
+    fn eq(&self, other: &Self) -> bool {
+        self.0  == other.0 && self.1 == other.1
+    }
+}
+
+
 #[derive(Clone, Copy, Debug)]
 pub struct RealImaginary(pub f64, pub f64);
+
+impl PartialEq for RealImaginary {
+    fn eq(&self, other: &Self) -> bool {
+        self.0  == other.0 && self.1 == other.1
+    }
+}
+
 
 #[derive(Clone, Copy, Debug)]
 pub struct DecibelAngle(pub f64, pub f64);
 // As specified, this is dB20, not dB10
+
+impl PartialEq for DecibelAngle {
+    fn eq(&self, other: &Self) -> bool {
+        self.0  == other.0 && self.1 == other.1
+    }
+}
+
 
 #[allow(dead_code)]
 impl RealImaginary {
@@ -142,17 +163,61 @@ pub struct RealImaginaryMatrix(
     pub (RealImaginary, RealImaginary),
 );
 
+impl PartialEq for RealImaginaryMatrix {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 .0 .0 == other.0 .0 .0
+            && self.0 .0 .1 == other.0 .0 .1
+            && self.0 .1 .0 == other.0 .1 .0
+            && self.0 .1 .1 == other.0 .1 .1
+            && self.1 .0 .0 == other.1 .0 .0
+            && self.1 .0 .1 == other.1 .0 .1
+            && self.1 .1 .0 == other.1 .1 .0
+            && self.1 .1 .1 == other.1 .1 .1
+    }
+}
+
+
 #[derive(Debug)]
 pub struct MagnitudeAngleMatrix(
     pub (MagnitudeAngle, MagnitudeAngle),
     pub (MagnitudeAngle, MagnitudeAngle),
 );
 
+impl PartialEq for MagnitudeAngleMatrix {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 .0 .0 == other.0 .0 .0
+            && self.0 .0 .1 == other.0 .0 .1
+            && self.0 .1 .0 == other.0 .1 .0
+            && self.0 .1 .1 == other.0 .1 .1
+            && self.1 .0 .0 == other.1 .0 .0
+            && self.1 .0 .1 == other.1 .0 .1
+            && self.1 .1 .0 == other.1 .1 .0
+            && self.1 .1 .1 == other.1 .1 .1
+    }
+}
+
+
+
+
 #[derive(Debug)]
 pub struct DecibelAngleMatrix(
     pub (DecibelAngle, DecibelAngle),
     pub (DecibelAngle, DecibelAngle),
 );
+
+impl PartialEq for DecibelAngleMatrix {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 .0 .0 == other.0 .0 .0
+            && self.0 .0 .1 == other.0 .0 .1
+            && self.0 .1 .0 == other.0 .1 .0
+            && self.0 .1 .1 == other.0 .1 .1
+            && self.1 .0 .0 == other.1 .0 .0
+            && self.1 .0 .1 == other.1 .0 .1
+            && self.1 .1 .0 == other.1 .1 .0
+            && self.1 .1 .1 == other.1 .1 .1
+    }
+}
+
 
 #[derive(Debug)]
 pub struct ParsedDataLine {
