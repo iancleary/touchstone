@@ -15,20 +15,18 @@ pub struct MagnitudeAngle(pub f64, pub f64);
 
 impl PartialEq for MagnitudeAngle {
     fn eq(&self, other: &Self) -> bool {
-        self.0  == other.0 && self.1 == other.1
+        self.0 == other.0 && self.1 == other.1
     }
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct RealImaginary(pub f64, pub f64);
 
 impl PartialEq for RealImaginary {
     fn eq(&self, other: &Self) -> bool {
-        self.0  == other.0 && self.1 == other.1
+        self.0 == other.0 && self.1 == other.1
     }
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct DecibelAngle(pub f64, pub f64);
@@ -36,10 +34,9 @@ pub struct DecibelAngle(pub f64, pub f64);
 
 impl PartialEq for DecibelAngle {
     fn eq(&self, other: &Self) -> bool {
-        self.0  == other.0 && self.1 == other.1
+        self.0 == other.0 && self.1 == other.1
     }
 }
-
 
 #[allow(dead_code)]
 impl RealImaginary {
@@ -176,7 +173,6 @@ impl PartialEq for RealImaginaryMatrix {
     }
 }
 
-
 #[derive(Clone, Copy, Debug)]
 pub struct MagnitudeAngleMatrix(
     pub (MagnitudeAngle, MagnitudeAngle),
@@ -196,9 +192,6 @@ impl PartialEq for MagnitudeAngleMatrix {
     }
 }
 
-
-
-
 #[derive(Clone, Copy, Debug)]
 pub struct DecibelAngleMatrix(
     pub (DecibelAngle, DecibelAngle),
@@ -217,7 +210,6 @@ impl PartialEq for DecibelAngleMatrix {
             && self.1 .1 .1 == other.1 .1 .1
     }
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct ParsedDataLine {

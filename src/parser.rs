@@ -6,20 +6,19 @@ use crate::option_line;
 use crate::utils;
 use crate::Network;
 
-
 #[derive(Debug)]
 struct ParserState {
     data_lines: Vec<String>,
-    option_line_parsed: bool, 
+    option_line_parsed: bool,
 }
 
 pub fn read_file(file_path: String) -> Network {
     let contents = fs::read_to_string(&file_path).expect("Should have been able to read the file");
 
     let file_type = file_path
-    .split(".")
-    .last()
-    .expect("Failed to get file type from file path");
+        .split(".")
+        .last()
+        .expect("Failed to get file type from file path");
 
     let file_type_is_valid = file_extension::is_valid_file_extension(file_type);
 
@@ -60,7 +59,6 @@ pub fn read_file(file_path: String) -> Network {
         let is_comment = line.starts_with("!");
 
         if is_option_line {
-
             if parser_state.option_line_parsed == false {
                 // println!("\nWith options: {line}");
                 // mutate options as they are parsed
@@ -71,13 +69,11 @@ pub fn read_file(file_path: String) -> Network {
                 format = parsed_options.format.clone();
                 resistance_string = parsed_options.resistance_string.clone();
                 reference_resistance = parsed_options.reference_resistance.clone();
-                
-                parser_state.option_line_parsed = true;
 
+                parser_state.option_line_parsed = true;
             } else {
                 panic!("Multiple option lines found in file. Only one option line is allowed.");
             }
-            
         } else {
             if is_comment {
                 // println!("\nWith comment: {line}");
@@ -108,7 +104,7 @@ pub fn read_file(file_path: String) -> Network {
         }
     }
 
-    println!("parsed options:\n{:?}", parsed_options);
+    // println!("parsed options:\n{:?}", parsed_options);
 
     Network {
         name: file_path,
@@ -124,8 +120,6 @@ pub fn read_file(file_path: String) -> Network {
         s: s,
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -188,5 +182,4 @@ mod tests {
         assert_eq!(network.f.len(), 91);
         assert_eq!(network.s.len(), 91);
     }
-
 }

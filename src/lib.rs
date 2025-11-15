@@ -1,4 +1,3 @@
-use std::fs;
 use std::ops;
 mod data_line;
 mod file_extension;
@@ -13,15 +12,14 @@ pub struct Network {
     pub frequency_unit: String,
     pub parameter: String,
     pub format: String,
-    pub resistance_string: String,    // "R"
-    pub z0: f64, // If "R" is not present, this is 50
+    pub resistance_string: String, // "R"
+    pub z0: f64,                   // If "R" is not present, this is 50
     pub comments: Vec<String>,
     pub comments_after_option_line: Vec<String>,
-    
+
     // data
     pub f: Vec<f64>,
     pub s: Vec<data_line::ParsedDataLine>,
-
 }
 
 impl Network {
@@ -30,16 +28,21 @@ impl Network {
     }
 
     pub fn cascade(&self, other: &Network) -> Network {
-        
         if self.z0 != other.z0 {
-            panic!("Cannot cascade networks with different reference impedances: {} and {}", self.z0, other.z0);
+            panic!(
+                "Cannot cascade networks with different reference impedances: {} and {}",
+                self.z0, other.z0
+            );
         }
 
         if self.frequency_unit != other.frequency_unit {
-            panic!("Cannot cascade networks with different frequency units: {} and {}", self.frequency_unit, other.frequency_unit);
+            panic!(
+                "Cannot cascade networks with different frequency units: {} and {}",
+                self.frequency_unit, other.frequency_unit
+            );
         }
 
-        if self.rank !=2 || other.rank !=2 {
+        if self.rank != 2 || other.rank != 2 {
             panic!("Cascading is only implemented for 2-port networks.");
         }
 
@@ -74,7 +77,6 @@ impl ops::Mul<Network> for Network {
         self.cascade(&_rhs)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -70,14 +70,14 @@ impl Options {
 }
 
 pub(crate) fn parse_option_line(option_line: String, options: &mut Options) {
-    println!("\n\n");
-    println!("Default options:\n{:?}", options);
+    // println!("\n\n");
+    // println!("Default options:\n{:?}", options);
 
-    println!("Option Line: {option_line}");
+    // println!("Option Line: {option_line}");
     let parts = option_line.split_whitespace().collect::<Vec<_>>();
 
-    println!("{}", parts.len());
-    println!("{:?}", parts);
+    // println!("{}", parts.len());
+    // println!("{:?}", parts);
 
     for option in parts {
         //
