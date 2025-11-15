@@ -4,24 +4,8 @@ use crate::data_line;
 use crate::file_extension;
 use crate::option_line;
 use crate::utils;
+use crate::Network;
 
-#[derive(Debug)]
-pub struct ParsedFile {
-    pub rank: i32,
-    pub frequency_unit: String,
-    pub parameter: String,
-    pub format: String,
-    pub resistance_string: String,    // "R"
-    pub z0: f64, // If "R" is not present, this is 50
-    pub comments: Vec<String>,
-    pub comments_after_option_line: Vec<String>,
-    
-    // data
-    pub f: Vec<f64>,
-    pub s: Vec<data_line::ParsedDataLine>,
-
-    
-}
 
 #[derive(Debug)]
 struct ParserState {
@@ -29,10 +13,7 @@ struct ParserState {
     option_line_parsed: bool, 
 }
 
-
-
-
-pub fn read_file(file_path: String) -> ParsedFile {
+pub fn read_file(file_path: String) -> Network {
     let contents = fs::read_to_string(&file_path).expect("Should have been able to read the file");
 
     let file_type = file_path
@@ -129,7 +110,8 @@ pub fn read_file(file_path: String) -> ParsedFile {
 
     println!("parsed options:\n{:?}", parsed_options);
 
-    ParsedFile {
+    Network {
+        name: file_path,
         rank: n_ports,
         frequency_unit: frequency_unit,
         parameter: parameter,
@@ -150,20 +132,61 @@ mod tests {
     use super::*;
     #[test]
     fn parse_2port_ntwk1() {
-        let parser_state = read_file("files/ntwk1.s2p".to_string());
+        let network = read_file("files/ntwk1.s2p".to_string());
 
-        assert_eq!(parser_state.rank, 2);
+        assert_eq!(network.name, "files/ntwk1.s2p".to_string());
 
-        assert_eq!(parser_state.frequency_unit, "GHz");
-        assert_eq!(parser_state.parameter, "S");
-        assert_eq!(parser_state.format, "RI");
-        assert_eq!(parser_state.resistance_string, "R");
-        assert_eq!(parser_state.z0, 50.0);
+        assert_eq!(network.rank, 2);
 
-        assert_eq!(parser_state.comments.len(), 1);
-        assert_eq!(parser_state.comments_after_option_line.len(), 3);
-        assert_eq!(parser_state.f.len(), 91);
-        assert_eq!(parser_state.s.len(), 91);
+        assert_eq!(network.frequency_unit, "GHz");
+        assert_eq!(network.parameter, "S");
+        assert_eq!(network.format, "RI");
+        assert_eq!(network.resistance_string, "R");
+        assert_eq!(network.z0, 50.0);
+
+        assert_eq!(network.comments.len(), 1);
+        assert_eq!(network.comments_after_option_line.len(), 3);
+        assert_eq!(network.f.len(), 91);
+        assert_eq!(network.s.len(), 91);
+    }
+
+    #[test]
+    fn parse_2port_ntwk2() {
+        let network = read_file("files/ntwk2.s2p".to_string());
+
+        assert_eq!(network.name, "files/ntwk2.s2p".to_string());
+
+        assert_eq!(network.rank, 2);
+
+        assert_eq!(network.frequency_unit, "GHz");
+        assert_eq!(network.parameter, "S");
+        assert_eq!(network.format, "RI");
+        assert_eq!(network.resistance_string, "R");
+        assert_eq!(network.z0, 50.0);
+
+        assert_eq!(network.comments.len(), 1);
+        assert_eq!(network.comments_after_option_line.len(), 3);
+        assert_eq!(network.f.len(), 91);
+        assert_eq!(network.s.len(), 91);
+    }
+
+    #[test]
+    fn parse_2port_ntwk3() {
+        let network = read_file("files/ntwk3.s2p".to_string());
+        assert_eq!(network.name, "files/ntwk3.s2p".to_string());
+
+        assert_eq!(network.rank, 2);
+
+        assert_eq!(network.frequency_unit, "GHz");
+        assert_eq!(network.parameter, "S");
+        assert_eq!(network.format, "RI");
+        assert_eq!(network.resistance_string, "R");
+        assert_eq!(network.z0, 50.0);
+
+        assert_eq!(network.comments.len(), 1);
+        assert_eq!(network.comments_after_option_line.len(), 3);
+        assert_eq!(network.f.len(), 91);
+        assert_eq!(network.s.len(), 91);
     }
 
 }

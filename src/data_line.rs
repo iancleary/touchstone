@@ -157,7 +157,7 @@ impl DecibelAngle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct RealImaginaryMatrix(
     pub (RealImaginary, RealImaginary),
     pub (RealImaginary, RealImaginary),
@@ -177,7 +177,7 @@ impl PartialEq for RealImaginaryMatrix {
 }
 
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MagnitudeAngleMatrix(
     pub (MagnitudeAngle, MagnitudeAngle),
     pub (MagnitudeAngle, MagnitudeAngle),
@@ -199,7 +199,7 @@ impl PartialEq for MagnitudeAngleMatrix {
 
 
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct DecibelAngleMatrix(
     pub (DecibelAngle, DecibelAngle),
     pub (DecibelAngle, DecibelAngle),
@@ -219,7 +219,7 @@ impl PartialEq for DecibelAngleMatrix {
 }
 
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ParsedDataLine {
     pub frequency: f64,
     pub s_ri: RealImaginaryMatrix,

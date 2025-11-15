@@ -40,17 +40,29 @@ fn run(file_path: String) {
     println!("Frequency Unit: {}", s2p.frequency_unit);
 
     println!("First 5 S-parameters:\n");
-    for i in 0..5 {
-        println!("{:?}", s2p.data_lines[i]);
+    let length_of_data = s2p.f.len();
+
+    let mut head_count = 5;
+    let mut tail_count = 5;
+    if length_of_data < 5 {
+        println!("Warning: less than 5 data lines in file.");
+        head_count = length_of_data;
+        tail_count = 0;
+    }
+
+    for i in 0..head_count {
+        println!("{:?}", s2p.f[i]);
         println!("{:?}", s2p.s[i]);
     }
 
-    println!("Last 5 S-parameters:\n");
-    let n = s2p.data_lines.len();
-    for i in n - 5..n {
-        println!("{:?}", s2p.data_lines[i]);
-        println!("{:?}", s2p.s[i]);
+    if tail_count != 0 {
+        println!("Last 5 S-parameters:\n");
+        for i in length_of_data - 5..length_of_data {
+            println!("{:?}", s2p.f[i]);
+            println!("{:?}", s2p.s[i]);
+        }
     }
+    
 }
 
 #[cfg(test)]
