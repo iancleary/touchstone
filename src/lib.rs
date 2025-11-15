@@ -46,6 +46,41 @@ impl Network {
             panic!("Cascading is only implemented for 2-port networks.");
         }
 
+
+        let mut comments = Vec::<String>::new();
+        comments.push(format!(
+            "! Cascaded network of {} and {}",
+            self.name, other.name
+        ));
+        let comment_header_self = format!("! Comments from first network ({:?}):", self.name);
+        comments.push(comment_header_self);
+        for comment in &self.comments {
+            comments.push(comment.clone());
+        }
+        let comment_header_other = format!("! Comments from second network ({:?}):", other.name);
+        comments.push(comment_header_other);
+
+        for comment in &other.comments {
+            comments.push(comment.clone());
+        }
+
+        let mut comments_after_option_line = Vec::<String>::new();
+        comments_after_option_line.push(format!(
+            "! Cascaded network of {} and {}",
+            self.name, other.name
+        ));
+        let comments_after_option_line_header_self = format!("! Comments (after option line) from first network ({:?}):", self.name);
+        comments_after_option_line.push(comments_after_option_line_header_self);
+        for comment_after_option_line in &self.comments_after_option_line {
+            comments_after_option_line.push(comment_after_option_line.clone());
+        }
+        let comments_after_option_line_header_other = format!("! Comments (after option line) from second network ({:?}):", other.name);
+        comments_after_option_line.push(comments_after_option_line_header_other);
+
+        for comment_after_option_line in &other.comments_after_option_line {
+            comments_after_option_line.push(comment_after_option_line.clone());
+        }
+
         let new_name = format!("Cascaded({},{})", self.name, other.name);
 
         // needs to be reworked for ABCD cascade of 2 port networks
@@ -57,10 +92,10 @@ impl Network {
             format: self.format.clone(),
             resistance_string: self.resistance_string.clone(),
             z0: self.z0,
-            comments: vec![],
-            comments_after_option_line: vec![],
+            comments: comments,
+            comments_after_option_line: comments_after_option_line,
             f: self.f.clone(),
-            s: self.s.clone(),
+            s: vec![], // TODO: implement proper cascading of S-parameters
         }
     }
 }
