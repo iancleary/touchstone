@@ -29,27 +29,41 @@ fn main() {
         process::exit(1);
     });
 
-    println!("In file {}", config.file_path);
-
     run(config.file_path);
 }
 
 fn run(file_path: String) {
+    println!("\n");
+    println!("============================");
+    println!("In file {}", file_path);
+
     let s2p = Network::new(file_path);
+
     println!("Network created.");
     println!("Frequency Unit: {}", s2p.frequency_unit);
 
-    println!("First 5 S-parameters:\n");
-    for i in 0..5 {
-        println!("{:?}", s2p.data_lines[i]);
+    let length_of_data = s2p.f.len();
+
+    let mut head_count = 5;
+    let mut tail_count = 5;
+    if length_of_data < 5 {
+        println!("Warning: less than 5 data lines in file.");
+        head_count = length_of_data;
+        tail_count = 0;
+    }
+
+    println!("\nFirst {:?} S-parameters:\n", head_count);
+    for i in 0..head_count {
+        println!("{:?}", s2p.f[i]);
         println!("{:?}", s2p.s[i]);
     }
 
-    println!("Last 5 S-parameters:\n");
-    let n = s2p.data_lines.len();
-    for i in n - 5..n {
-        println!("{:?}", s2p.data_lines[i]);
-        println!("{:?}", s2p.s[i]);
+    if tail_count != 0 {
+        println!("\nLast 5 S-parameters:\n");
+        for i in length_of_data - 5..length_of_data {
+            println!("{:?}", s2p.f[i]);
+            println!("{:?}", s2p.s[i]);
+        }
     }
 }
 
@@ -58,13 +72,10 @@ mod tests {
     use super::*;
     #[test]
     fn test_config_build() {
-        let args = vec![
-            String::from("program_name"),
-            String::from("files/2port.sh"),
-        ];
+        let args = vec![String::from("program_name"), String::from("files/2port.sh")];
         let config = Config::build(&args).unwrap();
         assert_eq!(config.file_path, "files/2port.sh");
-    }   
+    }
 
     #[test]
     fn test_config_build_not_enough_args() {
