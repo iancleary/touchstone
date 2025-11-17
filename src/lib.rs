@@ -1,5 +1,6 @@
 use std::ops;
 mod data_line;
+mod data_pairs;
 mod file_extension;
 mod option_line;
 mod parser;
@@ -28,6 +29,10 @@ impl Network {
     }
 
     pub fn cascade(&self, other: &Network) -> Network {
+        if self.rank != 2 || other.rank != 2 {
+            panic!("Cascading is only implemented for 2-port networks.");
+        }
+
         if self.z0 != other.z0 {
             panic!(
                 "Cannot cascade networks with different reference impedances: {} and {}",
@@ -35,17 +40,13 @@ impl Network {
             );
         }
 
+        // can avoid this by converting other.f to use self.frequency_unit instead of other.frequency_unit
         if self.frequency_unit != other.frequency_unit {
             panic!(
                 "Cannot cascade networks with different frequency units: {} and {}",
                 self.frequency_unit, other.frequency_unit
             );
         }
-
-        if self.rank != 2 || other.rank != 2 {
-            panic!("Cascading is only implemented for 2-port networks.");
-        }
-
 
         let mut comments = Vec::<String>::new();
         comments.push(format!(
@@ -69,12 +70,18 @@ impl Network {
             "! Cascaded network of {} and {}",
             self.name, other.name
         ));
-        let comments_after_option_line_header_self = format!("! Comments (after option line) from first network ({:?}):", self.name);
+        let comments_after_option_line_header_self = format!(
+            "! Comments (after option line) from first network ({:?}):",
+            self.name
+        );
         comments_after_option_line.push(comments_after_option_line_header_self);
         for comment_after_option_line in &self.comments_after_option_line {
             comments_after_option_line.push(comment_after_option_line.clone());
         }
-        let comments_after_option_line_header_other = format!("! Comments (after option line) from second network ({:?}):", other.name);
+        let comments_after_option_line_header_other = format!(
+            "! Comments (after option line) from second network ({:?}):",
+            other.name
+        );
         comments_after_option_line.push(comments_after_option_line_header_other);
 
         for comment_after_option_line in &other.comments_after_option_line {
@@ -95,7 +102,7 @@ impl Network {
             comments: comments,
             comments_after_option_line: comments_after_option_line,
             f: self.f.clone(),
-            s: vec![], // TODO: implement proper cascading of S-parameters
+            s: self.s.clone(), // TODO: implement proper cascading of S-parameters
         }
     }
 }
@@ -103,11 +110,13 @@ impl Network {
 // The `std::ops::Mul` trait is used to specify the functionality of `+`.
 // Here, we make `Mul<Network>` - the trait for addition with a RHS of type `Network`.
 // The following block implements the operation: Foo * Bar = FooBar
+// This cascades Foo with Bar where in a gain lineup Foo comes before Bar
+// using a device analogy -> [Foo] & [Bar] = [Foo Bar]
 impl ops::Mul<Network> for Network {
     type Output = Network;
 
     fn mul(self, _rhs: Network) -> Network {
-        println!("> Network.multiply(Network) was called");
+        println!("> Network.mul(Network) was called");
 
         self.cascade(&_rhs)
     }
@@ -116,37 +125,37 @@ impl ops::Mul<Network> for Network {
 #[cfg(test)]
 mod tests {
 
-    // #[test]
-    // fn cascade_2port_networks() {
-    //     let network1 = crate::read_file("files/ntwk1.s2p".to_string());
-    //     let network2 = crate::read_file("files/ntwk2.s2p".to_string());
+    use super::*;
+    #[test]
+    fn cascade_2port_networks() {
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
 
-    //     let _cascaded_network = network1.cascade(&network2);
+        let cascaded_network = network1.cascade(&network2);
 
-    //     // assert_eq!(cascaded_network.comments.len(), 4);
-    //     // assert_eq!(cascaded_network.data_lines.len(), 91);
-    //     assert!(true);
-    // }
+        assert_eq!(cascaded_network.f.len(), 91);
+        assert!(true);
+    }
 
-    // #[test]
-    // fn cascade_2port_networks_multiple() {
-    //     let network1 = crate::read_file("files/ntwk1.s2p".to_string());
-    //     let network2 = crate::read_file("files/ntwk2.s2p".to_string());
+    #[test]
+    fn cascade_2port_networks_operator() {
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
 
-    //     let _cascaded_network = network1 * network2;
+        let _cascaded_network = network1 * network2;
 
-    //     let network3 = crate::read_file("files/ntwk3.s2p".to_string());
+        // let network3 = Network::new("files/ntwk3.s2p".to_string());
 
-    //     // assert_eq!(cascaded_network.comments.len(), 4);
-    //     // assert_eq!(cascaded_network.data_lines.len(), 91);
+        // // assert_eq!(cascaded_network.comments.len(), 4);
+        // // assert_eq!(cascaded_network.data_lines.len(), 91);
 
-    //     let num_data_lines = network3.s.len();
-    //     println!("Number of data lines in cascaded network: {}", num_data_lines);
-    //     // assert_eq!(num_data_lines, 42); // debug
-    //     for i in 0..num_data_lines {
-    //         println!("Data line {}: {:?}", i + 1, _cascaded_network.s[i]);
-    //         assert_eq!(_cascaded_network.s[i].frequency, network3.s[i].frequency);
-    //         assert_eq!(_cascaded_network.s[i].s_ri, network3.s[i].s_ri);
-    //     }
-    // }
+        // let num_data_lines = network3.s.len();
+        // println!("Number of data lines in cascaded network: {}", num_data_lines);
+        // // assert_eq!(num_data_lines, 42); // debug
+        // for i in 0..num_data_lines {
+        //     println!("Data line {}: {:?}", i + 1, _cascaded_network.s[i]);
+        //     assert_eq!(_cascaded_network.s[i].frequency, network3.s[i].frequency);
+        //     assert_eq!(_cascaded_network.s[i].s_ri, network3.s[i].s_ri);
+        // }
+    }
 }
