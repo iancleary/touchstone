@@ -116,7 +116,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_S_ri_R_50() {
+    fn parse_s_ri_r_50() {
         let mut options = Options::default();
         parse_option_line("# ghz S ri R 50".to_string(), &mut options);
 
@@ -128,7 +128,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Y_ri_R_50() {
+    fn parse_y_ri_r_50() {
         let mut options = Options::default();
         parse_option_line("# ghz Y ri R 50".to_string(), &mut options);
 
@@ -140,7 +140,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Z_ri_R_50() {
+    fn parse_z_ri_r_50() {
         let mut options = Options::default();
         parse_option_line("# ghz Z ri R 50".to_string(), &mut options);
 
@@ -152,7 +152,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_H_ri_R_50() {
+    fn parse_h_ri_r_50() {
         let mut options = Options::default();
         parse_option_line("# ghz H ri R 50".to_string(), &mut options);
 
@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_G_ri_R_50() {
+    fn parse_g_ri_r_50() {
         let mut options = Options::default();
         parse_option_line("# ghz G ri R 50".to_string(), &mut options);
 
@@ -176,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri_R_100() {
+    fn parse_s_ri_r_100() {
         let mut options = Options::default();
         parse_option_line("# ghz S ri R 100".to_string(), &mut options);
 
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri() {
+    fn parse_s_ri() {
         let mut options = Options::default();
         parse_option_line("# ghz S ri".to_string(), &mut options);
 
@@ -200,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri_mixed_case() {
+    fn parse_s_ri_mixed_case() {
         let mut options = Options::default();
         parse_option_line("# GHZ s RI".to_string(), &mut options);
 
@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri_R_50_mixed_case() {
+    fn parse_s_ri_r_50_mixed_case() {
         let mut options = Options::default();
         parse_option_line("# GHZ s RI r 50".to_string(), &mut options);
 
@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri_R_50_mixed_case_out_of_order() {
+    fn parse_s_ri_r_50_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# s r 50 RI GHZ".to_string(), &mut options);
 
@@ -236,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri_R_100_mixed_case_out_of_order() {
+    fn parse_s_ri_r_100_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# s r 100 RI GHZ".to_string(), &mut options);
 
@@ -248,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_S_ri_mixed_case_out_of_order() {
+    fn parse_s_ri_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# s RI GHZ".to_string(), &mut options);
 
@@ -260,7 +260,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Y_ri_R_100_mixed_case_out_of_order() {
+    fn parse_y_ri_r_100_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# Y r 100 RI GHZ".to_string(), &mut options);
 
@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Z_ri_R_100_mixed_case_out_of_order() {
+    fn parse_z_ri_r_100_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# Y r 100 RI GHZ".to_string(), &mut options);
 
@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Z_ma_R_100_mixed_case_out_of_order() {
+    fn parse_z_ma_r_100_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# Y r 100 MA gHz".to_string(), &mut options);
 
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Z_MA_R_100_mixed_case_out_of_order() {
+    fn parse_z_ma_r_100_mixed_case_out_of_order2() {
         let mut options = Options::default();
         parse_option_line("# Y r 100 ma GHZ".to_string(), &mut options);
 
@@ -308,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_Z_DB_R_100_mixed_case_out_of_order() {
+    fn parse_z_db_r_100_mixed_case_out_of_order() {
         let mut options = Options::default();
         parse_option_line("# Y r 100 DB GHZ".to_string(), &mut options);
 
