@@ -124,6 +124,10 @@ impl MagnitudeAngle {
 
 #[allow(dead_code)]
 impl DecibelAngle {
+    pub fn decibel(self) -> f64 {
+        self.0
+    }
+
     pub fn magnitude(self) -> f64 {
         10f64.powf(self.0 / 20.0)
     }
@@ -259,16 +263,69 @@ mod tests {
     #[test]
     fn real_imaginary2() {
         // tuple struct, so need to use 0 and 1
-        let ri = RealImaginary { 0: 10.0, 1: 0.0 };
+        let ri = RealImaginary { 0: 0.0, 1: 10.0 };
 
         assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 10.0);
-        assert_eq!(ri.angle(), 0.0);
+        assert_eq!(ri.angle(), 90.0);
         assert_eq!(round_to_nine_decimal_places(ri.decibel()), 20.0);
+
+        // keeps 9 decimal places
+        assert_eq!(round_to_nine_decimal_places(ri.real()), 0.0);
+
+        // keeps 9 decimal places
+        assert_eq!(round_to_nine_decimal_places(ri.imaginary()), 10.0);
+    }
+
+    #[test]
+    fn real_imaginary3() {
+        // tuple struct, so need to use 0 and 1
+        let ri = RealImaginary { 0: 10.0, 1: 10.0 };
+
+        assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 14.142135624);
+        assert_eq!(ri.angle(), 45.0);
+        assert_eq!(round_to_nine_decimal_places(ri.decibel()), 23.010299957);
 
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(ri.real()), 10.0);
 
         // keeps 9 decimal places
-        assert_eq!(round_to_nine_decimal_places(ri.imaginary()), 0.0);
+        assert_eq!(round_to_nine_decimal_places(ri.imaginary()), 10.0);
+    }
+
+    #[test]
+    fn real_imaginary4() {
+        // tuple struct, so need to use 0 and 1
+        let ri = RealImaginary { 0: -20.0, 1: -10.0 };
+
+        assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 22.360679775);
+        assert_eq!(ri.angle(), 215.0);
+        assert_eq!(round_to_nine_decimal_places(ri.decibel()), 23.010299957);
+
+        // keeps 9 decimal places
+        assert_eq!(round_to_nine_decimal_places(ri.real()), -10.0);
+
+        // keeps 9 decimal places
+        assert_eq!(round_to_nine_decimal_places(ri.imaginary()), -10.0);
+    }
+
+    #[test]
+    fn decibel_angle() {
+        // tuple struct, so need to use 0 and 1
+        let da = DecibelAngle { 0: 20.0, 1: 45.0};
+
+        assert_eq!(da.magnitude(), 10.0);
+        assert_eq!(da.angle(), 45.0);
+        assert_eq!(da.decibel(), 20.0);
+
+        // keeps 9 decimal places
+        assert_eq!(round_to_nine_decimal_places(da.real()), 7.071067812);
+
+        // keeps 9 decimal places
+        assert_eq!(round_to_nine_decimal_places(da.imaginary()), 7.071067812);
+    }
+
+    #[test]
+    fn need_to_fix_angle_functions_in_this_file() {
+        assert!(false);
     }
 }
