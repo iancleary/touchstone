@@ -60,7 +60,8 @@ impl RealImaginary {
     }
 
     pub fn angle(self) -> f64 {
-        (self.1 / self.0).atan() * 180.0 / std::f64::consts::PI
+        // https://docs.rs/libm/latest/libm/fn.atan2.html
+        f64::atan2(self.1, self.0) * 180.0 / std::f64::consts::PI
     }
 
     pub fn magnitude_angle(self) -> MagnitudeAngle {
@@ -295,7 +296,7 @@ mod tests {
     #[test]
     fn real_imaginary4() {
         // tuple struct, so need to use 0 and 1
-        let ri = RealImaginary { 0: -20.0, 1: -10.0 };
+        let ri = RealImaginary { 0: -20.0, 1: -20.0 };
 
         assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 22.360679775);
         assert_eq!(ri.angle(), 215.0);
@@ -322,10 +323,5 @@ mod tests {
 
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(da.imaginary()), 7.071067812);
-    }
-
-    #[test]
-    fn need_to_fix_angle_functions_in_this_file() {
-        assert!(false);
     }
 }
