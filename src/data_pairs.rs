@@ -61,6 +61,11 @@ impl RealImaginary {
 
     pub fn angle(self) -> f64 {
         // https://docs.rs/libm/latest/libm/fn.atan2.html
+        // Arctangent of y/x (f64)
+        //
+        // Computes the inverse tangent (arc tangent) of y/x.
+        // Produces the correct result even for angles near pi/2 or -pi/2
+        // (that is, when x is near 0). Returns a value in radians, in the range of -pi to pi.
         f64::atan2(self.1, self.0) * 180.0 / std::f64::consts::PI
     }
 
@@ -298,15 +303,15 @@ mod tests {
         // tuple struct, so need to use 0 and 1
         let ri = RealImaginary { 0: -20.0, 1: -20.0 };
 
-        assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 22.360679775);
-        assert_eq!(ri.angle(), 215.0);
-        assert_eq!(round_to_nine_decimal_places(ri.decibel()), 23.010299957);
+        assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 28.284271247);
+        assert_eq!(ri.angle(), -135.0);
+        assert_eq!(round_to_nine_decimal_places(ri.decibel()), 29.03089987);
 
         // keeps 9 decimal places
-        assert_eq!(round_to_nine_decimal_places(ri.real()), -10.0);
+        assert_eq!(round_to_nine_decimal_places(ri.real()), -20.0);
 
         // keeps 9 decimal places
-        assert_eq!(round_to_nine_decimal_places(ri.imaginary()), -10.0);
+        assert_eq!(round_to_nine_decimal_places(ri.imaginary()), -20.0);
     }
 
     #[test]
@@ -323,5 +328,9 @@ mod tests {
 
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(da.imaginary()), 7.071067812);
+
+        let da_from_ri = DecibelAngle::from_real_imaginary(RealImaginary { 0: 7.071067812, 1: 7.071067812});
+        assert_eq!(round_to_nine_decimal_places(da_from_ri.magnitude()), 10.0);
+        assert_eq!(round_to_nine_decimal_places(da_from_ri.angle()), 45.0);
     }
 }
