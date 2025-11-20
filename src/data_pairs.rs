@@ -51,9 +51,8 @@ impl RealImaginary {
     }
 
     pub fn decibel(self) -> f64 {
-        // need to resolve file from 2010 on if this should be 20
-        // TODO: I think the s2p file is old/bad in this regard
-        // (look into this after I sleep and think about it)
+        // format specifies the format of the network parameter data pairs. Legal values are:
+        // DB for decibel-angle (decibel = 20 × log10|magnitude|)
         20.0 * (f64::powf(self.0, 2.0) + f64::powf(self.1, 2.0))
             .sqrt()
             .log10()
