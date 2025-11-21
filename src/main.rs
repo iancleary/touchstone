@@ -65,6 +65,17 @@ fn run(file_path: String) {
             println!("{:?}", s2p.s[i]);
         }
     }
+
+    println!("============================");
+    s2p.print_summary();
+    println!("============================");
+
+    println!("\n");
+    let s21_db = s2p.s_db(2, 1);
+    println!("S21 parameters:");
+    for param in s21_db {
+        println!("{:?} {:?}", param.frequency, param.s_db.decibel());
+    }
 }
 
 #[cfg(test)]

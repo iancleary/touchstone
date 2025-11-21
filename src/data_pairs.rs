@@ -187,6 +187,18 @@ impl PartialEq for RealImaginaryMatrix {
     }
 }
 
+impl RealImaginaryMatrix {
+    pub fn get(&self, j: i8, k: i8) -> RealImaginary {
+        match (j, k) {
+            (1, 1) => self.0 .0,
+            (1, 2) => self.0 .1,
+            (2, 1) => self.1 .0,
+            (2, 2) => self.1 .1,
+            _ => panic!("Invalid port numbers: {}, {}", j, k),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct MagnitudeAngleMatrix(
     pub (MagnitudeAngle, MagnitudeAngle),
@@ -203,6 +215,18 @@ impl PartialEq for MagnitudeAngleMatrix {
             && self.1 .0 .1 == other.1 .0 .1
             && self.1 .1 .0 == other.1 .1 .0
             && self.1 .1 .1 == other.1 .1 .1
+    }
+}
+
+impl MagnitudeAngleMatrix {
+    pub fn get(&self, j: i8, k: i8) -> MagnitudeAngle {
+        match (j, k) {
+            (1, 1) => self.0 .0,
+            (1, 2) => self.0 .1,
+            (2, 1) => self.1 .0,
+            (2, 2) => self.1 .1,
+            _ => panic!("Invalid port numbers: {}, {}", j, k),
+        }
     }
 }
 
@@ -225,6 +249,31 @@ impl PartialEq for DecibelAngleMatrix {
     }
 }
 
+impl DecibelAngleMatrix {
+    pub fn get(&self, j: i8, k: i8) -> DecibelAngle {
+        match (j, k) {
+            (1, 1) => self.0 .0,
+            (1, 2) => self.0 .1,
+            (2, 1) => self.1 .0,
+            (2, 2) => self.1 .1,
+            _ => panic!("Invalid port numbers: {}, {}", j, k),
+        }
+    }
+
+    pub fn from_magnitude_angle_matrix(ma_matrix: MagnitudeAngleMatrix) -> Self {
+        DecibelAngleMatrix(
+            (
+                DecibelAngle::from_magnitude_angle(ma_matrix.0 .0),
+                DecibelAngle::from_magnitude_angle(ma_matrix.0 .1),
+            ),
+            (
+                DecibelAngle::from_magnitude_angle(ma_matrix.1 .0),
+                DecibelAngle::from_magnitude_angle(ma_matrix.1 .1),
+            ),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -236,7 +285,7 @@ mod tests {
     #[test]
     fn decibel_angle() {
         // tuple struct, so need to use 0 and 1
-        let da = DecibelAngle { 0: 20.0, 1: 45.0};
+        let da = DecibelAngle { 0: 20.0, 1: 45.0 };
 
         assert_eq!(da.magnitude(), 10.0);
         assert_eq!(da.angle(), 45.0);
@@ -248,11 +297,14 @@ mod tests {
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(da.imaginary()), 7.071067812);
 
-        let da_from_ri = DecibelAngle::from_real_imaginary(RealImaginary { 0: 7.071067812, 1: 7.071067812});
+        let da_from_ri = DecibelAngle::from_real_imaginary(RealImaginary {
+            0: 7.071067812,
+            1: 7.071067812,
+        });
         assert_eq!(round_to_nine_decimal_places(da_from_ri.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(da_from_ri.angle()), 45.0);
 
-        let da_from_ma = DecibelAngle::from_magnitude_angle(MagnitudeAngle { 0: 10.0, 1: 45.0});
+        let da_from_ma = DecibelAngle::from_magnitude_angle(MagnitudeAngle { 0: 10.0, 1: 45.0 });
         assert_eq!(round_to_nine_decimal_places(da_from_ma.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(da_from_ma.angle()), 45.0);
     }
@@ -272,11 +324,14 @@ mod tests {
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(ma.imaginary()), 7.071067812);
 
-        let ma_from_ri = MagnitudeAngle::from_real_imaginary(RealImaginary { 0: 7.071067812, 1: 7.071067812});
+        let ma_from_ri = MagnitudeAngle::from_real_imaginary(RealImaginary {
+            0: 7.071067812,
+            1: 7.071067812,
+        });
         assert_eq!(round_to_nine_decimal_places(ma_from_ri.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(ma_from_ri.angle()), 45.0);
 
-        let ma_from_da = MagnitudeAngle::from_decibel_angle(DecibelAngle { 0: 20.0, 1: 45.0});
+        let ma_from_da = MagnitudeAngle::from_decibel_angle(DecibelAngle { 0: 20.0, 1: 45.0 });
         assert_eq!(round_to_nine_decimal_places(ma_from_da.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(ma_from_da.angle()), 45.0);
     }
