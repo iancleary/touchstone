@@ -23,19 +23,19 @@ pub struct Network {
     pub s: Vec<data_line::ParsedDataLine>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FrequencyRI {
     pub frequency: f64,
     pub s_ri: data_pairs::RealImaginary,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FrequencyDB {
     pub frequency: f64,
     pub s_db: data_pairs::DecibelAngle,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FrequencyMA {
     pub frequency: f64,
     pub s_ma: data_pairs::MagnitudeAngle,

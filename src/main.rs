@@ -73,9 +73,20 @@ fn run(file_path: String) {
     println!("\n");
     let s21_db = s2p.s_db(2, 1);
     println!("S21 parameters:");
-    for param in s21_db {
+    for param in s21_db.clone() {
         println!("{:?} {:?}", param.frequency, param.s_db.decibel());
     }
+
+    let mut f:Vec<f64> = Vec::new();
+    let mut s21_db_values:Vec<f64> = Vec::new();
+    for param in s21_db {
+        f.push(param.frequency);
+        s21_db_values.push(param.s_db.decibel());
+    }
+
+    println!("{:?}", f);
+    println!("{:?}", s21_db_values);
+
 }
 
 #[cfg(test)]
