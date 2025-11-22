@@ -165,3 +165,7 @@ cython_debug/
 
 # MacOS
 .DS_Store
+
+# Not Public data
+data/
+justfile
