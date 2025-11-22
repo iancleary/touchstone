@@ -6,7 +6,7 @@
     <title>Expandable 2x2 Grid with Plotly</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Plotly.js CDN -->
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body {
@@ -22,8 +22,6 @@
         }
         
         /* Expanded State Logic */
-        /* Note: Grid column changes (snap) cannot be animated with pure CSS, 
-           but the height and internal content will animate smoothly. */
         .grid-item.expanded {
             height: 600px; /* Expanded height */
             border-color: #3b82f6; /* Blue border to highlight active */
@@ -50,17 +48,17 @@
 
     <div class="max-w-6xl mx-auto mb-6">
         <h1 class="text-2xl font-bold text-gray-800">System Dashboard</h1>
-        <p class="text-gray-600">Click the arrow on any card to expand it within the grid.</p>
+        <p class="text-gray-600">Click the arrow to expand. Plots will remain in sequential order.</p>
     </div>
 
     <!-- Main Grid Container -->
-    <!-- grid-flow-row-dense allows items to backfill gaps if an item expands and wraps -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl mx-auto grid-flow-row-dense">
+    <!-- Removed 'grid-flow-row-dense' to strictly preserve DOM order (1, 2, 3, 4) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl mx-auto">
 
         <!-- Item 1 -->
         <div id="card-1" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
             <div class="flex justify-between items-start mb-2">
-                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">Low-Pass Filter Response</h2>
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">1. Low-Pass Filter Response</h2>
                 <button onclick="toggleExpand('card-1')" class="z-20 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
@@ -73,7 +71,7 @@
         <!-- Item 2 -->
         <div id="card-2" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
             <div class="flex justify-between items-start mb-2">
-                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">High-Pass Characteristics</h2>
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">2. High-Pass Characteristics</h2>
                  <button onclick="toggleExpand('card-2')" class="z-20 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
@@ -86,7 +84,7 @@
         <!-- Item 3 -->
         <div id="card-3" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
             <div class="flex justify-between items-start mb-2">
-                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">Band-Pass Filter</h2>
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">3. Band-Pass Filter</h2>
                  <button onclick="toggleExpand('card-3')" class="z-20 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500">
                     <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
@@ -99,7 +97,7 @@
         <!-- Item 4 -->
         <div id="card-4" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
             <div class="flex justify-between items-start mb-2">
-                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">System Resonance (Notch)</h2>
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none">4. System Resonance (Notch)</h2>
                  <button onclick="toggleExpand('card-4')" class="z-20 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500">
                     <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
@@ -135,7 +133,7 @@
 
         // --- Plotly Chart Generation ---
         const commonLayout = {
-            margin: { t: 10, r: 10, b: 40, l: 60 }, // Reduced top margin as title is external
+            margin: { t: 10, r: 10, b: 40, l: 60 }, 
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)',
             font: { family: 'Inter, sans-serif' },
@@ -195,8 +193,8 @@
             // 1. Reset all cards
             allCards.forEach(item => {
                 item.classList.remove('expanded');
-                item.classList.remove('md:col-span-2'); // Tailwind grid class
-                item.classList.remove('row-span-2');    // Tailwind grid class
+                item.classList.remove('md:col-span-2'); 
+                item.classList.remove('row-span-2');
             });
 
             // 2. If it wasn't expanded, expand it now
@@ -207,7 +205,6 @@
             }
 
             // 3. Resize Charts after CSS transition
-            // We add a small delay to match the CSS transition
             setTimeout(() => {
                 allCards.forEach(item => {
                     const plotDiv = item.querySelector('.chart-container');
