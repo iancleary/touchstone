@@ -4,6 +4,7 @@ mod data_pairs;
 mod file_extension;
 mod option_line;
 mod parser;
+pub mod plot;
 mod utils;
 
 #[derive(Debug)]

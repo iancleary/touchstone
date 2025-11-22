@@ -4,6 +4,7 @@ use std::process;
 // this cannot be crate::Network because of how Cargo works,
 // since cargo/rust treats lib.rs and main.rs as separate crates
 use touchstone::Network;
+use touchstone::plot;
 
 struct Config {
     file_path: String,
@@ -86,6 +87,9 @@ fn run(file_path: String) {
 
     println!("{:?}", f);
     println!("{:?}", s21_db_values);
+
+    plot::generate_example_plot_html("examples/example_plot.html").unwrap();
+    println!("Example plot HTML generated at examples/example_plot.html");
 
 }
 
