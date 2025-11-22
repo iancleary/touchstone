@@ -45,3 +45,80 @@ pub fn generate_example_plot_html(output_path: &str) -> std::io::Result<()> {
     std::fs::write(tailwind_js_path, get_tailwind_css())?;
     Ok(())
 }
+
+pub fn generate_two_port_plot_html(
+    output_path: &str,
+    network_name: &str,
+    frequency_data: &str,
+    s11_data: &str,
+    s21_data: &str,
+    s12_data: &str,
+    s22_data: &str,
+) -> std::io::Result<()> {
+    let folder_path = std::path::Path::new(output_path).parent().unwrap();
+    std::fs::create_dir_all(folder_path)?;
+
+    let mut html_content = include_str!("assets/template_2port.html").to_string();
+    html_content = html_content.replace("{{network_name}}", network_name);
+    html_content = html_content.replace("{{frequency_data}}", frequency_data);
+    html_content = html_content.replace("{{s11_data}}", s11_data);
+    html_content = html_content.replace("{{s21_data}}", s21_data);
+    html_content = html_content.replace("{{s12_data}}", s12_data);
+    html_content = html_content.replace("{{s22_data}}", s22_data);
+
+    write_plot_html(output_path, &html_content)?;
+
+    let js_assets_path = format!("{}/js", std::path::Path::new(output_path).parent().unwrap().to_str().unwrap());
+    std::fs::create_dir_all(&js_assets_path)?;
+    let plotly_js_path = format!("{}/plotly-3.3.0.min.js", js_assets_path);
+    let tailwind_js_path = format!("{}/tailwindcss-3.4.17.js", js_assets_path);
+    std::fs::write(plotly_js_path, get_plotly_js())?;
+    std::fs::write(tailwind_js_path, get_tailwind_css())?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::unix::net;
+
+    use crate::Network;
+
+    use super::*;
+    #[test]
+    fn test_generate_example_plot_html() {
+        let output_path = "tests/output/example_plot.html";
+        let result = generate_example_plot_html(output_path);
+        assert!(result.is_ok());
+        assert!(std::path::Path::new(output_path).exists());
+    }
+
+    #[test]
+    fn test_generate_two_port_plot_html() {
+        let output_path = "tests/output/ntwk1.html";
+        let network = Network::new("files/ntwk1.s2p".to_string());
+        let frequency_data = network.f.iter().map(|f| f.to_string()).collect::<Vec<String>>().join(", ");
+        let s11_data = network.s_db(1, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+        let s21_data = network.s_db(2, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+        let s12_data = network.s_db(1, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+        let s22_data = network.s_db(2, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+
+        // add brackets to make them valid JavaScript arrays
+        let frequency_data = format!("[{}]", frequency_data);
+        let s11_data = format!("[{}]", s11_data);
+        let s21_data = format!("[{}]", s21_data);
+        let s12_data = format!("[{}]", s12_data);
+        let s22_data = format!("[{}]", s22_data);
+
+        let result = generate_two_port_plot_html(
+            output_path,
+            network.name.as_str(),
+            &frequency_data,
+            &s11_data,
+            &s21_data,
+            &s12_data,
+            &s22_data,
+        );
+        assert!(result.is_ok());
+        assert!(std::path::Path::new(output_path).exists());
+    }
+}
