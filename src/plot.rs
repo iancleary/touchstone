@@ -1,3 +1,5 @@
+use std::path::Path;
+
 // The paths are relative to this .rs file
 pub(crate) static PLOTLY_JS: &str = include_str!("assets/js/plotly-3.3.0.min.js");
 // pub (crate) static PLOTLY_SRC_LINE: &str = "./js/plotly-3.3.0.min.js";
@@ -54,7 +56,14 @@ pub fn generate_two_port_plot_html(
     s12_data: &str,
     s22_data: &str,
 ) -> std::io::Result<()> {
-    let folder_path = std::path::Path::new(output_path).parent().unwrap();
+
+    // this only works if a relative path or full path is given.
+    // the unwrap fails if "ntwk1.s2p" is given instead of "./ntwk1.s2p"
+    // Attempt to get parent; if None, default to "." (current dir)
+    let folder_path = Path::new(output_path)
+        .parent()
+        .map(|p| if p.as_os_str().is_empty() { Path::new(".") } else { p })
+        .unwrap_or(Path::new("."));    
     std::fs::create_dir_all(folder_path)?;
 
     let mut html_content = include_str!("assets/template_2port.html").to_string();
