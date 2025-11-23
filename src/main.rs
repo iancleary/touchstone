@@ -1,4 +1,5 @@
 use std::env;
+use std::path::Path;
 use std::process;
 
 // this cannot be crate::Network because of how Cargo works,
@@ -7,7 +8,7 @@ use touchstone::Network;
 use touchstone::plot;
 
 struct Config {
-    file_path: String,
+    file_argument: String,
 }
 
 impl Config {
@@ -16,9 +17,52 @@ impl Config {
             return Err("not enough arguments");
         }
         // cargo run arg[1], such as cargo run files/2port.sh
-        let file_path = args[1].clone();
+        let file_argument = args[1].clone();
 
-        Ok(Config { file_path })
+        Ok(Config { file_argument })
+    }
+}
+
+#[derive(Debug)]
+struct FilePathConfig {
+    absolute_path: bool,
+    relative_path_with_separators: bool,
+    bare_filename: bool
+}
+
+// prevents downstream problems with path.parent() when passing
+// in a bare filename, such as measured.s2p
+// this function help us adjust to ./measured.s2p so logic is easier later
+fn get_file_path_config(path_str: &str) -> FilePathConfig {
+    let path = Path::new(path_str);
+
+    if path.is_absolute() {
+        // /home/user/files/measured.s2p, etc.
+        println!("'{}' is an Absolute path.", path_str);
+        return FilePathConfig {
+            absolute_path: true,
+            relative_path_with_separators: false,
+            bare_filename: false
+        }
+    } 
+    // If it's not absolute, we check the number of parts
+    else if path.components().count() > 1 {
+        // files/measured.s2p, etc.
+        println!("'{}' is a Relative path with separators (nested).", path_str);
+        return FilePathConfig {
+            absolute_path: false,
+            relative_path_with_separators: true,
+            bare_filename: false
+        }
+    } 
+    else {
+        // measured.s2p, etc.
+        println!("'{}' is a Bare filename (no separators).", path_str);
+        return FilePathConfig {
+            absolute_path: false,
+            relative_path_with_separators: false,
+            bare_filename: true
+        };
     }
 }
 
@@ -30,7 +74,7 @@ fn main() {
         process::exit(1);
     });
 
-    run(config.file_path);
+    run(config.file_argument);
 }
 
 fn run(file_path: String) {
@@ -71,8 +115,23 @@ fn run(file_path: String) {
     }
     println!("============================");
 
-    let file_path_plot = format!("{}.html", &file_path);
+    let file_path_config: FilePathConfig = get_file_path_config(&file_path);
+    let mut file_path_plot = String::new();
 
+    // ensures file_path_plot is not a bare_filename
+    if file_path_config.absolute_path {
+        file_path_plot = format!("{}.html", &file_path);
+        
+    } else if file_path_config.relative_path_with_separators {
+        file_path_plot = format!("{}.html", &file_path);
+    } else if file_path_config.bare_filename {
+        file_path_plot = format!("./{}.html", &file_path);
+    } else {
+        panic!("file_path_config must have one true value: {:?}", file_path_config);
+    }
+
+    // ensuring file_path_plot is not a bare_file name allows
+    // the creation of the js folder to be simpler, as it doesn't have to handle .parent() path existence concerns
     plot::generate_plot_from_two_port_network(&s2p, &file_path_plot).unwrap();
     println!("Plot HTML generated at {}", file_path_plot);
 
@@ -114,7 +173,7 @@ mod tests {
     fn test_config_build() {
         let args = vec![String::from("program_name"), String::from("files/2port.sh")];
         let config = Config::build(&args).unwrap();
-        assert_eq!(config.file_path, "files/2port.sh");
+        assert_eq!(config.file_argument, "files/2port.sh");
     }
 
     #[test]
@@ -126,19 +185,25 @@ mod tests {
 
     #[test]
     fn test_run_function() {
-        let file_path = String::from("files/ntwk1.s2p");
-        run(file_path);
+        // test relative file
+        let relative_path = String::from("files/ntwk1.s2p");
+        run(relative_path);
         let _ = fs::remove_file("files/ntwk1.s2p.html");
         let _2 = fs::remove_dir_all("files/js");
 
-        let file_path2 = String::from("files/ntwk2.s2p");
-        run(file_path2);
-        let _3 = fs::remove_file("files/ntwk2.s2p.html");
-        let _4 = fs::remove_dir_all("files/js");
+        // test bare filename
+        let _3 = fs::copy("files/ntwk1.s2p", "ntwk1.s2p");
+        let bare_filename = String::from("ntwk1.s2p");
+        run(bare_filename);
+        let _4 = fs::remove_file("ntwk1.s2p");
+        let _5 = fs::remove_file("ntwk1.s2p.html");
+        let _6 = fs::remove_dir_all("js"); 
 
-        let file_path3 = String::from("files/ntwk3.s2p");
-        run(file_path3);
-        let _5 = fs::remove_file("files/ntwk3.s2p.html");
-        let _6 = fs::remove_dir_all("files/js");
+        // This fails if "files/ntwk1.s2p" is missing on disk
+        let path_buf = std::fs::canonicalize("files/ntwk1.s2p").unwrap();        
+        let absolute_path: String = path_buf.to_string_lossy().to_string();
+        run(absolute_path);
+        let _7 = fs::remove_file("files/ntwk1.s2p.html");
+        let _8 = fs::remove_dir_all("files/js");
     }
 }
