@@ -220,7 +220,6 @@ mod tests {
 
     #[test]
     fn s_db() {
-
         let network1 = Network::new("files/ntwk1.s2p".to_string());
 
         let s11 = network1.s_db(1, 1);
@@ -235,7 +234,6 @@ mod tests {
 
     #[test]
     fn s_ri() {
-
         let network1 = Network::new("files/ntwk1.s2p".to_string());
 
         let s11 = network1.s_ri(1, 1);
@@ -250,7 +248,6 @@ mod tests {
 
     #[test]
     fn s_ma() {
-
         let network1 = Network::new("files/ntwk1.s2p".to_string());
 
         let s11 = network1.s_ma(1, 1);
@@ -262,7 +259,6 @@ mod tests {
         assert_eq!(s11.len(), s21.len());
         assert_eq!(s11.len(), s22.len());
     }
-
 
     #[test]
     fn cascade_2port_networks() {

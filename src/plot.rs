@@ -8,19 +8,19 @@ pub(crate) static TAILWIND_CSS: &str = include_str!("assets/js/tailwindcss-3.4.1
 
 pub(crate) static EXAMPLE_HTML: &str = include_str!("assets/example.html");
 
-pub (crate) fn get_plotly_js() -> &'static str {
+pub(crate) fn get_plotly_js() -> &'static str {
     PLOTLY_JS
 }
 
-pub (crate) fn get_tailwind_css() -> &'static str {
+pub(crate) fn get_tailwind_css() -> &'static str {
     TAILWIND_CSS
 }
 
-pub (crate) fn get_example_html() -> &'static str {
+pub(crate) fn get_example_html() -> &'static str {
     EXAMPLE_HTML
 }
 
-pub (crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::Result<()> {
+pub(crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::Result<()> {
     use std::fs::File;
     use std::io::prelude::*;
     use std::path::Path;
@@ -34,11 +34,18 @@ pub (crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::
 pub fn generate_example_plot_html(output_path: &str) -> std::io::Result<()> {
     let folder_path = std::path::Path::new(output_path).parent().unwrap();
     std::fs::create_dir_all(folder_path)?;
-    
+
     let html_content = get_example_html();
     write_plot_html(output_path, html_content)?;
 
-    let js_assets_path = format!("{}/js", std::path::Path::new(output_path).parent().unwrap().to_str().unwrap());
+    let js_assets_path = format!(
+        "{}/js",
+        std::path::Path::new(output_path)
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
     std::fs::create_dir_all(&js_assets_path)?;
     let plotly_js_path = format!("{}/plotly-3.3.0.min.js", js_assets_path);
     let tailwind_js_path = format!("{}/tailwindcss-3.4.17.js", js_assets_path);
@@ -56,15 +63,20 @@ pub fn generate_two_port_plot_html(
     s12_data: &str,
     s22_data: &str,
 ) -> std::io::Result<()> {
-
     // this only works if a relative path or full path is given.
     // the unwrap fails if "ntwk1.s2p" is given instead of "./ntwk1.s2p"
     // this is handled befroby main.rs::get_file_path_config
     // Attempt to get parent; if None, default to "." (current dir)
     let folder_path = Path::new(output_path)
         .parent()
-        .map(|p| if p.as_os_str().is_empty() { Path::new(".") } else { p })
-        .unwrap_or(Path::new("."));    
+        .map(|p| {
+            if p.as_os_str().is_empty() {
+                Path::new(".")
+            } else {
+                p
+            }
+        })
+        .unwrap_or(Path::new("."));
     std::fs::create_dir_all(folder_path)?;
 
     let mut html_content = include_str!("assets/template_2port.html").to_string();
@@ -77,7 +89,14 @@ pub fn generate_two_port_plot_html(
 
     write_plot_html(output_path, &html_content)?;
 
-    let js_assets_path = format!("{}/js", std::path::Path::new(output_path).parent().unwrap().to_str().unwrap());
+    let js_assets_path = format!(
+        "{}/js",
+        std::path::Path::new(output_path)
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
     std::fs::create_dir_all(&js_assets_path)?;
     let plotly_js_path = format!("{}/plotly-3.3.0.min.js", js_assets_path);
     let tailwind_js_path = format!("{}/tailwindcss-3.4.17.js", js_assets_path);
@@ -90,11 +109,36 @@ pub fn generate_plot_from_two_port_network(
     network: &crate::Network,
     output_path: &str,
 ) -> std::io::Result<()> {
-    let frequency_data = network.f.iter().map(|f| f.to_string()).collect::<Vec<String>>().join(", ");
-    let s11_data = network.s_db(1, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
-    let s21_data = network.s_db(2, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
-    let s12_data = network.s_db(1, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
-    let s22_data = network.s_db(2, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+    let frequency_data = network
+        .f
+        .iter()
+        .map(|f| f.to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    let s11_data = network
+        .s_db(1, 1)
+        .iter()
+        .map(|s| s.s_db.decibel().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    let s21_data = network
+        .s_db(2, 1)
+        .iter()
+        .map(|s| s.s_db.decibel().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    let s12_data = network
+        .s_db(1, 2)
+        .iter()
+        .map(|s| s.s_db.decibel().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    let s22_data = network
+        .s_db(2, 2)
+        .iter()
+        .map(|s| s.s_db.decibel().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
 
     // add brackets to make them valid JavaScript arrays
     let frequency_data = format!("[{}]", frequency_data);
@@ -134,7 +178,7 @@ mod tests {
     #[test]
     fn test_generate_two_port_plot_html() {
         let network = Network::new("files/ntwk1.s2p".to_string());
-        
+
         let output_path = format!("{}.html", network.name.clone());
 
         let result = generate_plot_from_two_port_network(&network, &output_path);

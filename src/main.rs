@@ -4,8 +4,8 @@ use std::process;
 
 // this cannot be crate::Network because of how Cargo works,
 // since cargo/rust treats lib.rs and main.rs as separate crates
-use touchstone::Network;
 use touchstone::plot;
+use touchstone::Network;
 
 struct Config {
     file_argument: String,
@@ -27,7 +27,7 @@ impl Config {
 struct FilePathConfig {
     absolute_path: bool,
     relative_path_with_separators: bool,
-    bare_filename: bool
+    bare_filename: bool,
 }
 
 // prevents downstream problems with path.parent() when passing
@@ -42,26 +42,28 @@ fn get_file_path_config(path_str: &str) -> FilePathConfig {
         return FilePathConfig {
             absolute_path: true,
             relative_path_with_separators: false,
-            bare_filename: false
-        }
-    } 
+            bare_filename: false,
+        };
+    }
     // If it's not absolute, we check the number of parts
     else if path.components().count() > 1 {
         // files/measured.s2p, etc.
-        println!("'{}' is a Relative path with separators (nested).", path_str);
+        println!(
+            "'{}' is a Relative path with separators (nested).",
+            path_str
+        );
         return FilePathConfig {
             absolute_path: false,
             relative_path_with_separators: true,
-            bare_filename: false
-        }
-    } 
-    else {
+            bare_filename: false,
+        };
+    } else {
         // measured.s2p, etc.
         println!("'{}' is a Bare filename (no separators).", path_str);
         return FilePathConfig {
             absolute_path: false,
             relative_path_with_separators: false,
-            bare_filename: true
+            bare_filename: true,
         };
     }
 }
@@ -121,13 +123,15 @@ fn run(file_path: String) {
     // ensures file_path_plot is not a bare_filename
     if file_path_config.absolute_path {
         file_path_plot = format!("{}.html", &file_path);
-        
     } else if file_path_config.relative_path_with_separators {
         file_path_plot = format!("{}.html", &file_path);
     } else if file_path_config.bare_filename {
         file_path_plot = format!("./{}.html", &file_path);
     } else {
-        panic!("file_path_config must have one true value: {:?}", file_path_config);
+        panic!(
+            "file_path_config must have one true value: {:?}",
+            file_path_config
+        );
     }
 
     // ensuring file_path_plot is not a bare_file name allows
@@ -135,11 +139,20 @@ fn run(file_path: String) {
     plot::generate_plot_from_two_port_network(&s2p, &file_path_plot).unwrap();
     println!("Plot HTML generated at {}", file_path_plot);
 
-    // Note: This does NOT handle space encoding (spaces remain spaces), 
+    // Note: This does NOT handle space encoding (spaces remain spaces),
     // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
-    let file_path_file_url = format!("file://{}", std::fs::canonicalize(&file_path_plot).unwrap().to_str().unwrap());
+    let file_path_file_url = format!(
+        "file://{}",
+        std::fs::canonicalize(&file_path_plot)
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
 
-    println!("You can open the plot in your browser at:\n{}", file_path_file_url);
+    println!(
+        "You can open the plot in your browser at:\n{}",
+        file_path_file_url
+    );
 
     // if not part of cargo test, open the created file
     if cfg!(test) {
@@ -197,10 +210,10 @@ mod tests {
         run(bare_filename);
         let _4 = fs::remove_file("ntwk1.s2p");
         let _5 = fs::remove_file("ntwk1.s2p.html");
-        let _6 = fs::remove_dir_all("js"); 
+        let _6 = fs::remove_dir_all("js");
 
         // This fails if "files/ntwk1.s2p" is missing on disk
-        let path_buf = std::fs::canonicalize("files/ntwk1.s2p").unwrap();        
+        let path_buf = std::fs::canonicalize("files/ntwk1.s2p").unwrap();
         let absolute_path: String = path_buf.to_string_lossy().to_string();
         run(absolute_path);
         let _7 = fs::remove_file("files/ntwk1.s2p.html");
