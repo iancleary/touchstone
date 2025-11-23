@@ -41,7 +41,6 @@ fn run(file_path: String) {
     let s2p = Network::new(file_path.clone());
 
     println!("Network created.");
-    println!("Frequency Unit: {}", s2p.frequency_unit);
 
     let length_of_data = s2p.f.len();
 
@@ -52,8 +51,6 @@ fn run(file_path: String) {
         head_count = length_of_data;
         tail_count = 0;
     }
-
-    
 
     println!("============================");
     s2p.print_summary();
