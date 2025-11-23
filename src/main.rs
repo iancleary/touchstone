@@ -134,7 +134,6 @@ fn run(file_path: String) {
     // the creation of the js folder to be simpler, as it doesn't have to handle .parent() path existence concerns
     plot::generate_plot_from_two_port_network(&s2p, &file_path_plot).unwrap();
     println!("Plot HTML generated at {}", file_path_plot);
-    
 
     // Note: This does NOT handle space encoding (spaces remain spaces), 
     // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
