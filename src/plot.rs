@@ -1,9 +1,8 @@
-
-// The path is relative to this .rs file
+// The paths are relative to this .rs file
 pub(crate) static PLOTLY_JS: &str = include_str!("assets/js/plotly-3.3.0.min.js");
-pub (crate) static PLOTLY_SRC_LINE: &str = "./js/plotly-3.3.0.min.js";
+// pub (crate) static PLOTLY_SRC_LINE: &str = "./js/plotly-3.3.0.min.js";
 pub(crate) static TAILWIND_CSS: &str = include_str!("assets/js/tailwindcss-3.4.17.js");
-pub (crate) static TAILWIND_SRC_LINE: &str = "./js/tailwindcss-3.4.17.js";
+// pub (crate) static TAILWIND_SRC_LINE: &str = "./js/tailwindcss-3.4.17.js";
 
 pub(crate) static EXAMPLE_HTML: &str = include_str!("assets/example.html");
 
@@ -77,9 +76,37 @@ pub fn generate_two_port_plot_html(
     Ok(())
 }
 
+pub fn generate_plot_from_two_port_network(
+    network: &crate::Network,
+    output_path: &str,
+) -> std::io::Result<()> {
+    let frequency_data = network.f.iter().map(|f| f.to_string()).collect::<Vec<String>>().join(", ");
+    let s11_data = network.s_db(1, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+    let s21_data = network.s_db(2, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+    let s12_data = network.s_db(1, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+    let s22_data = network.s_db(2, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+
+    // add brackets to make them valid JavaScript arrays
+    let frequency_data = format!("[{}]", frequency_data);
+    let s11_data = format!("[{}]", s11_data);
+    let s21_data = format!("[{}]", s21_data);
+    let s12_data = format!("[{}]", s12_data);
+    let s22_data = format!("[{}]", s22_data);
+
+    generate_two_port_plot_html(
+        output_path,
+        network.name.as_str(),
+        &frequency_data,
+        &s11_data,
+        &s21_data,
+        &s12_data,
+        &s22_data,
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use std::os::unix::net;
+    use std::fs;
 
     use crate::Network;
 
@@ -90,35 +117,22 @@ mod tests {
         let result = generate_example_plot_html(output_path);
         assert!(result.is_ok());
         assert!(std::path::Path::new(output_path).exists());
+        // clean up
+        let _ = fs::remove_dir_all("tests/output/");
     }
 
     #[test]
     fn test_generate_two_port_plot_html() {
-        let output_path = "tests/output/ntwk1.html";
         let network = Network::new("files/ntwk1.s2p".to_string());
-        let frequency_data = network.f.iter().map(|f| f.to_string()).collect::<Vec<String>>().join(", ");
-        let s11_data = network.s_db(1, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
-        let s21_data = network.s_db(2, 1).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
-        let s12_data = network.s_db(1, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
-        let s22_data = network.s_db(2, 2).iter().map(|s| s.s_db.decibel().to_string()).collect::<Vec<String>>().join(", ");
+        
+        let output_path = format!("{}.html", network.name.clone());
 
-        // add brackets to make them valid JavaScript arrays
-        let frequency_data = format!("[{}]", frequency_data);
-        let s11_data = format!("[{}]", s11_data);
-        let s21_data = format!("[{}]", s21_data);
-        let s12_data = format!("[{}]", s12_data);
-        let s22_data = format!("[{}]", s22_data);
-
-        let result = generate_two_port_plot_html(
-            output_path,
-            network.name.as_str(),
-            &frequency_data,
-            &s11_data,
-            &s21_data,
-            &s12_data,
-            &s22_data,
-        );
+        let result = generate_plot_from_two_port_network(&network, &output_path);
         assert!(result.is_ok());
-        assert!(std::path::Path::new(output_path).exists());
+
+        assert!(std::path::Path::new(&output_path).exists());
+
+        // clean up
+        let _ = fs::remove_dir_all("tests/output/");
     }
 }

@@ -38,7 +38,7 @@ fn run(file_path: String) {
     println!("============================");
     println!("In file {}", file_path);
 
-    let s2p = Network::new(file_path);
+    let s2p = Network::new(file_path.clone());
 
     println!("Network created.");
     println!("Frequency Unit: {}", s2p.frequency_unit);
@@ -53,6 +53,12 @@ fn run(file_path: String) {
         tail_count = 0;
     }
 
+    
+
+    println!("============================");
+    s2p.print_summary();
+    println!("============================");
+
     println!("\nFirst {:?} S-parameters:\n", head_count);
     for i in 0..head_count {
         println!("{:?}", s2p.f[i]);
@@ -66,31 +72,40 @@ fn run(file_path: String) {
             println!("{:?}", s2p.s[i]);
         }
     }
-
-    println!("============================");
-    s2p.print_summary();
     println!("============================");
 
-    println!("\n");
-    let s21_db = s2p.s_db(2, 1);
-    println!("S21 parameters:");
-    for param in s21_db.clone() {
-        println!("{:?} {:?}", param.frequency, param.s_db.decibel());
+    let file_path_plot = format!("{}.html", &file_path);
+
+    plot::generate_plot_from_two_port_network(&s2p, &file_path_plot).unwrap();
+    println!("Plot HTML generated at {}", file_path_plot);
+
+    // Note: This does NOT handle space encoding (spaces remain spaces), 
+    // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
+    let file_path_file_url = format!("file://{}", std::fs::canonicalize(&file_path_plot).unwrap().to_str().unwrap());
+
+    println!("You can open the plot in your browser at:\n{}", file_path_file_url);
+
+    // if not part of cargo test, open the created file
+    if cfg!(test) {
+        // pass
+    } else {
+        // 1. Ensure we have the absolute path to the file
+        // canonicalize() returns a PathBuf and handles relative paths
+        println!("Attempting to open plot in your default browser...");
+        // 2. Use the open crate to launch the file, if not testing
+        // open::that() works with paths or URL strings
+        match open::that(&file_path_file_url) {
+            Ok(()) => {
+                println!("Success! Check your browser.");
+            }
+            Err(e) => {
+                // 3. Graceful Fallback
+                // If it fails (e.g. headless environment), print the path for manual opening
+                eprintln!("Could not open the file automatically: {}", e);
+                println!("You can manually open this file:\n{}", file_path_file_url);
+            }
+        }
     }
-
-    let mut f:Vec<f64> = Vec::new();
-    let mut s21_db_values:Vec<f64> = Vec::new();
-    for param in s21_db {
-        f.push(param.frequency);
-        s21_db_values.push(param.s_db.decibel());
-    }
-
-    println!("{:?}", f);
-    println!("{:?}", s21_db_values);
-
-    plot::generate_example_plot_html("examples/example_plot.html").unwrap();
-    println!("Example plot HTML generated at examples/example_plot.html");
-
 }
 
 #[cfg(test)]
@@ -112,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_run_function() {
-        let file_path = String::from("files/2port.s2p");
+        let file_path = String::from("files/ntwk1.s2p");
         run(file_path);
     }
 }
