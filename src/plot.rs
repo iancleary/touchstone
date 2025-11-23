@@ -59,6 +59,7 @@ pub fn generate_two_port_plot_html(
 
     // this only works if a relative path or full path is given.
     // the unwrap fails if "ntwk1.s2p" is given instead of "./ntwk1.s2p"
+    // this is handled by main.rs::is_bare_filename for us
     // Attempt to get parent; if None, default to "." (current dir)
     let folder_path = Path::new(output_path)
         .parent()
