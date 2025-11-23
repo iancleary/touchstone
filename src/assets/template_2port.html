@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{network_name}} S2P Performance</title>
+    <script src="./js/tailwindcss-3.4.17.js"></script>
+    <!-- Plotly.js CDN -->
+    <script src="./js/plotly-3.3.0.min.js"></script>
+    <style>
+        /* Smooth transition for dimensions and transform */
+        .grid-item {
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+            height: 350px; /* Base height for collapsed state */
+        }
+        
+        /* Expanded State Logic */
+        .grid-item.expanded {
+            height: 600px; /* Expanded height */
+            border-color: #3b82f6; /* Blue border to highlight active */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Ensure chart containers take full height */
+        .chart-container {
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+        }
+        
+        .action-btn {
+            opacity: 0.8;
+            transition: opacity 0.2s, background-color 0.2s, transform 0.1s;
+            position: relative;
+        }
+        .action-btn:hover {
+            opacity: 1;
+            background-color: #f3f4f6;
+            transform: translateY(-1px);
+        }
+
+        /* Custom Tooltip Style */
+        #custom-tooltip {
+            transition: opacity 0.15s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Network Performance of {{network_name}}</h1>
+        <p class="text-gray-600">Click the hover icon (+) to cycle through nearest point, X-axis lock, Y-axis lock, and no hover modes.</p>
+    </div>
+
+    <!-- Main Grid Container -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl mx-auto">
+
+        <!-- Item 1 -->
+        <div id="card-s11" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S11 (Input Return Loss)</h2>
+                <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <!-- Reset Zoom -->
+                    <button onclick="resetZoom('plot-s11')" class="action-btn p-2 rounded-full" data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                    <!-- Zoom In -->
+                    <button onclick="zoomIn('plot-s11')" class="action-btn p-2 rounded-full" data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
+                    </button>
+                    <!-- Zoom Out -->
+                    <button onclick="zoomOut('plot-s11')" class="action-btn p-2 rounded-full" data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
+                    </button>
+                    <!-- Toggle Hover -->
+                    <button id="hover-toggle-plot-s11" onclick="toggleHoverMode('plot-s11')" class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-s11" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <!-- Default icon: Crosshair (Nearest) -->
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <!-- CSV Button -->
+                    <button onclick="downloadCSV('plot-s11', '{{network_name}}.s11')" class="action-btn p-2 rounded-full" data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </button>
+                    <!-- Image Button -->
+                    <button onclick="downloadImage('plot-s11', '{{network_name}}.s11')" class="action-btn p-2 rounded-full" data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    <!-- Expand Button -->
+                    <button onclick="toggleExpand('card-s11')" class="action-btn p-2 rounded-full" data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-s11" class="chart-container"></div>
+        </div>
+
+        <!-- Item 2 -->
+        <div id="card-s12" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S12 (Reverse Isolation)</h2>
+                 <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <button onclick="resetZoom('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                    <button onclick="zoomIn('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
+                    </button>
+                    <button onclick="zoomOut('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
+                    </button>
+                    <button id="hover-toggle-plot-s12" onclick="toggleHoverMode('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-s12" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <button onclick="downloadCSV('plot-s12', '{{network_name}}.s12')" class="action-btn p-2 rounded-full" data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </button>
+                    <button onclick="downloadImage('plot-s12', '{{network_name}}.s12')" class="action-btn p-2 rounded-full" data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    <button onclick="toggleExpand('card-s12')" class="action-btn p-2 rounded-full" data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-s12" class="chart-container"></div>
+        </div>
+
+        <!-- Item 3 -->
+        <div id="card-s21" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S21 (Insertion Loss)</h2>
+                 <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <button onclick="resetZoom('plot-s21')" class="action-btn p-2 rounded-full" data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                    <button onclick="zoomIn('plot-s21')" class="action-btn p-2 rounded-full" data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
+                    </button>
+                    <button onclick="zoomOut('plot-s21')" class="action-btn p-2 rounded-full" data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
+                    </button>
+                    <button id="hover-toggle-plot-s21" onclick="toggleHoverMode('plot-s21')" class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-s21" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <button onclick="downloadCSV('plot-s21', '{{network_name}}.s21')" class="action-btn p-2 rounded-full" data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </button>
+                    <button onclick="downloadImage('plot-s21', '{{network_name}}.s21')" class="action-btn p-2 rounded-full" data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    <button onclick="toggleExpand('card-s21')" class="action-btn p-2 rounded-full" data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-s21" class="chart-container"></div>
+        </div>
+
+        <!-- Item 4 -->
+        <div id="card-s22" class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S22 (Output Return Loss)</h2>
+                 <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <button onclick="resetZoom('plot-s22')" class="action-btn p-2 rounded-full" data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                    <button onclick="zoomIn('plot-s22')" class="action-btn p-2 rounded-full" data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path></svg>
+                    </button>
+                    <button onclick="zoomOut('plot-s22')" class="action-btn p-2 rounded-full" data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
+                    </button>
+                    <button id="hover-toggle-plot-s22" onclick="toggleHoverMode('plot-s22')" class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-s22" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <button onclick="downloadCSV('plot-s22', '{{network_name}}.s22')" class="action-btn p-2 rounded-full" data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </button>
+                    <button onclick="downloadImage('plot-s22', '{{network_name}}.s22')" class="action-btn p-2 rounded-full" data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    <button onclick="toggleExpand('card-s22')" class="action-btn p-2 rounded-full" data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-s22" class="chart-container"></div>
+        </div>
+
+    </div>
+
+    <script>
+
+        // --- Data Placeholders ---
+        const freq = {{frequency_data}}; // Placeholder for frequency data if needed
+        const s11 = {{s11_data}};
+        const s21 = {{s21_data}};
+        const s12 = {{s12_data}};
+        const s22 = {{s22_data}};
+
+        // --- Tooltip Logic (Custom) ---
+        const tooltip = document.createElement('div');
+        tooltip.id = 'custom-tooltip';
+        tooltip.className = 'fixed bg-gray-800 text-white text-xs rounded py-1 px-2 z-50 pointer-events-none hidden shadow-lg whitespace-nowrap';
+        document.body.appendChild(tooltip);
+
+        document.addEventListener('mouseover', e => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                tooltip.textContent = target.dataset.tooltip;
+                tooltip.classList.remove('hidden');
+                
+                const rect = target.getBoundingClientRect();
+                
+                // Wait for text to render to calculate width
+                requestAnimationFrame(() => {
+                    let left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
+                    let top = rect.bottom + 8;
+
+                    // Edge detection
+                    if (left + tooltip.offsetWidth > window.innerWidth - 10) {
+                        left = window.innerWidth - tooltip.offsetWidth - 10;
+                    }
+                    if (left < 10) left = 10;
+
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
+                });
+            }
+        });
+
+        document.addEventListener('mouseout', e => {
+            if (e.target.closest('[data-tooltip]')) {
+                tooltip.classList.add('hidden');
+            }
+        });
+
+        // --- Hover Mode Management ---
+        const hoverModeMap = {
+            'plot-s11': 'closest',
+            'plot-s12': 'closest',
+            'plot-s21': 'closest',
+            'plot-s22': 'closest'
+        };
+
+        const HOVER_CYCLES = ['closest', 'x', 'y', false]; // false means disabled hover
+        
+        /**
+         * Renders the appropriate SVG icon and updates the tooltip text.
+         * @param {string} plotId The ID of the plot (e.g., 'plot-s11')
+         * @param {string|false} mode The current Plotly hover mode or false
+         */
+        function updateHoverIcon(plotId, mode) {
+            const iconContainer = document.getElementById(`hover-icon-${plotId}`);
+            const button = document.getElementById(`hover-toggle-${plotId}`);
+            let svgContent = '';
+            let tooltipText = '';
+
+            // Note: Setting stroke/fill/viewBox in the SVG tag itself
+            switch (mode) {
+                case 'closest':
+                    tooltipText = 'Toggle Hover Mode: Nearest Point';
+                    // Crosshair / Four-way arrow
+                    svgContent = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16M12 4v16" />';
+                    break;
+                case 'x':
+                    tooltipText = 'Toggle Hover Mode: X-Axis Lock';
+                    // Horizontal Arrows (Move along X)
+                    svgContent = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12H3M17 8l4 4-4 4M7 8l-4 4 4 4" />';
+                    break;
+                case 'y':
+                    tooltipText = 'Toggle Hover Mode: Y-Axis Lock';
+                    // Vertical Arrows (Move along Y)
+                    svgContent = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21V3M8 17l4 4 4-4M8 7l4-4 4 4" />';
+                    break;
+                case false:
+                default:
+                    tooltipText = 'Toggle Hover Mode: Disabled';
+                    // Eye off (Disabled) - Updated path to avoid clipping
+                    svgContent = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
+                    break;
+            }
+            
+            iconContainer.innerHTML = svgContent;
+            button.dataset.tooltip = tooltipText;
+            
+            // Re-render Plotly with the new mode
+            const plotlyMode = mode === false ? false : mode; // Plotly uses 'false' or 'closest', 'x', 'y'
+            Plotly.relayout(plotId, { hovermode: plotlyMode });
+        }
+
+
+        function toggleHoverMode(plotId) {
+            const currentMode = hoverModeMap[plotId] === false ? 'off' : hoverModeMap[plotId];
+            const currentIndex = HOVER_CYCLES.indexOf(currentMode);
+            const nextIndex = (currentIndex + 1) % HOVER_CYCLES.length;
+            const newMode = HOVER_CYCLES[nextIndex];
+            
+            hoverModeMap[plotId] = newMode;
+            updateHoverIcon(plotId, newMode);
+        }
+
+        // --- Plotly Chart Generation ---
+        const commonLayout = {
+            margin: { t: 40, r: 10, b: 40, l: 60 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { family: 'Inter, sans-serif' },
+            showlegend: true,
+            legend: {
+                x: 1, xanchor: 'right', y: 1, bgcolor: 'rgba(255,255,255,0.5)',
+                // title: {
+                //     text: "Legend Title"
+                // }
+            },
+            xaxis: {
+                title: {
+                    text: 'Frequency (GHz)'
+                },
+                // type: 'log',
+                gridcolor: '#e5e7eb',
+                tickformat: 's',      // use SI prefixes (f, p, n, µ, m, k, M, G, T, etc.)
+                exponentformat: 'SI', // use SI prefixes for hover text as well
+            },
+            yaxis: {
+                title: {
+                    text: 'Magnitude (dB)'
+                },
+                gridcolor: '#e5e7eb',
+                rangemode: 'tozero'
+            },
+            title: { text: "S2P (dB) vs. Frequency (GHz)<br><sup>{{network_name}}</sup>" },
+            
+            hovermode: 'closest' // Initial mode
+        };
+        const plotlyConfig = {responsive: true, displayModeBar: false};
+
+        const plotTitles = {
+            'plot-s11': 'S11 (dB) vs. Frequency (GHz)<br><sup>{{network_name}}</sup>',
+            'plot-s12': 'S12 (dB) vs. Frequency (GHz)<br><sup>{{network_name}}</sup>',
+            'plot-s21': 'S21 (dB) vs. Frequency (GHz)<br><sup>{{network_name}}</sup>',
+            'plot-s22': 'S22 (dB) vs. Frequency (GHz)<br><sup>{{network_name}}</sup>'
+        };
+
+        const plotLayouts = {
+            'plot-s11': { 
+                ...commonLayout, 
+                title: { text: plotTitles['plot-s11'] },
+                // Fixed range from -40 dB to 0 dB
+                yaxis: { ...commonLayout.yaxis, range: [-40, 0] }
+            },
+            'plot-s12': { ...commonLayout, title: { text: plotTitles['plot-s12'] } },
+            'plot-s21': { ...commonLayout, title: { text: plotTitles['plot-s21'] } },
+            'plot-s22': { 
+                ...commonLayout, 
+                title: { text: plotTitles['plot-s22'] },
+                // Fixed range from -40 dB to 0 dB
+                yaxis: { ...commonLayout.yaxis, range: [-40, 0] }
+            },
+        };
+
+        const fileTraceColors = [
+            '#3b82f6',
+            '#a855f7',
+            '#fdba74',
+            '#10b981'
+        ];
+
+        function createTrace(xData, yData, traceName, width) {
+            return [
+                { x: xData, y: yData, mode: 'lines', name: traceName, line: { color: fileTraceColors[0], width: width } }
+            ]
+        }
+
+
+        // Plots should be in global scope, but functions can facilitate traces
+        // use a loop for more iteration
+        Plotly.newPlot('plot-s11', createTrace(freq, s11, 'S11', fileTraceColors[0], 2), plotLayouts['plot-s11'], plotlyConfig);
+        Plotly.newPlot('plot-s12', createTrace(freq, s12, 'S12', fileTraceColors[0], 2), plotLayouts['plot-s12'], plotlyConfig);
+        Plotly.newPlot('plot-s21', createTrace(freq, s21, 'S21', fileTraceColors[0], 2), plotLayouts['plot-s21'], plotlyConfig);
+        Plotly.newPlot('plot-s22', createTrace(freq, s22, 'S22', fileTraceColors[0], 2), plotLayouts['plot-s22'], plotlyConfig);
+
+        // --- Action Functions ---
+        
+        function resetZoom(divId) {
+            Plotly.relayout(divId, {
+                'xaxis.autorange': true,
+                'yaxis.autorange': true
+            });
+        }
+
+        function zoomPlot(divId, factor) {
+            const gd = document.getElementById(divId);
+            if (!gd || !gd._fullLayout) return;
+
+            const xaxis = gd._fullLayout.xaxis;
+            const yaxis = gd._fullLayout.yaxis;
+
+            // Helper to zoom a range
+            const getNewRange = (range, isLog) => {
+                // In Plotly, log ranges are stored as exponents (linear values)
+                // So we can treat them as standard linear numbers for calculation
+                const min = range[0];
+                const max = range[1];
+                const center = (max + min) / 2;
+                const span = max - min;
+                const newSpan = span * factor;
+                return [center - newSpan / 2, center + newSpan / 2];
+            };
+
+            const newX = getNewRange(xaxis.range, xaxis.type === 'log');
+            const newY = getNewRange(yaxis.range, yaxis.type === 'log');
+
+            Plotly.relayout(divId, {
+                'xaxis.range': newX,
+                'yaxis.range': newY,
+                'xaxis.autorange': false,
+                'yaxis.autorange': false
+            });
+        }
+
+        function zoomIn(divId) { zoomPlot(divId, 0.7); }
+        function zoomOut(divId) { zoomPlot(divId, 1.3); }
+
+        function downloadImage(divId, filename) {
+            const plot = document.getElementById(divId);
+            Plotly.downloadImage(plot, {
+                format: 'png',
+                filename: filename,
+                height: 800,
+                width: 1200,
+                scale: 2 // Retina quality
+            });
+        }
+
+        function downloadCSV(divId, filename) {
+            const plot = document.getElementById(divId);
+            const data = plot.data;
+
+            // We assume all traces share the same X axis (Frequency) for simplicity
+            // We will construct a CSV with: Frequency, Trace1_Y, Trace2_Y...
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // 1. Create Headers
+            let headers = ["Frequency (Hz)"];
+            data.forEach(trace => {
+                headers.push(`Magnitude (dB) - ${trace.name}`);
+            });
+            csvContent += headers.join(",") + "\r\n";
+
+            // 2. Add Rows
+            // We use the first trace to define the X rows
+            const xValues = data[0].x;
+
+            for (let i = 0; i < xValues.length; i++) {
+                let row = [xValues[i]];
+                data.forEach(trace => {
+                    // Guard against traces having different lengths
+                    row.push(trace.y[i] !== undefined ? trace.y[i] : "");
+                });
+                csvContent += row.join(",") + "\r\n";
+            }
+
+            // 3. Trigger Download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename + ".csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+
+        // --- Expansion Logic ---
+        function toggleExpand(cardId) {
+            const card = document.getElementById(cardId);
+            const allCards = document.querySelectorAll('.grid-item');
+            const isExpanded = card.classList.contains('expanded');
+
+            // 1. Reset all cards
+            allCards.forEach(item => {
+                item.classList.remove('expanded');
+                item.classList.remove('md:col-span-2');
+                item.classList.remove('row-span-2');
+            });
+
+            // 2. If it wasn't expanded, expand it now
+            if (!isExpanded) {
+                card.classList.add('expanded');
+                card.classList.add('md:col-span-2');
+                card.classList.add('row-span-2');
+            }
+
+            // 3. Resize Charts after CSS transition
+            setTimeout(() => {
+                allCards.forEach(item => {
+                    const plotDiv = item.querySelector('.chart-container');
+                    Plotly.Plots.resize(plotDiv);
+                });
+            }, 450);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const plots = document.querySelectorAll('.chart-container');
+            plots.forEach(p => Plotly.Plots.resize(p));
+        });
+    </script>
+</body>
+
+</html>

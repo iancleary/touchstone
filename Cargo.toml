@@ -12,4 +12,5 @@ version = "0.6.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+open = "5.3.3"
 rfconversions = "0.5.0"

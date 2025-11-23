@@ -4,6 +4,7 @@ mod data_pairs;
 mod file_extension;
 mod option_line;
 mod parser;
+pub mod plot;
 mod utils;
 
 #[derive(Debug)]
@@ -23,9 +24,91 @@ pub struct Network {
     pub s: Vec<data_line::ParsedDataLine>,
 }
 
+#[derive(Debug, Clone)]
+pub struct FrequencyRI {
+    pub frequency: f64,
+    pub s_ri: data_pairs::RealImaginary,
+}
+
+#[derive(Debug, Clone)]
+pub struct FrequencyDB {
+    pub frequency: f64,
+    pub s_db: data_pairs::DecibelAngle,
+}
+
+#[derive(Debug, Clone)]
+pub struct FrequencyMA {
+    pub frequency: f64,
+    pub s_ma: data_pairs::MagnitudeAngle,
+}
+
 impl Network {
     pub fn new(file_path: String) -> Self {
         parser::read_file(file_path)
+    }
+
+    pub fn print_summary(&self) {
+        println!("Network Summary:");
+        println!("Name: {}", self.name);
+        println!("Rank (number of ports): {}", self.rank);
+        println!("Frequency Unit: {}", self.frequency_unit);
+        println!("Parameter: {}", self.parameter);
+        println!("Format: {}", self.format);
+        println!("Reference Impedance (Z0): {}", self.z0);
+        println!("Number of Data Lines: {}", self.f.len());
+        println!("Comments:");
+        for comment in &self.comments {
+            println!("{}", comment);
+        }
+    }
+
+    pub fn f(&self) -> Vec<f64> {
+        self.f.clone()
+    }
+
+    pub fn s_db(&self, j: i8, k: i8) -> Vec<FrequencyDB> {
+        let mut s_db_vector: Vec<FrequencyDB> = Vec::new();
+        for i in 0..self.s.len() {
+            let frequency = self.s[i].frequency;
+            let s_db_matrix = self.s[i].s_db;
+            let s_db_value = s_db_matrix.get(j, k);
+            let frequency_db = FrequencyDB {
+                frequency,
+                s_db: s_db_value,
+            };
+            s_db_vector.push(frequency_db);
+        }
+        s_db_vector
+    }
+
+    pub fn s_ri(&self, j: i8, k: i8) -> Vec<FrequencyRI> {
+        let mut s_ri_vector: Vec<FrequencyRI> = Vec::new();
+        for i in 0..self.s.len() {
+            let frequency = self.s[i].frequency;
+            let s_ri_matrix = self.s[i].s_ri;
+            let s_ri_value = s_ri_matrix.get(j, k);
+            let frequency_ri = FrequencyRI {
+                frequency,
+                s_ri: s_ri_value,
+            };
+            s_ri_vector.push(frequency_ri);
+        }
+        s_ri_vector
+    }
+
+    pub fn s_ma(&self, j: i8, k: i8) -> Vec<FrequencyMA> {
+        let mut s_ma_vector: Vec<FrequencyMA> = Vec::new();
+        for i in 0..self.s.len() {
+            let frequency = self.s[i].frequency;
+            let s_ma_matrix = self.s[i].s_ma;
+            let s_ma_value = s_ma_matrix.get(j, k);
+            let frequency_ma = FrequencyMA {
+                frequency,
+                s_ma: s_ma_value,
+            };
+            s_ma_vector.push(frequency_ma);
+        }
+        s_ma_vector
     }
 
     pub fn cascade(&self, other: &Network) -> Network {
@@ -126,6 +209,61 @@ impl ops::Mul<Network> for Network {
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn f() {
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let f = network1.f();
+
+        assert_eq!(f.len(), network1.f.len());
+    }
+
+    #[test]
+    fn s_db() {
+
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+
+        let s11 = network1.s_db(1, 1);
+        let s12 = network1.s_db(1, 2);
+        let s21 = network1.s_db(2, 1);
+        let s22 = network1.s_db(2, 2);
+
+        assert_eq!(s11.len(), s12.len());
+        assert_eq!(s11.len(), s21.len());
+        assert_eq!(s11.len(), s22.len());
+    }
+
+    #[test]
+    fn s_ri() {
+
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+
+        let s11 = network1.s_ri(1, 1);
+        let s12 = network1.s_ri(1, 2);
+        let s21 = network1.s_ri(2, 1);
+        let s22 = network1.s_ri(2, 2);
+
+        assert_eq!(s11.len(), s12.len());
+        assert_eq!(s11.len(), s21.len());
+        assert_eq!(s11.len(), s22.len());
+    }
+
+    #[test]
+    fn s_ma() {
+
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+
+        let s11 = network1.s_ma(1, 1);
+        let s12 = network1.s_ma(1, 2);
+        let s21 = network1.s_ma(2, 1);
+        let s22 = network1.s_ma(2, 2);
+
+        assert_eq!(s11.len(), s12.len());
+        assert_eq!(s11.len(), s21.len());
+        assert_eq!(s11.len(), s22.len());
+    }
+
+
     #[test]
     fn cascade_2port_networks() {
         let network1 = Network::new("files/ntwk1.s2p".to_string());
