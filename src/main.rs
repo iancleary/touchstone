@@ -107,6 +107,8 @@ fn run(file_path: String) {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
     #[test]
     fn test_config_build() {
@@ -126,5 +128,17 @@ mod tests {
     fn test_run_function() {
         let file_path = String::from("files/ntwk1.s2p");
         run(file_path);
+        let _ = fs::remove_file("files/ntwk1.s2p.html");
+        let _2 = fs::remove_dir_all("files/js");
+
+        let file_path2 = String::from("files/ntwk2.s2p");
+        run(file_path2);
+        let _3 = fs::remove_file("files/ntwk2.s2p.html");
+        let _4 = fs::remove_dir_all("files/js");
+
+        let file_path3 = String::from("files/ntwk3.s2p");
+        run(file_path3);
+        let _5 = fs::remove_file("files/ntwk3.s2p.html");
+        let _6 = fs::remove_dir_all("files/js");
     }
 }
