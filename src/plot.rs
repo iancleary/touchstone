@@ -118,7 +118,7 @@ mod tests {
         assert!(result.is_ok());
         assert!(std::path::Path::new(output_path).exists());
         // clean up
-        let _ = fs::remove_dir_all("tests/output/");
+        let _ = fs::remove_dir_all("tests/");
     }
 
     #[test]
@@ -133,6 +133,6 @@ mod tests {
         assert!(std::path::Path::new(&output_path).exists());
 
         // clean up
-        let _ = fs::remove_dir_all("tests/output/");
+        let _ = fs::remove_dir_all("tests/");
     }
 }
