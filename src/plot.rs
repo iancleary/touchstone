@@ -26,7 +26,7 @@ pub(crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::R
     use std::path::Path;
 
     let path = Path::new(file_path);
-    let mut file = File::create(&path)?;
+    let mut file = File::create(path)?;
     file.write_all(html_content.as_bytes())?;
     Ok(())
 }

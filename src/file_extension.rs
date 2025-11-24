@@ -25,11 +25,11 @@ pub(crate) fn is_valid_file_extension(file_type: &str) -> bool {
 
     // must have at least one character in the middle
     // these are the number of ports, which must be defined
-    if middle_chars.len() < 1 {
+    if middle_chars.is_empty() {
         return false;
     }
 
-    let middle_chars_are_digits = middle_chars.chars().all(|c| c.is_digit(10));
+    let middle_chars_are_digits = middle_chars.chars().all(|c| c.is_ascii_digit());
 
     // must be digits in the middle
     if !middle_chars_are_digits {
@@ -37,7 +37,7 @@ pub(crate) fn is_valid_file_extension(file_type: &str) -> bool {
     }
 
     // cannot start with 0
-    if middle_chars.chars().next().unwrap() == '0' {
+    if middle_chars.starts_with('0') {
         return false;
     }
 
@@ -46,60 +46,58 @@ pub(crate) fn is_valid_file_extension(file_type: &str) -> bool {
         .parse::<i32>()
         .expect("Failed to parse middle chars as int {middle_chars}");
 
-    let n_ports_valid = middle_chars_as_int >= 1;
-
-    n_ports_valid
+    middle_chars_as_int >= 1
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn is_valid_file_extension_single_port() {
-        assert_eq!(super::is_valid_file_extension("s1p"), true);
+        assert!(super::is_valid_file_extension("s1p"));
     }
 
     #[test]
     fn is_valid_file_extension_expected_two_port() {
-        assert_eq!(super::is_valid_file_extension("s2p"), true);
+        assert!(super::is_valid_file_extension("s2p"));
     }
 
     #[test]
     fn is_valid_file_extension_expected_three_port() {
-        assert_eq!(super::is_valid_file_extension("s3p"), true);
+        assert!(super::is_valid_file_extension("s3p"));
     }
 
     #[test]
     fn is_valid_file_extension_expected_four_port() {
-        assert_eq!(super::is_valid_file_extension("s4p"), true);
+        assert!(super::is_valid_file_extension("s4p"));
     }
 
     #[test]
     fn is_valid_file_extension_large_values() {
-        assert_eq!(super::is_valid_file_extension("s10p"), true);
-        assert_eq!(super::is_valid_file_extension("s217p"), true);
+        assert!(super::is_valid_file_extension("s10p"));
+        assert!(super::is_valid_file_extension("s217p"));
     }
 
     #[test]
     fn is_valid_file_extension_zeros() {
-        assert_eq!(super::is_valid_file_extension("s0p"), false);
-        assert_eq!(super::is_valid_file_extension("s01p"), false);
+        assert!(!super::is_valid_file_extension("s0p"));
+        assert!(!super::is_valid_file_extension("s01p"));
     }
 
     #[test]
     fn is_valid_file_extension_other_extensions() {
-        assert_eq!(super::is_valid_file_extension("txt"), false);
-        assert_eq!(super::is_valid_file_extension("sxp"), false);
-        assert_eq!(super::is_valid_file_extension("s2x"), false);
-        assert_eq!(super::is_valid_file_extension("x2p"), false);
-        assert_eq!(super::is_valid_file_extension("2p"), false);
-        assert_eq!(super::is_valid_file_extension("s2"), false);
-        assert_eq!(super::is_valid_file_extension("sp"), false);
-        assert_eq!(super::is_valid_file_extension("s"), false);
-        assert_eq!(super::is_valid_file_extension("1p"), false);
+        assert!(!super::is_valid_file_extension("txt"));
+        assert!(!super::is_valid_file_extension("sxp"));
+        assert!(!super::is_valid_file_extension("s2x"));
+        assert!(!super::is_valid_file_extension("x2p"));
+        assert!(!super::is_valid_file_extension("2p"));
+        assert!(!super::is_valid_file_extension("s2"));
+        assert!(!super::is_valid_file_extension("sp"));
+        assert!(!super::is_valid_file_extension("s"));
+        assert!(!super::is_valid_file_extension("1p"));
     }
 
     #[test]
     fn is_valid_file_extension_no_extension() {
-        assert_eq!(super::is_valid_file_extension(""), false);
+        assert!(!super::is_valid_file_extension(""));
     }
 }

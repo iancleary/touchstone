@@ -182,8 +182,8 @@ impl Network {
             format: self.format.clone(),
             resistance_string: self.resistance_string.clone(),
             z0: self.z0,
-            comments: comments,
-            comments_after_option_line: comments_after_option_line,
+            comments,
+            comments_after_option_line,
             f: self.f.clone(),
             s: self.s.clone(), // TODO: implement proper cascading of S-parameters
         }
@@ -268,7 +268,6 @@ mod tests {
         let cascaded_network = network1.cascade(&network2);
 
         assert_eq!(cascaded_network.f.len(), 91);
-        assert!(true);
     }
 
     #[test]
