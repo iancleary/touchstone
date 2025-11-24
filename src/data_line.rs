@@ -136,12 +136,12 @@ pub(crate) fn parse_data_line(
             ),
         );
 
-        return ParsedDataLine {
-            frequency: frequency,
+        ParsedDataLine {
+            frequency,
             s_ri,
             s_db,
             s_ma,
-        };
+        }
     } else if format == "MA" {
         // Magnitude-Angle format
         let s_ma = MagnitudeAngleMatrix(
@@ -176,12 +176,12 @@ pub(crate) fn parse_data_line(
                 DecibelAngle::from_magnitude_angle(s_ma.1 .1),
             ),
         );
-        return ParsedDataLine {
-            frequency: frequency,
+        ParsedDataLine {
+            frequency,
             s_ri,
             s_db,
             s_ma,
-        };
+        }
     } else if format == "DB" {
         // Decibel-Angle format
         let s_db = DecibelAngleMatrix(
@@ -216,12 +216,12 @@ pub(crate) fn parse_data_line(
                 MagnitudeAngle::from_decibel_angle(s_db.1 .1),
             ),
         );
-        return ParsedDataLine {
-            frequency: frequency,
+        ParsedDataLine {
+            frequency,
             s_ri,
             s_db,
             s_ma,
-        };
+        }
     } else {
         panic!("Unsupported format: {}", format);
     }

@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn decibel_angle() {
         // tuple struct, so need to use 0 and 1
-        let da = DecibelAngle { 0: 20.0, 1: 45.0 };
+        let da = DecibelAngle(20.0, 45.0);
 
         assert_eq!(da.magnitude(), 10.0);
         assert_eq!(da.angle(), 45.0);
@@ -297,14 +297,11 @@ mod tests {
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(da.imaginary()), 7.071067812);
 
-        let da_from_ri = DecibelAngle::from_real_imaginary(RealImaginary {
-            0: 7.071067812,
-            1: 7.071067812,
-        });
+        let da_from_ri = DecibelAngle::from_real_imaginary(RealImaginary(7.071067812, 7.071067812));
         assert_eq!(round_to_nine_decimal_places(da_from_ri.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(da_from_ri.angle()), 45.0);
 
-        let da_from_ma = DecibelAngle::from_magnitude_angle(MagnitudeAngle { 0: 10.0, 1: 45.0 });
+        let da_from_ma = DecibelAngle::from_magnitude_angle(MagnitudeAngle(10.0, 45.0));
         assert_eq!(round_to_nine_decimal_places(da_from_ma.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(da_from_ma.angle()), 45.0);
     }
@@ -312,7 +309,7 @@ mod tests {
     #[test]
     fn magnitude_angle() {
         // tuple struct, so need to use 0 and 1
-        let ma = MagnitudeAngle { 0: 10.0, 1: 45.0 };
+        let ma = MagnitudeAngle(10.0, 45.0);
 
         assert_eq!(ma.magnitude(), 10.0);
         assert_eq!(ma.angle(), 45.0);
@@ -324,14 +321,12 @@ mod tests {
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(ma.imaginary()), 7.071067812);
 
-        let ma_from_ri = MagnitudeAngle::from_real_imaginary(RealImaginary {
-            0: 7.071067812,
-            1: 7.071067812,
-        });
+        let ma_from_ri =
+            MagnitudeAngle::from_real_imaginary(RealImaginary(7.071067812, 7.071067812));
         assert_eq!(round_to_nine_decimal_places(ma_from_ri.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(ma_from_ri.angle()), 45.0);
 
-        let ma_from_da = MagnitudeAngle::from_decibel_angle(DecibelAngle { 0: 20.0, 1: 45.0 });
+        let ma_from_da = MagnitudeAngle::from_decibel_angle(DecibelAngle(20.0, 45.0));
         assert_eq!(round_to_nine_decimal_places(ma_from_da.magnitude()), 10.0);
         assert_eq!(round_to_nine_decimal_places(ma_from_da.angle()), 45.0);
     }
@@ -339,7 +334,7 @@ mod tests {
     #[test]
     fn real_imaginary() {
         // tuple struct, so need to use 0 and 1
-        let ma = RealImaginary { 0: 20.0, 1: 0.0 };
+        let ma = RealImaginary(20.0, 0.0);
 
         assert_eq!(ma.magnitude(), 20.0);
         assert_eq!(ma.angle(), 0.0);
@@ -355,7 +350,7 @@ mod tests {
     #[test]
     fn real_imaginary2() {
         // tuple struct, so need to use 0 and 1
-        let ri = RealImaginary { 0: 0.0, 1: 10.0 };
+        let ri = RealImaginary(0.0, 10.0);
 
         assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 10.0);
         assert_eq!(ri.angle(), 90.0);
@@ -371,7 +366,7 @@ mod tests {
     #[test]
     fn real_imaginary3() {
         // tuple struct, so need to use 0 and 1
-        let ri = RealImaginary { 0: 10.0, 1: 10.0 };
+        let ri = RealImaginary(10.0, 10.0);
 
         assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 14.142135624);
         assert_eq!(ri.angle(), 45.0);
@@ -387,7 +382,7 @@ mod tests {
     #[test]
     fn real_imaginary4() {
         // tuple struct, so need to use 0 and 1
-        let ri = RealImaginary { 0: -20.0, 1: -20.0 };
+        let ri = RealImaginary(-20.0, -20.0);
 
         assert_eq!(round_to_nine_decimal_places(ri.magnitude()), 28.284271247);
         assert_eq!(ri.angle(), -135.0);

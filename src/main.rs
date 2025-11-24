@@ -4,8 +4,8 @@ use std::process;
 
 // this cannot be crate::Network because of how Cargo works,
 // since cargo/rust treats lib.rs and main.rs as separate crates
-use touchstone::Network;
 use touchstone::plot;
+use touchstone::Network;
 
 struct Config {
     file_argument: String,
@@ -27,7 +27,7 @@ impl Config {
 struct FilePathConfig {
     absolute_path: bool,
     relative_path_with_separators: bool,
-    bare_filename: bool
+    bare_filename: bool,
 }
 
 // prevents downstream problems with path.parent() when passing
@@ -39,30 +39,32 @@ fn get_file_path_config(path_str: &str) -> FilePathConfig {
     if path.is_absolute() {
         // /home/user/files/measured.s2p, etc.
         println!("'{}' is an Absolute path.", path_str);
-        return FilePathConfig {
+        FilePathConfig {
             absolute_path: true,
             relative_path_with_separators: false,
-            bare_filename: false
+            bare_filename: false,
         }
-    } 
+    }
     // If it's not absolute, we check the number of parts
     else if path.components().count() > 1 {
         // files/measured.s2p, etc.
-        println!("'{}' is a Relative path with separators (nested).", path_str);
-        return FilePathConfig {
+        println!(
+            "'{}' is a Relative path with separators (nested).",
+            path_str
+        );
+        FilePathConfig {
             absolute_path: false,
             relative_path_with_separators: true,
-            bare_filename: false
+            bare_filename: false,
         }
-    } 
-    else {
+    } else {
         // measured.s2p, etc.
         println!("'{}' is a Bare filename (no separators).", path_str);
-        return FilePathConfig {
+        FilePathConfig {
             absolute_path: false,
             relative_path_with_separators: false,
-            bare_filename: true
-        };
+            bare_filename: true,
+        }
     }
 }
 
@@ -77,69 +79,29 @@ fn main() {
     run(config.file_argument);
 }
 
-fn run(file_path: String) {
-    println!("\n");
-    println!("============================");
-    println!("In file {}", file_path);
-
-    let s2p = Network::new(file_path.clone());
-
-    println!("Network created.");
-
-    let length_of_data = s2p.f.len();
-
-    let mut head_count = 5;
-    let mut tail_count = 5;
-    if length_of_data < 5 {
-        println!("Warning: less than 5 data lines in file.");
-        head_count = length_of_data;
-        tail_count = 0;
-    }
-
-    println!("============================");
-    s2p.print_summary();
-    println!("============================");
-
-    println!("\nFirst {:?} S-parameters:\n", head_count);
-    for i in 0..head_count {
-        println!("{:?}", s2p.f[i]);
-        println!("{:?}", s2p.s[i]);
-    }
-
-    if tail_count != 0 {
-        println!("\nLast 5 S-parameters:\n");
-        for i in length_of_data - 5..length_of_data {
-            println!("{:?}", s2p.f[i]);
-            println!("{:?}", s2p.s[i]);
-        }
-    }
-    println!("============================");
-
-    let file_path_config: FilePathConfig = get_file_path_config(&file_path);
-    let mut file_path_plot = String::new();
-
-    // ensures file_path_plot is not a bare_filename
-    if file_path_config.absolute_path {
-        file_path_plot = format!("{}.html", &file_path);
-        
-    } else if file_path_config.relative_path_with_separators {
-        file_path_plot = format!("{}.html", &file_path);
-    } else if file_path_config.bare_filename {
-        file_path_plot = format!("./{}.html", &file_path);
-    } else {
-        panic!("file_path_config must have one true value: {:?}", file_path_config);
-    }
-
-    // ensuring file_path_plot is not a bare_file name allows
-    // the creation of the js folder to be simpler, as it doesn't have to handle .parent() path existence concerns
-    plot::generate_plot_from_two_port_network(&s2p, &file_path_plot).unwrap();
+fn generate_plot(s2p: &Network, file_path_plot: String) {
+    // creates a html file from network
+    plot::generate_plot_from_two_port_network(s2p, &file_path_plot).unwrap();
     println!("Plot HTML generated at {}", file_path_plot);
+}
 
-    // Note: This does NOT handle space encoding (spaces remain spaces), 
+fn open_plot(file_path_plot: String) {
+    // opens file in browser
+
+    // Note: This does NOT handle space encoding (spaces remain spaces),
     // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
-    let file_path_file_url = format!("file://{}", std::fs::canonicalize(&file_path_plot).unwrap().to_str().unwrap());
+    let file_path_file_url = format!(
+        "file://{}",
+        std::fs::canonicalize(&file_path_plot)
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
 
-    println!("You can open the plot in your browser at:\n{}", file_path_file_url);
+    println!(
+        "You can open the plot in your browser at:\n{}",
+        file_path_file_url
+    );
 
     // if not part of cargo test, open the created file
     if cfg!(test) {
@@ -161,6 +123,66 @@ fn run(file_path: String) {
                 println!("You can manually open this file:\n{}", file_path_file_url);
             }
         }
+    }
+}
+
+fn run(file_path: String) {
+    println!("\n");
+    println!("============================");
+    println!("In file {}", file_path);
+
+    let s2p = Network::new(file_path.clone());
+
+    // println!("Network created.");
+
+    // let length_of_data = s2p.f.len();
+
+    // let mut head_count = 5;
+    // let mut tail_count = 5;
+    // if length_of_data < 5 {
+    //     println!("Warning: less than 5 data lines in file.");
+    //     head_count = length_of_data;
+    //     tail_count = 0;
+    // }
+
+    // println!("============================");
+    // s2p.print_summary();
+    // println!("============================");
+
+    // println!("\nFirst {:?} S-parameters:\n", head_count);
+    // for i in 0..head_count {
+    //     println!("{:?}", s2p.f[i]);
+    //     println!("{:?}", s2p.s[i]);
+    // }
+
+    // if tail_count != 0 {
+    //     println!("\nLast 5 S-parameters:\n");
+    //     for i in length_of_data - 5..length_of_data {
+    //         println!("{:?}", s2p.f[i]);
+    //         println!("{:?}", s2p.s[i]);
+    //     }
+    // }
+    // println!("============================");
+
+    let file_path_config: FilePathConfig = get_file_path_config(&file_path);
+
+    // ensures file_path_plot is not a bare_filename
+    // if not bare_filename, just append .html
+    if file_path_config.absolute_path || file_path_config.relative_path_with_separators {
+        let file_path_plot = format!("{}.html", &file_path);
+        generate_plot(&s2p, file_path_plot.clone());
+        open_plot(file_path_plot.clone());
+
+    // if bare_filename, prepend ./ and append .html
+    } else if file_path_config.bare_filename {
+        let file_path_plot = format!("./{}.html", &file_path);
+        generate_plot(&s2p, file_path_plot.clone());
+        open_plot(file_path_plot.clone());
+    } else {
+        panic!(
+            "file_path_config must have one true value: {:?}",
+            file_path_config
+        );
     }
 }
 
@@ -188,22 +210,23 @@ mod tests {
         // test relative file
         let relative_path = String::from("files/ntwk1.s2p");
         run(relative_path);
-        let _ = fs::remove_file("files/ntwk1.s2p.html");
-        let _2 = fs::remove_dir_all("files/js");
+        let _relative_remove_file = fs::remove_file("files/ntwk1.s2p.html");
+        let _relative_remove_dir = fs::remove_dir_all("files/js");
 
         // test bare filename
-        let _3 = fs::copy("files/ntwk1.s2p", "ntwk1.s2p");
+        let _bare_filename_copy = fs::copy("files/ntwk1.s2p", "ntwk1.s2p");
         let bare_filename = String::from("ntwk1.s2p");
         run(bare_filename);
-        let _4 = fs::remove_file("ntwk1.s2p");
-        let _5 = fs::remove_file("ntwk1.s2p.html");
-        let _6 = fs::remove_dir_all("js"); 
+        let _bare_filename_remove_file_s2p = fs::remove_file("ntwk1.s2p");
+        let _bare_filename_remove_file_html = fs::remove_file("ntwk1.s2p.html");
+        let _bare_filename_remove_dir = fs::remove_dir_all("js");
 
         // This fails if "files/ntwk1.s2p" is missing on disk
-        let path_buf = std::fs::canonicalize("files/ntwk1.s2p").unwrap();        
+        let path_buf = std::fs::canonicalize("files/ntwk1.s2p").unwrap();
         let absolute_path: String = path_buf.to_string_lossy().to_string();
         run(absolute_path);
-        let _7 = fs::remove_file("files/ntwk1.s2p.html");
-        let _8 = fs::remove_dir_all("files/js");
+        // don't remove s2p file in files/
+        let _absolute_path_remove_file_html = fs::remove_file("files/ntwk1.s2p.html");
+        let _absolute_path_remove_dir = fs::remove_dir_all("files/js");
     }
 }

@@ -11,9 +11,9 @@ pub(crate) fn degrees_to_radians(degrees: f64) -> f64 {
 mod tests {
     #[test]
     fn test_str_to_f64() {
-        let x = "3.14";
+        let x = "1.23";
         let y = super::str_to_f64(x);
-        assert_eq!(y, 3.14);
+        assert_eq!(y, 1.23);
     }
 
     #[test]

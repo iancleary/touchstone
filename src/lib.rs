@@ -182,8 +182,8 @@ impl Network {
             format: self.format.clone(),
             resistance_string: self.resistance_string.clone(),
             z0: self.z0,
-            comments: comments,
-            comments_after_option_line: comments_after_option_line,
+            comments,
+            comments_after_option_line,
             f: self.f.clone(),
             s: self.s.clone(), // TODO: implement proper cascading of S-parameters
         }
@@ -220,7 +220,6 @@ mod tests {
 
     #[test]
     fn s_db() {
-
         let network1 = Network::new("files/ntwk1.s2p".to_string());
 
         let s11 = network1.s_db(1, 1);
@@ -235,7 +234,6 @@ mod tests {
 
     #[test]
     fn s_ri() {
-
         let network1 = Network::new("files/ntwk1.s2p".to_string());
 
         let s11 = network1.s_ri(1, 1);
@@ -250,7 +248,6 @@ mod tests {
 
     #[test]
     fn s_ma() {
-
         let network1 = Network::new("files/ntwk1.s2p".to_string());
 
         let s11 = network1.s_ma(1, 1);
@@ -263,7 +260,6 @@ mod tests {
         assert_eq!(s11.len(), s22.len());
     }
 
-
     #[test]
     fn cascade_2port_networks() {
         let network1 = Network::new("files/ntwk1.s2p".to_string());
@@ -272,7 +268,6 @@ mod tests {
         let cascaded_network = network1.cascade(&network2);
 
         assert_eq!(cascaded_network.f.len(), 91);
-        assert!(true);
     }
 
     #[test]

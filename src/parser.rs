@@ -59,7 +59,7 @@ pub fn read_file(file_path: String) -> Network {
         let is_comment = line.starts_with("!");
 
         if is_option_line {
-            if parser_state.option_line_parsed == false {
+            if !parser_state.option_line_parsed {
                 // println!("\nWith options: {line}");
                 // mutate options as they are parsed
                 option_line::parse_option_line(line.to_string(), &mut parsed_options);
@@ -74,33 +74,31 @@ pub fn read_file(file_path: String) -> Network {
             } else {
                 panic!("Multiple option lines found in file. Only one option line is allowed.");
             }
-        } else {
-            if is_comment {
-                // println!("\nWith comment: {line}");
-                if parser_state.option_line_parsed == false {
-                    comment_lines.push(line.to_string());
-                } else {
-                    comments_after_option_line.push(line.to_string());
-                }
+        } else if is_comment {
+            // println!("\nWith comment: {line}");
+            if !parser_state.option_line_parsed {
+                comment_lines.push(line.to_string());
             } else {
-                // is_data is true (not a variable, just communicating in terms of the pattern)
-
-                // println!("\nWith data: {line}");
-                // let parts = line.split_whitespace().collect::<Vec<_>>();
-                // println!("Data (len: {}):\n{:?}", parts.len(), parts);
-
-                let line_matrix_data = data_line::parse_data_line(
-                    line.to_string(),
-                    &parsed_options.format,
-                    &n_ports,
-                    &parsed_options.frequency_unit,
-                );
-                parser_state.data_lines.push(line.to_string());
-
-                f.push(line_matrix_data.frequency);
-
-                s.push(line_matrix_data);
+                comments_after_option_line.push(line.to_string());
             }
+        } else {
+            // is_data is true (not a variable, just communicating in terms of the pattern)
+
+            // println!("\nWith data: {line}");
+            // let parts = line.split_whitespace().collect::<Vec<_>>();
+            // println!("Data (len: {}):\n{:?}", parts.len(), parts);
+
+            let line_matrix_data = data_line::parse_data_line(
+                line.to_string(),
+                &parsed_options.format,
+                &n_ports,
+                &parsed_options.frequency_unit,
+            );
+            parser_state.data_lines.push(line.to_string());
+
+            f.push(line_matrix_data.frequency);
+
+            s.push(line_matrix_data);
         }
     }
 
@@ -109,15 +107,15 @@ pub fn read_file(file_path: String) -> Network {
     Network {
         name: file_path,
         rank: n_ports,
-        frequency_unit: frequency_unit,
-        parameter: parameter,
-        format: format,
-        resistance_string: resistance_string,
+        frequency_unit,
+        parameter,
+        format,
+        resistance_string,
         z0: utils::str_to_f64(reference_resistance.as_str()),
         comments: comment_lines,
-        comments_after_option_line: comments_after_option_line,
-        f: f,
-        s: s,
+        comments_after_option_line,
+        f,
+        s,
     }
 }
 
