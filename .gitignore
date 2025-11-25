@@ -169,3 +169,11 @@ cython_debug/
 # Not Public data
 data/
 justfile
+
+# plotting
+files/js
+files/*.html
+js/
+*.html
+!src/assets/js
+!src/assets/*.html

@@ -40,6 +40,30 @@ fn generate_plot(s2p: &Network, file_path_plot: String) {
     println!("Plot HTML generated at {}", file_path_plot);
 }
 
+fn open_in_browser(url: &str) {
+    // 1. Determine the OS-specific command and arguments
+    let (cmd, args) = if cfg!(target_os = "windows") {
+        // Windows: specific syntax to handle spaces and detach process
+        // "start" is a shell built-in, so we must invoke "cmd /C start"
+        // The empty string "" is the window title (required by start if paths have quotes)
+        ("cmd", vec!["/C", "start", "", url])
+    } else if cfg!(target_os = "macos") {
+        // macOS: The "open" command handles everything
+        ("open", vec![url])
+    } else {
+        // Linux/BSD: "xdg-open" is the Freedesktop standard
+        ("xdg-open", vec![url])
+    };
+
+    // 2. Spawn the process
+    // .spawn() creates the child process and returns immediately.
+    // We do NOT use .output() because that would wait for the browser to close.
+    match process::Command::new(cmd).args(&args).spawn() {
+        Ok(_) => println!("Success! Opening: {}", url),
+        Err(e) => eprintln!("Failed to open {} in your default browser: {}", url, e),
+    }
+}
+
 fn open_plot(file_path: String) {
     // opens file in browser
 
@@ -56,22 +80,9 @@ fn open_plot(file_path: String) {
     if cfg!(test) {
         // pass
     } else {
-        // 1. Ensure we have the absolute path to the file
-        // canonicalize() returns a PathBuf and handles relative paths
         println!("Attempting to open plot in your default browser...");
         // 2. Use the open crate to launch the file, if not testing
-        // open::that() works with paths or URL strings
-        match open::that(&html_file_url) {
-            Ok(()) => {
-                println!("Success! Check your browser.");
-            }
-            Err(e) => {
-                // 3. Graceful Fallback
-                // If it fails (e.g. headless environment), print the path for manual opening
-                eprintln!("Could not open the file automatically: {}", e);
-                println!("You can manually open this file:\n{}", html_file_url);
-            }
-        }
+        open_in_browser(&html_file_url);
     }
 }
 
