@@ -127,9 +127,20 @@ fn run(file_path: String) {
     let file_path_config: file_operations::FilePathConfig =
         file_operations::get_file_path_config(&file_path);
 
-    // ensures file_path_plot is not a bare_filename
-    // if not bare_filename, just append .html
-    if file_path_config.absolute_path || file_path_config.relative_path_with_separators {
+    // absolute path, append .html, remove woindows UNC Prefix if present
+    // relative path with separators, just append .hmtl
+    // bare_filename, prepend ./ and append .html
+    if file_path_config.absolute_path {
+        let mut file_path_html = format!("{}.html", &file_path);
+        // Remove the UNC prefix on Windows if present
+        if cfg!(target_os = "windows") && file_path_html.starts_with(r"\\?\") {
+            file_path_html = file_path_html[4..].to_string();
+        }
+        generate_plot(&s2p, file_path_html.clone());
+        open_plot(file_path_html.clone());
+    }
+
+    else if file_path_config.relative_path_with_separators {
         let file_path_html = format!("{}.html", &file_path);
         generate_plot(&s2p, file_path_html.clone());
         open_plot(file_path_html.clone());
