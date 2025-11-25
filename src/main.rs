@@ -1,9 +1,9 @@
 use std::env;
-use std::path::Path;
 use std::process;
 
 // this cannot be crate::Network because of how Cargo works,
 // since cargo/rust treats lib.rs and main.rs as separate crates
+use touchstone::file_operations;
 use touchstone::plot;
 use touchstone::Network;
 
@@ -20,51 +20,6 @@ impl Config {
         let file_argument = args[1].clone();
 
         Ok(Config { file_argument })
-    }
-}
-
-#[derive(Debug)]
-struct FilePathConfig {
-    absolute_path: bool,
-    relative_path_with_separators: bool,
-    bare_filename: bool,
-}
-
-// prevents downstream problems with path.parent() when passing
-// in a bare filename, such as measured.s2p
-// this function help us adjust to ./measured.s2p so logic is easier later
-fn get_file_path_config(path_str: &str) -> FilePathConfig {
-    let path = Path::new(path_str);
-
-    if path.is_absolute() {
-        // /home/user/files/measured.s2p, etc.
-        println!("'{}' is an Absolute path.", path_str);
-        FilePathConfig {
-            absolute_path: true,
-            relative_path_with_separators: false,
-            bare_filename: false,
-        }
-    }
-    // If it's not absolute, we check the number of parts
-    else if path.components().count() > 1 {
-        // files/measured.s2p, etc.
-        println!(
-            "'{}' is a Relative path with separators (nested).",
-            path_str
-        );
-        FilePathConfig {
-            absolute_path: false,
-            relative_path_with_separators: true,
-            bare_filename: false,
-        }
-    } else {
-        // measured.s2p, etc.
-        println!("'{}' is a Bare filename (no separators).", path_str);
-        FilePathConfig {
-            absolute_path: false,
-            relative_path_with_separators: false,
-            bare_filename: true,
-        }
     }
 }
 
@@ -85,22 +40,16 @@ fn generate_plot(s2p: &Network, file_path_plot: String) {
     println!("Plot HTML generated at {}", file_path_plot);
 }
 
-fn open_plot(file_path_plot: String) {
+fn open_plot(file_path: String) {
     // opens file in browser
 
     // Note: This does NOT handle space encoding (spaces remain spaces),
     // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
-    let file_path_file_url = format!(
-        "file://{}",
-        std::fs::canonicalize(&file_path_plot)
-            .unwrap()
-            .to_str()
-            .unwrap()
-    );
+    let html_file_url = file_operations::get_file_url(&file_path);
 
     println!(
         "You can open the plot in your browser at:\n{}",
-        file_path_file_url
+        html_file_url
     );
 
     // if not part of cargo test, open the created file
@@ -112,7 +61,7 @@ fn open_plot(file_path_plot: String) {
         println!("Attempting to open plot in your default browser...");
         // 2. Use the open crate to launch the file, if not testing
         // open::that() works with paths or URL strings
-        match open::that(&file_path_file_url) {
+        match open::that(&html_file_url) {
             Ok(()) => {
                 println!("Success! Check your browser.");
             }
@@ -120,7 +69,7 @@ fn open_plot(file_path_plot: String) {
                 // 3. Graceful Fallback
                 // If it fails (e.g. headless environment), print the path for manual opening
                 eprintln!("Could not open the file automatically: {}", e);
-                println!("You can manually open this file:\n{}", file_path_file_url);
+                println!("You can manually open this file:\n{}", html_file_url);
             }
         }
     }
@@ -164,20 +113,21 @@ fn run(file_path: String) {
     // }
     // println!("============================");
 
-    let file_path_config: FilePathConfig = get_file_path_config(&file_path);
+    let file_path_config: file_operations::FilePathConfig =
+        file_operations::get_file_path_config(&file_path);
 
     // ensures file_path_plot is not a bare_filename
     // if not bare_filename, just append .html
     if file_path_config.absolute_path || file_path_config.relative_path_with_separators {
-        let file_path_plot = format!("{}.html", &file_path);
-        generate_plot(&s2p, file_path_plot.clone());
-        open_plot(file_path_plot.clone());
+        let file_path_html = format!("{}.html", &file_path);
+        generate_plot(&s2p, file_path_html.clone());
+        open_plot(file_path_html.clone());
 
     // if bare_filename, prepend ./ and append .html
     } else if file_path_config.bare_filename {
-        let file_path_plot = format!("./{}.html", &file_path);
-        generate_plot(&s2p, file_path_plot.clone());
-        open_plot(file_path_plot.clone());
+        let file_path_html = format!("./{}.html", &file_path);
+        generate_plot(&s2p, file_path_html.clone());
+        open_plot(file_path_html.clone());
     } else {
         panic!(
             "file_path_config must have one true value: {:?}",

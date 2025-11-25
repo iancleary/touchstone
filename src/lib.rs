@@ -2,6 +2,7 @@ use std::ops;
 mod data_line;
 mod data_pairs;
 mod file_extension;
+pub mod file_operations;
 mod option_line;
 mod parser;
 pub mod plot;
