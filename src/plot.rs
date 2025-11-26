@@ -1,12 +1,10 @@
-use std::path::Path;
+use std::{fs, path::Path};
 
 // The paths are relative to this .rs file
 pub(crate) static PLOTLY_JS: &str = include_str!("assets/js/plotly-3.3.0.min.js");
 // pub (crate) static PLOTLY_SRC_LINE: &str = "./js/plotly-3.3.0.min.js";
 pub(crate) static TAILWIND_CSS: &str = include_str!("assets/js/tailwindcss-3.4.17.js");
 // pub (crate) static TAILWIND_SRC_LINE: &str = "./js/tailwindcss-3.4.17.js";
-
-pub(crate) static EXAMPLE_HTML: &str = include_str!("assets/example.html");
 
 pub(crate) fn get_plotly_js() -> &'static str {
     PLOTLY_JS
@@ -16,41 +14,21 @@ pub(crate) fn get_tailwind_css() -> &'static str {
     TAILWIND_CSS
 }
 
-pub(crate) fn get_example_html() -> &'static str {
-    EXAMPLE_HTML
-}
-
 pub(crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::Result<()> {
     use std::fs::File;
     use std::io::prelude::*;
     use std::path::Path;
 
     let path = Path::new(file_path);
+
+    // delete existing file
+    if path.exists() {
+        let _ = fs::remove_file(path);
+    }
+
+    // open file in write mode
     let mut file = File::create(path)?;
     file.write_all(html_content.as_bytes())?;
-    Ok(())
-}
-
-pub fn generate_example_plot_html(output_path: &str) -> std::io::Result<()> {
-    let folder_path = std::path::Path::new(output_path).parent().unwrap();
-    std::fs::create_dir_all(folder_path)?;
-
-    let html_content = get_example_html();
-    write_plot_html(output_path, html_content)?;
-
-    let js_assets_path = format!(
-        "{}/js",
-        std::path::Path::new(output_path)
-            .parent()
-            .unwrap()
-            .to_str()
-            .unwrap()
-    );
-    std::fs::create_dir_all(&js_assets_path)?;
-    let plotly_js_path = format!("{}/plotly-3.3.0.min.js", js_assets_path);
-    let tailwind_js_path = format!("{}/tailwindcss-3.4.17.js", js_assets_path);
-    std::fs::write(plotly_js_path, get_plotly_js())?;
-    std::fs::write(tailwind_js_path, get_tailwind_css())?;
     Ok(())
 }
 
@@ -166,27 +144,26 @@ mod tests {
 
     use super::*;
     #[test]
-    fn test_generate_example_plot_html() {
-        let output_path = "tests/output/example_plot.html";
-        let result = generate_example_plot_html(output_path);
-        assert!(result.is_ok());
-        assert!(std::path::Path::new(output_path).exists());
-        // clean up
-        let _ = fs::remove_dir_all("tests/");
-    }
-
-    #[test]
     fn test_generate_two_port_plot_html() {
-        let network = Network::new("files/ntwk1.s2p".to_string());
+        let network = Network::new("files/test_plot.s2p".to_string());
 
         let output_path = format!("{}.html", network.name.clone());
 
-        let result = generate_plot_from_two_port_network(&network, &output_path);
-        assert!(result.is_ok());
+        println!("{}", output_path);
+
+        let output_path_as_path = Path::new(&output_path);
+
+        // delete existing file
+        if output_path_as_path.exists() {
+            let _ = fs::remove_file(output_path_as_path);
+        }
+
+        let _ = generate_plot_from_two_port_network(&network, &output_path);
 
         assert!(std::path::Path::new(&output_path).exists());
 
         // clean up
-        let _ = fs::remove_dir_all("tests/");
+        let _remove_test_plot_file = fs::remove_file("files/test_plot.s2p.html");
+        let _remove_tests_js_folder = fs::remove_dir_all("files/js");
     }
 }
