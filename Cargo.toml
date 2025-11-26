@@ -1,6 +1,6 @@
 [package]
 authors = ["Ian Cleary <rust@iancleary.me>"]
-description = "A Touchstone Parser for RF Modeling"
+description = "Touchstone (s2p, etc.) file parser, plotter, and more"
 documentation = "https://docs.rs/touchstone"
 edition = "2021"
 homepage = "https://github.com/iancleary/touchstone"
