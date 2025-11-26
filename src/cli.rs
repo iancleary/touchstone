@@ -166,6 +166,8 @@ mod tests {
             String::from("files/test_cli_config_build.s2p"),
         ];
         let _cli_run = Config::run(&args).unwrap();
+        let _remove_file = fs::remove_file("files/test_cli_config_build.s2p.html");
+        let _remove_js_folder = fs::remove_dir_all("files/js");
     }
 
     #[test]
