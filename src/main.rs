@@ -39,33 +39,65 @@ impl Config {
 }
 
 fn print_help() {
+    // ANSI color codes
+    const BOLD: &str = "\x1b[1m";
+    const CYAN: &str = "\x1b[36m";
+    const GREEN: &str = "\x1b[32m";
+    const YELLOW: &str = "\x1b[33m";
+    const RESET: &str = "\x1b[0m";
+
+    println!();
     println!(
-        "touchstone {} - A Touchstone Parser for RF Modeling",
-        env!("CARGO_PKG_VERSION")
+        "📡 Touchstone (s2p, etc.) file parser, plotter, and more - https://github.com/iancleary/touchstone{}",
+        RESET
     );
     println!();
-    println!("USAGE:");
-    println!("    touchstone <FILE_PATH>");
+    println!("{}{}VERSION:{}", BOLD, YELLOW, RESET);
+    println!("    {}{}{}", GREEN, env!("CARGO_PKG_VERSION"), RESET);
     println!();
-    println!("OPTIONS:");
-    println!("    -v, --version    Print version information");
-    println!("    -h, --help       Print help information");
+    println!("{}{}USAGE:{}", BOLD, YELLOW, RESET);
+    println!("    {} touchstone <FILE_PATH>{}", GREEN, RESET);
     println!();
-    println!("EXAMPLES:");
-    println!("    # Relative path");
-    println!("    touchstone files/measurements.s2p");
+    println!("     FILE_PATH: path to a s2p file");
     println!();
-    println!("    # Bare filename");
-    println!("    touchstone measurement.s2p");
+    println!("     The s2p file is parsed and an interactive plot (html file and js/ folder) ");
+    println!("     is created next to the s2p file.");
+    // println!("     ");
     println!();
-    println!("    # Windows absolute path");
-    println!("    touchstone C:\\Users\\data\\measurements.s2p");
+    println!("{}{}OPTIONS:{}", BOLD, YELLOW, RESET);
+    println!(
+        "    {}  -v, --version{}{}    Print version information",
+        GREEN, RESET, RESET
+    );
+    println!(
+        "    {}  -h, --help{}{}       Print help information",
+        GREEN, RESET, RESET
+    );
     println!();
-    println!("    # Windows UNC path (network path)");
-    println!("    touchstone \\\\server\\mount\\folder\\measurement.s2p");
+    println!("{}{}EXAMPLES:{}", BOLD, YELLOW, RESET);
+    println!("    {} # Relative path{}", CYAN, RESET);
+    println!("    {} touchstone files/measurements.s2p{}", GREEN, RESET);
     println!();
-    println!("    # Unix absolute path");
-    println!("    touchstone /home/user/measurements.s2p");
+    println!("    {} # Bare filename{}", CYAN, RESET);
+    println!("    {} touchstone measurement.s2p{}", GREEN, RESET);
+    println!();
+    println!("    {} # Windows absolute path{}", CYAN, RESET);
+    println!(
+        "    {} touchstone C:\\Users\\data\\measurements.s2p{}",
+        GREEN, RESET
+    );
+    println!();
+    println!("    {} # Windows UNC path (network path){}", CYAN, RESET);
+    println!(
+        "    {} touchstone \\\\server\\mount\\folder\\measurement.s2p{}",
+        GREEN, RESET
+    );
+    println!();
+    println!("    {} # Unix absolute path{}", CYAN, RESET);
+    println!(
+        "    {} touchstone /home/user/measurements.s2p{}",
+        GREEN, RESET
+    );
 }
 
 fn main() {
