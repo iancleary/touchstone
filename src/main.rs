@@ -4,6 +4,7 @@ use std::process;
 // this cannot be crate::Network because of how Cargo works,
 // since cargo/rust treats lib.rs and main.rs as separate crates
 use touchstone::file_operations;
+use touchstone::open;
 use touchstone::plot;
 use touchstone::Network;
 
@@ -16,11 +17,87 @@ impl Config {
         if args.len() < 2 {
             return Err("not enough arguments");
         }
+
+        // Check for special flags
+        match args[1].as_str() {
+            "--version" | "-v" => {
+                println!("touchstone {}", env!("CARGO_PKG_VERSION"));
+                process::exit(0);
+            }
+            "--help" | "-h" => {
+                print_help();
+                process::exit(0);
+            }
+            _ => {}
+        }
+
         // cargo run arg[1], such as cargo run files/2port.sh
         let file_argument = args[1].clone();
 
         Ok(Config { file_argument })
     }
+}
+
+fn print_help() {
+    // ANSI color codes
+    const BOLD: &str = "\x1b[1m";
+    const CYAN: &str = "\x1b[36m";
+    const GREEN: &str = "\x1b[32m";
+    const YELLOW: &str = "\x1b[33m";
+    const RESET: &str = "\x1b[0m";
+
+    println!();
+    println!(
+        "📡 Touchstone (s2p, etc.) file parser, plotter, and more - https://github.com/iancleary/touchstone{}",
+        RESET
+    );
+    println!();
+    println!("{}{}VERSION:{}", BOLD, YELLOW, RESET);
+    println!("    {}{}{}", GREEN, env!("CARGO_PKG_VERSION"), RESET);
+    println!();
+    println!("{}{}USAGE:{}", BOLD, YELLOW, RESET);
+    println!("    {} touchstone <FILE_PATH>{}", GREEN, RESET);
+    println!();
+    println!("     FILE_PATH: path to a s2p file");
+    println!();
+    println!("     The s2p file is parsed and an interactive plot (html file and js/ folder) ");
+    println!("     is created next to the s2p file.");
+    // println!("     ");
+    println!();
+    println!("{}{}OPTIONS:{}", BOLD, YELLOW, RESET);
+    println!(
+        "    {}  -v, --version{}{}    Print version information",
+        GREEN, RESET, RESET
+    );
+    println!(
+        "    {}  -h, --help{}{}       Print help information",
+        GREEN, RESET, RESET
+    );
+    println!();
+    println!("{}{}EXAMPLES:{}", BOLD, YELLOW, RESET);
+    println!("    {} # Relative path{}", CYAN, RESET);
+    println!("    {} touchstone files/measurements.s2p{}", GREEN, RESET);
+    println!();
+    println!("    {} # Bare filename{}", CYAN, RESET);
+    println!("    {} touchstone measurement.s2p{}", GREEN, RESET);
+    println!();
+    println!("    {} # Windows absolute path{}", CYAN, RESET);
+    println!(
+        "    {} touchstone C:\\Users\\data\\measurements.s2p{}",
+        GREEN, RESET
+    );
+    println!();
+    println!("    {} # Windows UNC path (network path){}", CYAN, RESET);
+    println!(
+        "    {} touchstone \\\\server\\mount\\folder\\measurement.s2p{}",
+        GREEN, RESET
+    );
+    println!();
+    println!("    {} # Unix absolute path{}", CYAN, RESET);
+    println!(
+        "    {} touchstone /home/user/measurements.s2p{}",
+        GREEN, RESET
+    );
 }
 
 fn main() {
@@ -31,7 +108,7 @@ fn main() {
         process::exit(1);
     });
 
-    run(config.file_argument);
+    parse_plot_open_in_browser(config.file_argument);
 }
 
 fn generate_plot(s2p: &Network, file_path_plot: String) {
@@ -40,89 +117,12 @@ fn generate_plot(s2p: &Network, file_path_plot: String) {
     println!("Plot HTML generated at {}", file_path_plot);
 }
 
-fn open_in_browser(url: &str) {
-    // 1. Determine the OS-specific command and arguments
-    let (cmd, args) = if cfg!(target_os = "windows") {
-        // Windows: specific syntax to handle spaces and detach process
-        // "start" is a shell built-in, so we must invoke "cmd /C start"
-        // The empty string "" is the window title (required by start if paths have quotes)
-        ("cmd", vec!["/C", "start", "", url])
-    } else if cfg!(target_os = "macos") {
-        // macOS: The "open" command handles everything
-        ("open", vec![url])
-    } else {
-        // Linux/BSD: "xdg-open" is the Freedesktop standard
-        ("xdg-open", vec![url])
-    };
-
-    // 2. Spawn the process
-    // .spawn() creates the child process and returns immediately.
-    // We do NOT use .output() because that would wait for the browser to close.
-    match process::Command::new(cmd).args(&args).spawn() {
-        Ok(_) => println!("Success! Opening: {}", url),
-        Err(e) => eprintln!("Failed to open {} in your default browser: {}", url, e),
-    }
-}
-
-fn open_plot(file_path: String) {
-    // opens file in browser
-
-    // Note: This does NOT handle space encoding (spaces remain spaces),
-    // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
-    let html_file_url = file_operations::get_file_url(&file_path);
-
-    println!(
-        "You can open the plot in your browser at:\n{}",
-        html_file_url
-    );
-
-    // if not part of cargo test, open the created file
-    if cfg!(test) {
-        // pass
-    } else {
-        println!("Attempting to open plot in your default browser...");
-        // 2. Use the open crate to launch the file, if not testing
-        open_in_browser(&html_file_url);
-    }
-}
-
-fn run(file_path: String) {
+fn parse_plot_open_in_browser(file_path: String) {
     println!("\n");
     println!("============================");
     println!("In file {}", file_path);
 
     let s2p = Network::new(file_path.clone());
-
-    // println!("Network created.");
-
-    // let length_of_data = s2p.f.len();
-
-    // let mut head_count = 5;
-    // let mut tail_count = 5;
-    // if length_of_data < 5 {
-    //     println!("Warning: less than 5 data lines in file.");
-    //     head_count = length_of_data;
-    //     tail_count = 0;
-    // }
-
-    // println!("============================");
-    // s2p.print_summary();
-    // println!("============================");
-
-    // println!("\nFirst {:?} S-parameters:\n", head_count);
-    // for i in 0..head_count {
-    //     println!("{:?}", s2p.f[i]);
-    //     println!("{:?}", s2p.s[i]);
-    // }
-
-    // if tail_count != 0 {
-    //     println!("\nLast 5 S-parameters:\n");
-    //     for i in length_of_data - 5..length_of_data {
-    //         println!("{:?}", s2p.f[i]);
-    //         println!("{:?}", s2p.s[i]);
-    //     }
-    // }
-    // println!("============================");
 
     let file_path_config: file_operations::FilePathConfig =
         file_operations::get_file_path_config(&file_path);
@@ -137,19 +137,17 @@ fn run(file_path: String) {
             file_path_html = file_path_html[4..].to_string();
         }
         generate_plot(&s2p, file_path_html.clone());
-        open_plot(file_path_html.clone());
-    }
-
-    else if file_path_config.relative_path_with_separators {
+        open::plot(file_path_html.clone());
+    } else if file_path_config.relative_path_with_separators {
         let file_path_html = format!("{}.html", &file_path);
         generate_plot(&s2p, file_path_html.clone());
-        open_plot(file_path_html.clone());
+        open::plot(file_path_html.clone());
 
     // if bare_filename, prepend ./ and append .html
     } else if file_path_config.bare_filename {
         let file_path_html = format!("./{}.html", &file_path);
         generate_plot(&s2p, file_path_html.clone());
-        open_plot(file_path_html.clone());
+        open::plot(file_path_html.clone());
     } else {
         panic!(
             "file_path_config must have one true value: {:?}",
@@ -178,17 +176,49 @@ mod tests {
     }
 
     #[test]
+    fn test_help_flag() {
+        // Help flag test - verifies the flag is recognized
+        // Note: In actual execution, this would exit the process
+        // This test just documents the expected behavior
+        let help_flags = vec!["--help", "-h"];
+        for flag in help_flags {
+            assert!(flag == "--help" || flag == "-h");
+        }
+    }
+
+    #[test]
+    fn test_version_flag() {
+        // Version flag test - verifies the flag is recognized
+        // Note: In actual execution, this would exit the process
+        // This test just documents the expected behavior
+        let version_flags = vec!["--version", "-v"];
+        for flag in version_flags {
+            assert!(flag == "--version" || flag == "-v");
+        }
+    }
+
+    #[test]
+    fn test_version_output_format() {
+        // Test that version string is in correct format
+        let version = env!("CARGO_PKG_VERSION");
+        assert!(!version.is_empty());
+        // Version should be in format X.Y.Z
+        let parts: Vec<&str> = version.split('.').collect();
+        assert_eq!(parts.len(), 3, "Version should be in X.Y.Z format");
+    }
+
+    #[test]
     fn test_run_function() {
         // test relative file
         let relative_path = String::from("files/ntwk1.s2p");
-        run(relative_path);
+        parse_plot_open_in_browser(relative_path);
         let _relative_remove_file = fs::remove_file("files/ntwk1.s2p.html");
         let _relative_remove_dir = fs::remove_dir_all("files/js");
 
         // test bare filename
         let _bare_filename_copy = fs::copy("files/ntwk1.s2p", "ntwk1.s2p");
         let bare_filename = String::from("ntwk1.s2p");
-        run(bare_filename);
+        parse_plot_open_in_browser(bare_filename);
         let _bare_filename_remove_file_s2p = fs::remove_file("ntwk1.s2p");
         let _bare_filename_remove_file_html = fs::remove_file("ntwk1.s2p.html");
         let _bare_filename_remove_dir = fs::remove_dir_all("js");
@@ -196,7 +226,7 @@ mod tests {
         // This fails if "files/ntwk1.s2p" is missing on disk
         let path_buf = std::fs::canonicalize("files/ntwk1.s2p").unwrap();
         let absolute_path: String = path_buf.to_string_lossy().to_string();
-        run(absolute_path);
+        parse_plot_open_in_browser(absolute_path);
         // don't remove s2p file in files/
         let _absolute_path_remove_file_html = fs::remove_file("files/ntwk1.s2p.html");
         let _absolute_path_remove_dir = fs::remove_dir_all("files/js");

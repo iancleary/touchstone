@@ -3,6 +3,7 @@ mod data_line;
 mod data_pairs;
 mod file_extension;
 pub mod file_operations;
+pub mod open;
 mod option_line;
 mod parser;
 pub mod plot;
