@@ -24,7 +24,7 @@ In file files/ntwk3.s2p
 'files/ntwk3.s2p' is a Relative path with separators (nested).
 Plot HTML generated at files/ntwk3.s2p.html
 You can open the plot in your browser at:
-file:///Users/iancleary/Development/_3_OpenSource/touchstone/files/ntwk3.s2p.html
+file:///Users/iancleary/touchstone/files/ntwk3.s2p.html
 Attempting to open plot in your default browser...
 Success! Opening: file:///Users/iancleary/touchstone/files/ntwk3.s2p.html
 ```
@@ -32,7 +32,7 @@ Success! Opening: file:///Users/iancleary/touchstone/files/ntwk3.s2p.html
 > This works on Windows, MacOS, and Linux file systems!
 
 * MacOS: `file:///Users/iancleary/touchstone/files/ntwk3.s2p.html`
-* Windows: `file:///C:/Users/iancleary/Development/touchstone/files/ntwk3.s2p.html`
+* Windows: `file:///C:/Users/iancleary/touchstone/files/ntwk3.s2p.html`
 * Linux: `file:///home/iancleary/touchstone/files/ntwk3.s2p.html`
 
 This command created an html file that is interactive, and designed to not have any network dependence.

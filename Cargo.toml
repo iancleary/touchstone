@@ -7,7 +7,7 @@ homepage = "https://github.com/iancleary/touchstone"
 license = "MIT"
 name = "touchstone"
 repository = "https://github.com/iancleary/touchstone"
-version = "0.8.2"
+version = "0.8.3"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
