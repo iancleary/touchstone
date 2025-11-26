@@ -21,7 +21,7 @@ impl Config {
         // Check for special flags
         match args[1].as_str() {
             "--version" | "-v" => {
-                println!("touchstone {}", env!("CARGO_PKG_VERSION"));
+                print_version();
                 process::exit(0);
             }
             "--help" | "-h" => {
@@ -31,11 +31,16 @@ impl Config {
             _ => {}
         }
 
-        // cargo run arg[1], such as cargo run files/2port.sh
+        // cargo run arg[1], such as cargo run files/ntwk1.s2p
+        // touchstone arg[1], such as touchstone files/ntwk1.s2p
         let file_argument = args[1].clone();
 
         Ok(Config { file_argument })
     }
+}
+
+fn print_version() {
+    println!("touchstone {}", env!("CARGO_PKG_VERSION"));
 }
 
 fn print_help() {
