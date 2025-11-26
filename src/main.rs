@@ -4,6 +4,7 @@ use std::process;
 // this cannot be crate::Network because of how Cargo works,
 // since cargo/rust treats lib.rs and main.rs as separate crates
 use touchstone::file_operations;
+use touchstone::open;
 use touchstone::plot;
 use touchstone::Network;
 
@@ -40,89 +41,12 @@ fn generate_plot(s2p: &Network, file_path_plot: String) {
     println!("Plot HTML generated at {}", file_path_plot);
 }
 
-fn open_in_browser(url: &str) {
-    // 1. Determine the OS-specific command and arguments
-    let (cmd, args) = if cfg!(target_os = "windows") {
-        // Windows: specific syntax to handle spaces and detach process
-        // "start" is a shell built-in, so we must invoke "cmd /C start"
-        // The empty string "" is the window title (required by start if paths have quotes)
-        ("cmd", vec!["/C", "start", "", url])
-    } else if cfg!(target_os = "macos") {
-        // macOS: The "open" command handles everything
-        ("open", vec![url])
-    } else {
-        // Linux/BSD: "xdg-open" is the Freedesktop standard
-        ("xdg-open", vec![url])
-    };
-
-    // 2. Spawn the process
-    // .spawn() creates the child process and returns immediately.
-    // We do NOT use .output() because that would wait for the browser to close.
-    match process::Command::new(cmd).args(&args).spawn() {
-        Ok(_) => println!("Success! Opening: {}", url),
-        Err(e) => eprintln!("Failed to open {} in your default browser: {}", url, e),
-    }
-}
-
-fn open_plot(file_path: String) {
-    // opens file in browser
-
-    // Note: This does NOT handle space encoding (spaces remain spaces),
-    // which most modern browsers can handle, but strictly speaking is invalid URI syntax.
-    let html_file_url = file_operations::get_file_url(&file_path);
-
-    println!(
-        "You can open the plot in your browser at:\n{}",
-        html_file_url
-    );
-
-    // if not part of cargo test, open the created file
-    if cfg!(test) {
-        // pass
-    } else {
-        println!("Attempting to open plot in your default browser...");
-        // 2. Use the open crate to launch the file, if not testing
-        open_in_browser(&html_file_url);
-    }
-}
-
 fn run(file_path: String) {
     println!("\n");
     println!("============================");
     println!("In file {}", file_path);
 
     let s2p = Network::new(file_path.clone());
-
-    // println!("Network created.");
-
-    // let length_of_data = s2p.f.len();
-
-    // let mut head_count = 5;
-    // let mut tail_count = 5;
-    // if length_of_data < 5 {
-    //     println!("Warning: less than 5 data lines in file.");
-    //     head_count = length_of_data;
-    //     tail_count = 0;
-    // }
-
-    // println!("============================");
-    // s2p.print_summary();
-    // println!("============================");
-
-    // println!("\nFirst {:?} S-parameters:\n", head_count);
-    // for i in 0..head_count {
-    //     println!("{:?}", s2p.f[i]);
-    //     println!("{:?}", s2p.s[i]);
-    // }
-
-    // if tail_count != 0 {
-    //     println!("\nLast 5 S-parameters:\n");
-    //     for i in length_of_data - 5..length_of_data {
-    //         println!("{:?}", s2p.f[i]);
-    //         println!("{:?}", s2p.s[i]);
-    //     }
-    // }
-    // println!("============================");
 
     let file_path_config: file_operations::FilePathConfig =
         file_operations::get_file_path_config(&file_path);
@@ -137,19 +61,17 @@ fn run(file_path: String) {
             file_path_html = file_path_html[4..].to_string();
         }
         generate_plot(&s2p, file_path_html.clone());
-        open_plot(file_path_html.clone());
-    }
-
-    else if file_path_config.relative_path_with_separators {
+        open::plot(file_path_html.clone());
+    } else if file_path_config.relative_path_with_separators {
         let file_path_html = format!("{}.html", &file_path);
         generate_plot(&s2p, file_path_html.clone());
-        open_plot(file_path_html.clone());
+        open::plot(file_path_html.clone());
 
     // if bare_filename, prepend ./ and append .html
     } else if file_path_config.bare_filename {
         let file_path_html = format!("./{}.html", &file_path);
         generate_plot(&s2p, file_path_html.clone());
-        open_plot(file_path_html.clone());
+        open::plot(file_path_html.clone());
     } else {
         panic!(
             "file_path_config must have one true value: {:?}",
