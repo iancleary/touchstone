@@ -16,7 +16,7 @@ impl Config {
             return Err("not enough arguments");
         }
 
-        if args.len() > 2 {
+        if args.len() > 2 && args[1] != "cascade" {
             return Err("too many arguments, expecting only 2, such as `touchstone filepath`");
         }
 
@@ -30,7 +30,92 @@ impl Config {
                 print_help();
                 process::exit(0);
             }
-            _ => {}
+            "cascade" => {
+                // Parse arguments for --name or -n
+                let mut output_name: Option<String> = None;
+                let mut file_paths = Vec::new();
+
+                let mut i = 2;
+                while i < args.len() {
+                    match args[i].as_str() {
+                        "--name" | "-n" => {
+                            if i + 1 < args.len() {
+                                output_name = Some(args[i + 1].clone());
+                                i += 2;
+                            } else {
+                                return Err("missing argument for --name");
+                            }
+                        }
+                        _ => {
+                            file_paths.push(args[i].clone());
+                            i += 1;
+                        }
+                    }
+                }
+
+                if file_paths.len() < 2 {
+                    return Err(
+                        "cascade requires at least 2 files, e.g. `touchstone cascade file1 file2`",
+                    );
+                }
+
+                let mut networks = Vec::new();
+                for path in file_paths.iter() {
+                    networks.push(Network::new(path.clone()));
+                }
+
+                let mut result = networks[0].clone();
+                // Cascade remaining networks
+                for network in networks.iter().skip(1) {
+                    result = result * network.clone();
+                }
+
+                // Determine output path
+                let output_s2p_path = if let Some(name) = output_name {
+                    // If name is provided, use it.
+                    // If it doesn't have an extension, add .s2p?
+                    // Let's assume user provides full filename or we just use it as is.
+                    // But we should probably ensure it ends in .s2p for consistency?
+                    // The prompt says "output s2p file", so let's trust the user or append if missing?
+                    // Let's just use it as is for now.
+                    name
+                } else {
+                    // Default behavior: first file directory, "cascaded_result.html" (but we need s2p now)
+                    let first_file = &file_paths[0];
+                    let path = std::path::Path::new(first_file);
+                    let parent = path.parent().unwrap_or(std::path::Path::new("."));
+                    parent
+                        .join("cascaded_result.s2p")
+                        .to_string_lossy()
+                        .to_string()
+                };
+
+                // Save S2P file
+                if let Err(e) = result.save(&output_s2p_path) {
+                    eprintln!("Failed to save S2P file: {}", e);
+                    // Continue to plot generation? Or return error?
+                    // Let's return error.
+                    return Err("Failed to save S2P file");
+                }
+                println!("Saved cascaded network to {}", output_s2p_path);
+
+                // Generate plot
+                // Plot should be named based on the output s2p file
+                // e.g. output.s2p -> output.s2p.html
+                let output_html_path = format!("{}.html", output_s2p_path);
+
+                generate_plot(&result, output_html_path.clone());
+                open::plot(output_html_path);
+
+                return Ok(Config {});
+            }
+            _ => {
+                if args.len() > 2 {
+                    return Err(
+                        "too many arguments, expecting only 2, such as `touchstone filepath`",
+                    );
+                }
+            }
         }
 
         // cargo run arg[1], such as cargo run files/ntwk1.s2p
@@ -280,5 +365,58 @@ mod tests {
 
         assert!(s2p_path_abs.with_extension("s2p.html").exists());
         assert!(test_dir_abs.join("js").exists());
+    }
+
+    #[test]
+    fn test_cascade_command() {
+        let test_dir = setup_test_dir("test_cascade_command");
+        let s2p1 = test_dir.join("ntwk1.s2p");
+        let s2p2 = test_dir.join("ntwk2.s2p");
+
+        fs::copy("files/ntwk1.s2p", &s2p1).unwrap();
+        fs::copy("files/ntwk2.s2p", &s2p2).unwrap();
+
+        // Test default output
+        let args = vec![
+            String::from("program_name"),
+            String::from("cascade"),
+            s2p1.to_str().unwrap().to_string(),
+            s2p2.to_str().unwrap().to_string(),
+        ];
+
+        let _cli_run = Config::run(&args).unwrap();
+
+        let expected_output_s2p = test_dir.join("cascaded_result.s2p");
+        let expected_output_html = test_dir.join("cascaded_result.s2p.html");
+        assert!(expected_output_s2p.exists());
+        assert!(expected_output_html.exists());
+        assert!(test_dir.join("js").exists());
+
+        // Test with --name
+        let output_name = test_dir.join("custom_output.s2p");
+        let args_named = vec![
+            String::from("program_name"),
+            String::from("cascade"),
+            s2p1.to_str().unwrap().to_string(),
+            s2p2.to_str().unwrap().to_string(),
+            String::from("--name"),
+            output_name.to_str().unwrap().to_string(),
+        ];
+
+        let _cli_run_named = Config::run(&args_named).unwrap();
+
+        assert!(output_name.exists());
+        assert!(output_name.with_extension("s2p.html").exists());
+    }
+
+    #[test]
+    fn test_cascade_not_enough_args() {
+        let args = vec![
+            String::from("program_name"),
+            String::from("cascade"),
+            String::from("file1"),
+        ];
+        let result = Config::run(&args);
+        assert!(result.is_err());
     }
 }

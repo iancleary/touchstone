@@ -10,7 +10,7 @@ mod parser;
 mod plot;
 mod utils;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Network {
     pub name: String,
     pub rank: i32,
@@ -232,6 +232,66 @@ impl Network {
             s: s_new,
         }
     }
+
+    pub fn save(&self, file_path: &str) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(file_path)?;
+
+        // Write comments
+        for comment in &self.comments {
+            writeln!(file, "{}", comment)?;
+        }
+
+        // Write option line
+        // # <frequency unit> <parameter> <format> R <n>
+        writeln!(
+            file,
+            "# {} {} {} {} {}",
+            self.frequency_unit, self.parameter, self.format, self.resistance_string, self.z0
+        )?;
+
+        // Write comments after option line
+        for comment in &self.comments_after_option_line {
+            writeln!(file, "{}", comment)?;
+        }
+
+        // Write data lines
+        for data_line in &self.s {
+            let freq = data_line.frequency;
+            let mut line = format!("{}", freq);
+
+            match self.format.as_str() {
+                "RI" => {
+                    let s = data_line.s_ri;
+                    // N11, N12, N21, N22
+                    // Each is real, imag
+                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
+                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
+                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
+                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                }
+                "MA" => {
+                    let s = data_line.s_ma;
+                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
+                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
+                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
+                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                }
+                "DB" => {
+                    let s = data_line.s_db;
+                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
+                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
+                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
+                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                }
+                _ => panic!("Unsupported format for saving: {}", self.format),
+            }
+
+            writeln!(file, "{}", line)?;
+        }
+
+        Ok(())
+    }
 }
 
 // The `std::ops::Mul` trait is used to specify the functionality of `+`.
@@ -420,5 +480,37 @@ mod tests {
             // assert_eq!(cascaded_network.s[i].s_ma, network3.s[i].s_ma);
             // assert_eq!(cascaded_network.s[i].s_db, network3.s[i].s_db);
         }
+    }
+
+    #[test]
+    fn test_save_load_roundtrip() {
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+
+        let temp_dir = std::env::temp_dir()
+            .join("touchstone_tests")
+            .join("roundtrip");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("roundtrip.s2p");
+        let file_path_str = file_path.to_str().unwrap();
+
+        network1.save(file_path_str).unwrap();
+
+        let network2 = Network::new(file_path_str.to_string());
+
+        assert_eq!(network1.f.len(), network2.f.len());
+        assert_eq!(network1.s.len(), network2.s.len());
+        assert_eq!(network1.format, network2.format);
+        assert_eq!(network1.z0, network2.z0);
+
+        // Check first data point
+        let s1 = network1.s[0].s_ri;
+        let s2 = network2.s[0].s_ri;
+        let epsilon = 1e-6;
+
+        assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
+        assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+
+        // Cleanup
+        std::fs::remove_file(file_path).unwrap();
     }
 }
