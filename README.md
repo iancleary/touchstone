@@ -47,4 +47,4 @@ You can view the HTML source file itself here directly: [examples/ntwk3.s2p.html
 
 * [Touchstone Wikipedia entry](https://en.wikipedia.org/wiki/Touchstone_file)
 * [Touchstone File Format Specification Version 2.1](https://ibis.org/touchstone_ver2.1/touchstone_ver2_1.pdf)
-  * Local Version of [Touchstone File Format Specification Version 2.1](./docs/touchstone_ver2_1.pdf)
+  * Local Version of [Touchstone File Format Specification Version 2.1](https://github.com/iancleary/touchstone/blob/main//docs/touchstone_ver2_1.pdf)
