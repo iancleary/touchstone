@@ -46,3 +46,5 @@ pub fn plot(file_path: String) {
         browser(&html_file_url);
     }
 }
+
+// not test command spawning with cargos
