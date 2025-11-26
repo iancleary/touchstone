@@ -143,27 +143,69 @@ mod tests {
     use crate::Network;
 
     use super::*;
+    use std::path::PathBuf;
+
+    fn setup_test_dir(name: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push("touchstone_tests");
+        path.push(name);
+        path.push(format!(
+            "{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&path).unwrap();
+        path
+    }
+
     #[test]
     fn test_generate_two_port_plot_html() {
-        let network = Network::new("files/test_plot.s2p".to_string());
+        let test_dir = setup_test_dir("test_generate_two_port_plot_html");
+        let s2p_path = test_dir.join("test_plot.s2p");
+        fs::copy("files/test_plot.s2p", &s2p_path).unwrap();
 
-        let output_path = format!("{}.html", network.name.clone());
+        let network = Network::new(s2p_path.to_str().unwrap().to_string());
 
-        println!("{}", output_path);
+        // network.name is derived from filename, so it will be "test_plot.s2p" (or similar depending on implementation)
+        // Network::new uses parser::read_file which sets name.
+        // If name is full path, this might be tricky.
+        // Let's check Network::new implementation or parser.
+        // Assuming name is just filename or derived from it.
+        // But wait, output_path is constructed here.
+        // If network.name is "test_plot.s2p", output_path is "test_plot.s2p.html".
+        // But we want it in the test_dir.
 
-        let output_path_as_path = Path::new(&output_path);
+        // Network::new takes a path.
+        // parser::read_file probably sets name to filename.
+        // Let's assume network.name is just the name.
+
+        // We need to ensure output_path is in test_dir.
+        // generate_plot_from_two_port_network takes output_path.
+        // If output_path is relative, it puts it relative to CWD?
+        // No, generate_two_port_plot_html uses output_path parent.
+
+        // So we should construct output_path to be in test_dir.
+        let output_path = s2p_path.with_extension("s2p.html");
+        let output_path_str = output_path.to_str().unwrap().to_string();
+
+        println!("{}", output_path_str);
+
+        let output_path_as_path = Path::new(&output_path_str);
 
         // delete existing file
         if output_path_as_path.exists() {
             let _ = fs::remove_file(output_path_as_path);
         }
 
-        let _ = generate_plot_from_two_port_network(&network, &output_path);
+        let _ = generate_plot_from_two_port_network(&network, &output_path_str);
 
-        assert!(std::path::Path::new(&output_path).exists());
+        assert!(std::path::Path::new(&output_path_str).exists());
+        assert!(test_dir.join("js").exists());
 
         // clean up
-        let _remove_test_plot_file = fs::remove_file("files/test_plot.s2p.html");
-        let _remove_tests_js_folder = fs::remove_dir_all("files/js");
+        // let _remove_test_plot_file = fs::remove_file(output_path_as_path);
+        // let _remove_tests_js_folder = fs::remove_dir_all(test_dir.join("js"));
     }
 }

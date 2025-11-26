@@ -159,15 +159,38 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use std::path::PathBuf;
+
+    fn setup_test_dir(name: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push("touchstone_tests");
+        path.push(name);
+        path.push(format!(
+            "{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&path).unwrap();
+        path
+    }
+
     #[test]
     fn test_config_build() {
+        let test_dir = setup_test_dir("test_config_build");
+        let s2p_path = test_dir.join("test_cli_config_build.s2p");
+        fs::copy("files/test_cli_config_build.s2p", &s2p_path).unwrap();
+
         let args = vec![
             String::from("program_name"),
-            String::from("files/test_cli_config_build.s2p"),
+            s2p_path.to_str().unwrap().to_string(),
         ];
         let _cli_run = Config::run(&args).unwrap();
-        let _remove_file = fs::remove_file("files/test_cli_config_build.s2p.html");
-        let _remove_js_folder = fs::remove_dir_all("files/js");
+
+        // Cleanup is optional as it's in temp dir, but good practice if we want to check it doesn't fail
+        // let _remove_file = fs::remove_file(s2p_path.with_extension("s2p.html"));
+        // let _remove_js_folder = fs::remove_dir_all(test_dir.join("js"));
     }
 
     #[test]
@@ -212,12 +235,28 @@ mod tests {
     #[test]
     fn test_run_function() {
         // test relative file
-        let relative_path = String::from("files/test_cli_run_relative_path.s2p");
-        parse_plot_open_in_browser(relative_path);
-        let _relative_remove_file = fs::remove_file("files/test_cli_run_relative_path.s2p.html");
-        let _relative_remove_dir = fs::remove_dir_all("files/js");
+        let test_dir_rel = setup_test_dir("test_run_function_rel");
+        // Create a "files" subdir to match the relative path structure expected if needed,
+        // or just use the file in the temp dir.
+        // The original test used "files/test_cli_run_relative_path.s2p".
+        // parse_plot_open_in_browser handles relative paths.
+
+        let s2p_path_rel = test_dir_rel.join("test_cli_run_relative_path.s2p");
+        fs::copy("files/test_cli_run_relative_path.s2p", &s2p_path_rel).unwrap();
+
+        parse_plot_open_in_browser(s2p_path_rel.to_str().unwrap().to_string());
+        // Output should be next to it
+        assert!(s2p_path_rel.with_extension("s2p.html").exists());
+        assert!(test_dir_rel.join("js").exists());
 
         // test bare filename
+        // This MUST run in CWD because we pass a bare filename.
+        // We can't easily isolate this without changing CWD.
+        // But since we moved other tests out of "files/", this test (using root) shouldn't conflict
+        // with them, UNLESS another test uses root.
+        // The only other test using root is this one.
+        // So we keep it as is, but maybe add a lock if we add more root tests.
+
         let _bare_filename_copy = fs::copy(
             "files/test_cli_run_bare_filename.s2p",
             "test_cli_run_bare_filename.s2p",
@@ -229,13 +268,17 @@ mod tests {
             fs::remove_file("test_cli_run_bare_filename.s2p.html");
         let _bare_filename_remove_dir = fs::remove_dir_all("js");
 
-        // This fails if "files/ntwk1.s2p" is missing on disk
-        let path_buf = std::fs::canonicalize("files/test_cli_run_absolute_path.s2p").unwrap();
+        // test absolute path
+        let test_dir_abs = setup_test_dir("test_run_function_abs");
+        let s2p_path_abs = test_dir_abs.join("test_cli_run_absolute_path.s2p");
+        fs::copy("files/test_cli_run_absolute_path.s2p", &s2p_path_abs).unwrap();
+
+        let path_buf = std::fs::canonicalize(&s2p_path_abs).unwrap();
         let absolute_path: String = path_buf.to_string_lossy().to_string();
+
         parse_plot_open_in_browser(absolute_path);
-        // don't remove s2p file in files/
-        let _absolute_path_remove_file_html =
-            fs::remove_file("files/test_cli_run_absolute_path.s2p.html");
-        let _absolute_path_remove_dir = fs::remove_dir_all("files/js");
+
+        assert!(s2p_path_abs.with_extension("s2p.html").exists());
+        assert!(test_dir_abs.join("js").exists());
     }
 }
