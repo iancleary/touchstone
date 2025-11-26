@@ -194,7 +194,7 @@ impl Network {
             // but for S-parameters of the cascaded block, we usually reference the input port of the first
             // and output port of the second.
             // If Z0 is the same for both (checked at start of function), then it's just self.z0.
-            let s_new_ri = abcd_new.from_abcd(self.z0);
+            let s_new_ri = abcd_new.to_s(self.z0);
 
             let s_new_ma = crate::data_pairs::MagnitudeAngleMatrix(
                 (

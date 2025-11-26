@@ -306,7 +306,7 @@ impl RealImaginaryMatrix {
     // B = Z0 * ((1+S11)(1+S22) - S12S21) / (2S21)
     // C = (1/Z0) * ((1-S11)(1-S22) - S12S21) / (2S21)
     // D = ((1-S11)(1+S22) + S12S21) / (2S21)
-    pub fn to_abcd(&self, z0: f64) -> RealImaginaryMatrix {
+    pub fn to_abcd(self, z0: f64) -> RealImaginaryMatrix {
         let s11 = self.0 .0;
         let s12 = self.0 .1;
         let s21 = self.1 .0;
@@ -337,7 +337,7 @@ impl RealImaginaryMatrix {
     // S12 = 2(AD - BC) / Denom  <-- Note: AD-BC is determinant, usually 1 for reciprocal networks
     // S21 = 2 / Denom
     // S22 = (-A + B/Z0 - C*Z0 + D) / Denom
-    pub fn from_abcd(self, z0: f64) -> RealImaginaryMatrix {
+    pub fn to_s(self, z0: f64) -> RealImaginaryMatrix {
         let a = self.0 .0;
         let b = self.0 .1;
         let c = self.1 .0;
@@ -614,7 +614,7 @@ mod tests {
         assert_eq!(abcd.1 .0 .0, 0.0); // C real
         assert_eq!(abcd.1 .1 .0, 1.0); // D real
 
-        let s_back = abcd.from_abcd(50.0);
+        let s_back = abcd.to_s(50.0);
         assert_eq!(s_back, s);
     }
 }
