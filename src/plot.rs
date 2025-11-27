@@ -34,12 +34,12 @@ pub(crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::R
 
 pub fn generate_two_port_plot_html(
     output_path: &str,
-    network_name: &str,
-    frequency_data: &str,
-    s11_data: &str,
-    s21_data: &str,
-    s12_data: &str,
-    s22_data: &str,
+    network_names: &[String],
+    frequency_data: &[String],
+    s11_data: &[String],
+    s21_data: &[String],
+    s12_data: &[String],
+    s22_data: &[String],
 ) -> std::io::Result<()> {
     // this only works if a relative path or full path is given.
     // the unwrap fails if "ntwk1.s2p" is given instead of "./ntwk1.s2p"
@@ -58,12 +58,27 @@ pub fn generate_two_port_plot_html(
     std::fs::create_dir_all(folder_path)?;
 
     let mut html_content = include_str!("assets/template_2port.html").to_string();
-    html_content = html_content.replace("{{network_name}}", network_name);
-    html_content = html_content.replace("{{frequency_data}}", frequency_data);
-    html_content = html_content.replace("{{s11_data}}", s11_data);
-    html_content = html_content.replace("{{s21_data}}", s21_data);
-    html_content = html_content.replace("{{s12_data}}", s12_data);
-    html_content = html_content.replace("{{s22_data}}", s22_data);
+
+    // Format arrays for JS injection
+    let format_js_string_array = |arr: &[String]| -> String {
+        let items: Vec<String> = arr.iter().map(|s| format!("'{}'", s)).collect();
+        format!("[{}]", items.join(", "))
+    };
+
+    let format_js_data_array = |arr: &[String]| -> String { format!("[{}]", arr.join(", ")) };
+
+    html_content = html_content.replace(
+        "{{ network_names }}",
+        &format_js_string_array(network_names),
+    );
+    html_content = html_content.replace(
+        "{{ frequency_data }}",
+        &format_js_data_array(frequency_data),
+    );
+    html_content = html_content.replace("{{ s11_data }}", &format_js_data_array(s11_data));
+    html_content = html_content.replace("{{ s21_data }}", &format_js_data_array(s21_data));
+    html_content = html_content.replace("{{ s12_data }}", &format_js_data_array(s12_data));
+    html_content = html_content.replace("{{ s22_data }}", &format_js_data_array(s22_data));
 
     write_plot_html(output_path, &html_content)?;
 
@@ -83,56 +98,69 @@ pub fn generate_two_port_plot_html(
     Ok(())
 }
 
-pub fn generate_plot_from_two_port_network(
-    network: &crate::Network,
+pub fn generate_plot_from_networks(
+    networks: &[crate::Network],
     output_path: &str,
 ) -> std::io::Result<()> {
-    let frequency_data = network
-        .f
-        .iter()
-        .map(|f| f.to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-    let s11_data = network
-        .s_db(1, 1)
-        .iter()
-        .map(|s| s.s_db.decibel().to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-    let s21_data = network
-        .s_db(2, 1)
-        .iter()
-        .map(|s| s.s_db.decibel().to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-    let s12_data = network
-        .s_db(1, 2)
-        .iter()
-        .map(|s| s.s_db.decibel().to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-    let s22_data = network
-        .s_db(2, 2)
-        .iter()
-        .map(|s| s.s_db.decibel().to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
+    let mut network_names = Vec::new();
+    let mut frequency_data_list = Vec::new();
+    let mut s11_data_list = Vec::new();
+    let mut s21_data_list = Vec::new();
+    let mut s12_data_list = Vec::new();
+    let mut s22_data_list = Vec::new();
 
-    // add brackets to make them valid JavaScript arrays
-    let frequency_data = format!("[{}]", frequency_data);
-    let s11_data = format!("[{}]", s11_data);
-    let s21_data = format!("[{}]", s21_data);
-    let s12_data = format!("[{}]", s12_data);
-    let s22_data = format!("[{}]", s22_data);
+    for network in networks {
+        network_names.push(network.name.clone());
+
+        let freq = network
+            .f
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        frequency_data_list.push(format!("[{}]", freq));
+
+        let s11 = network
+            .s_db(1, 1)
+            .iter()
+            .map(|s| s.s_db.decibel().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        s11_data_list.push(format!("[{}]", s11));
+
+        let s21 = network
+            .s_db(2, 1)
+            .iter()
+            .map(|s| s.s_db.decibel().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        s21_data_list.push(format!("[{}]", s21));
+
+        let s12 = network
+            .s_db(1, 2)
+            .iter()
+            .map(|s| s.s_db.decibel().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        s12_data_list.push(format!("[{}]", s12));
+
+        let s22 = network
+            .s_db(2, 2)
+            .iter()
+            .map(|s| s.s_db.decibel().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        s22_data_list.push(format!("[{}]", s22));
+    }
 
     generate_two_port_plot_html(
         output_path,
-        network.name.as_str(),
-        &frequency_data,
-        &s11_data,
-        &s21_data,
-        &s12_data,
-        &s22_data,
+        &network_names,
+        &frequency_data_list,
+        &s11_data_list,
+        &s21_data_list,
+        &s12_data_list,
+        &s22_data_list,
     )
 }
 
@@ -164,7 +192,7 @@ mod tests {
     fn test_generate_two_port_plot_html() {
         let test_dir = setup_test_dir("test_generate_two_port_plot_html");
         let s2p_path = test_dir.join("test_plot.s2p");
-        fs::copy("files/test_plot.s2p", &s2p_path).unwrap();
+        fs::copy("files/test_plot/test_plot.s2p", &s2p_path).unwrap();
 
         let network = Network::new(s2p_path.to_str().unwrap().to_string());
 
@@ -199,7 +227,7 @@ mod tests {
             let _ = fs::remove_file(output_path_as_path);
         }
 
-        let _ = generate_plot_from_two_port_network(&network, &output_path_str);
+        let _ = generate_plot_from_networks(&[network], &output_path_str);
 
         assert!(std::path::Path::new(&output_path_str).exists());
         assert!(test_dir.join("js").exists());

@@ -104,7 +104,7 @@ impl Config {
                 // e.g. output.s2p -> output.s2p.html
                 let output_html_path = format!("{}.html", output_s2p_path);
 
-                generate_plot(&result, output_html_path.clone());
+                generate_plot(&[result], output_html_path.clone());
                 open::plot(output_html_path);
 
                 return Ok(Config {});
@@ -194,9 +194,9 @@ fn print_help() {
     );
 }
 
-fn generate_plot(s2p: &Network, file_path_plot: String) {
+fn generate_plot(networks: &[Network], file_path_plot: String) {
     // creates a html file from network
-    plot::generate_plot_from_two_port_network(s2p, &file_path_plot).unwrap();
+    plot::generate_plot_from_networks(networks, &file_path_plot).unwrap();
     println!("Plot HTML generated at {}", file_path_plot);
 }
 
@@ -205,37 +205,70 @@ fn parse_plot_open_in_browser(file_path: String) {
     println!("============================");
     println!("In file {}", file_path);
 
-    let s2p = Network::new(file_path.clone());
+    let path = std::path::Path::new(&file_path);
+    let mut networks = Vec::new();
+    let mut output_html_path = String::new();
 
-    let file_path_config: file_operations::FilePathConfig =
-        file_operations::get_file_path_config(&file_path);
-
-    // absolute path, append .html, remove woindows UNC Prefix if present
-    // relative path with separators, just append .hmtl
-    // bare_filename, prepend ./ and append .html
-    if file_path_config.absolute_path {
-        let mut file_path_html = format!("{}.html", &file_path);
-        // Remove the UNC prefix on Windows if present
-        if cfg!(target_os = "windows") && file_path_html.starts_with(r"\\?\") {
-            file_path_html = file_path_html[4..].to_string();
+    if path.is_dir() {
+        println!("Directory detected. Plotting all valid network files in directory.");
+        // Iterate over files in directory
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(extension) = path.extension() {
+                        let ext_str = extension.to_string_lossy().to_lowercase();
+                        // Check for s2p, s1p, etc. (s*p)
+                        if ext_str.starts_with('s') && ext_str.ends_with('p') && ext_str.len() == 3
+                        {
+                            println!("Found network file: {:?}", path);
+                            networks.push(Network::new(path.to_string_lossy().to_string()));
+                        }
+                    }
+                }
+            }
         }
-        generate_plot(&s2p, file_path_html.clone());
-        open::plot(file_path_html.clone());
-    } else if file_path_config.relative_path_with_separators {
-        let file_path_html = format!("{}.html", &file_path);
-        generate_plot(&s2p, file_path_html.clone());
-        open::plot(file_path_html.clone());
-
-    // if bare_filename, prepend ./ and append .html
-    } else if file_path_config.bare_filename {
-        let file_path_html = format!("./{}.html", &file_path);
-        generate_plot(&s2p, file_path_html.clone());
-        open::plot(file_path_html.clone());
+        if networks.is_empty() {
+            eprintln!("No valid network files found in directory.");
+            return;
+        }
+        // Output HTML in the directory
+        output_html_path = path
+            .join("combined_plot.html")
+            .to_string_lossy()
+            .to_string();
+        generate_plot(&networks, output_html_path.clone());
+        open::plot(output_html_path);
     } else {
-        panic!(
-            "file_path_config must have one true value: {:?}",
-            file_path_config
-        );
+        // Single file
+        let s2p = Network::new(file_path.clone());
+        networks.push(s2p);
+
+        let file_path_config: file_operations::FilePathConfig =
+            file_operations::get_file_path_config(&file_path);
+
+        // absolute path, append .html, remove woindows UNC Prefix if present
+        // relative path with separators, just append .hmtl
+        // bare_filename, prepend ./ and append .html
+        if file_path_config.absolute_path {
+            let mut file_path_html = format!("{}.html", &file_path);
+            // Remove the UNC prefix on Windows if present
+            if cfg!(target_os = "windows") && file_path_html.starts_with(r"\\?\") {
+                file_path_html = file_path_html[4..].to_string();
+            }
+            output_html_path = file_path_html;
+        } else if file_path_config.relative_path_with_separators {
+            output_html_path = format!("{}.html", &file_path);
+        } else if file_path_config.bare_filename {
+            output_html_path = format!("./{}.html", &file_path);
+        } else {
+            panic!(
+                "file_path_config must have one true value: {:?}",
+                file_path_config
+            );
+        }
+        generate_plot(&networks, output_html_path.clone());
+        open::plot(output_html_path);
     }
 }
 
@@ -265,7 +298,7 @@ mod tests {
     fn test_config_build() {
         let test_dir = setup_test_dir("test_config_build");
         let s2p_path = test_dir.join("test_cli_config_build.s2p");
-        fs::copy("files/test_cli_config_build.s2p", &s2p_path).unwrap();
+        fs::copy("files/test_cli/test_cli_config_build.s2p", &s2p_path).unwrap();
 
         let args = vec![
             String::from("program_name"),
@@ -327,7 +360,11 @@ mod tests {
         // parse_plot_open_in_browser handles relative paths.
 
         let s2p_path_rel = test_dir_rel.join("test_cli_run_relative_path.s2p");
-        fs::copy("files/test_cli_run_relative_path.s2p", &s2p_path_rel).unwrap();
+        fs::copy(
+            "files/test_cli/test_cli_run_relative_path.s2p",
+            &s2p_path_rel,
+        )
+        .unwrap();
 
         parse_plot_open_in_browser(s2p_path_rel.to_str().unwrap().to_string());
         // Output should be next to it
@@ -343,7 +380,7 @@ mod tests {
         // So we keep it as is, but maybe add a lock if we add more root tests.
 
         let _bare_filename_copy = fs::copy(
-            "files/test_cli_run_bare_filename.s2p",
+            "files/test_cli/test_cli_run_bare_filename.s2p",
             "test_cli_run_bare_filename.s2p",
         );
         let bare_filename = String::from("test_cli_run_bare_filename.s2p");
@@ -356,7 +393,11 @@ mod tests {
         // test absolute path
         let test_dir_abs = setup_test_dir("test_run_function_abs");
         let s2p_path_abs = test_dir_abs.join("test_cli_run_absolute_path.s2p");
-        fs::copy("files/test_cli_run_absolute_path.s2p", &s2p_path_abs).unwrap();
+        fs::copy(
+            "files/test_cli/test_cli_run_absolute_path.s2p",
+            &s2p_path_abs,
+        )
+        .unwrap();
 
         let path_buf = std::fs::canonicalize(&s2p_path_abs).unwrap();
         let absolute_path: String = path_buf.to_string_lossy().to_string();
@@ -418,5 +459,35 @@ mod tests {
         ];
         let result = Config::run(&args);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_directory_plot() {
+        let test_dir = setup_test_dir("test_directory_plot");
+        let s2p1 = test_dir.join("ntwk1.s2p");
+        let s2p2 = test_dir.join("ntwk2.s2p");
+        // Add a non-s2p file to ensure it's ignored
+        let txt_file = test_dir.join("readme.txt");
+
+        fs::copy("files/ntwk1.s2p", &s2p1).unwrap();
+        fs::copy("files/ntwk2.s2p", &s2p2).unwrap();
+        fs::write(&txt_file, "ignore me").unwrap();
+
+        // Pass the directory path
+        parse_plot_open_in_browser(test_dir.to_str().unwrap().to_string());
+
+        // Check for combined output
+        let expected_output = test_dir.join("combined_plot.html");
+        assert!(expected_output.exists());
+        assert!(test_dir.join("js").exists());
+
+        // Verify content contains both network names (simple check)
+        let content = fs::read_to_string(&expected_output).unwrap();
+        // ntwk1.s2p and ntwk2.s2p should be in the content (as part of network names)
+        // Note: Network::new uses the filename as name by default usually?
+        // Let's check if "ntwk1.s2p" is in the content.
+        // The template injects network_names.
+        assert!(content.contains("ntwk1.s2p"));
+        assert!(content.contains("ntwk2.s2p"));
     }
 }
