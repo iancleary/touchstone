@@ -151,11 +151,17 @@ fn print_help() {
     println!();
     println!("{}{}USAGE:{}", BOLD, YELLOW, RESET);
     println!("    {} touchstone <FILE_PATH>{}", GREEN, RESET);
+    println!("    {} touchstone <DIRECTORY_PATH>{}", GREEN, RESET);
+    println!(
+        "    {} touchstone cascade <FILE_1> <FILE_2> ... [--name <OUTPUT_NAME>]{}",
+        GREEN, RESET
+    );
     println!();
     println!("     FILE_PATH: path to a s2p file");
+    println!("     DIRECTORY_PATH: path to a directory containing s2p files");
     println!();
-    println!("     The s2p file is parsed and an interactive plot (html file and js/ folder) ");
-    println!("     is created next to the s2p file.");
+    println!("     The s2p file(s) are parsed and an interactive plot (html file and js/ folder) ");
+    println!("     is created next to the source file(s).");
     // println!("     ");
     println!();
     println!("{}{}OPTIONS:{}", BOLD, YELLOW, RESET);
@@ -169,8 +175,26 @@ fn print_help() {
     );
     println!();
     println!("{}{}EXAMPLES:{}", BOLD, YELLOW, RESET);
-    println!("    {} # Relative path{}", CYAN, RESET);
+    println!("    {} # Single file (Relative path){}", CYAN, RESET);
     println!("    {} touchstone files/measurements.s2p{}", GREEN, RESET);
+    println!();
+    println!(
+        "    {} # Directory (Plot all files in folder){}",
+        CYAN, RESET
+    );
+    println!("    {} touchstone files/data_folder{}", GREEN, RESET);
+    println!();
+    println!("    {} # Cascade two networks{}", CYAN, RESET);
+    println!(
+        "    {} touchstone cascade ntwk1.s2p ntwk2.s2p{}",
+        GREEN, RESET
+    );
+    println!();
+    println!("    {} # Cascade with custom output name{}", CYAN, RESET);
+    println!(
+        "    {} touchstone cascade ntwk1.s2p ntwk2.s2p --name result.s2p{}",
+        GREEN, RESET
+    );
     println!();
     println!("    {} # Bare filename{}", CYAN, RESET);
     println!("    {} touchstone measurement.s2p{}", GREEN, RESET);
