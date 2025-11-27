@@ -207,7 +207,6 @@ fn parse_plot_open_in_browser(file_path: String) {
 
     let path = std::path::Path::new(&file_path);
     let mut networks = Vec::new();
-    let mut output_html_path = String::new();
 
     if path.is_dir() {
         println!("Directory detected. Plotting all valid network files in directory.");
@@ -230,15 +229,14 @@ fn parse_plot_open_in_browser(file_path: String) {
         }
         if networks.is_empty() {
             eprintln!("No valid network files found in directory.");
-            return;
         }
         // Output HTML in the directory
-        output_html_path = path
+        let output_html_path = path
             .join("combined_plot.html")
             .to_string_lossy()
             .to_string();
         generate_plot(&networks, output_html_path.clone());
-        open::plot(output_html_path);
+        open::plot(output_html_path.clone());
     } else {
         // Single file
         let s2p = Network::new(file_path.clone());
@@ -250,25 +248,28 @@ fn parse_plot_open_in_browser(file_path: String) {
         // absolute path, append .html, remove woindows UNC Prefix if present
         // relative path with separators, just append .hmtl
         // bare_filename, prepend ./ and append .html
-        if file_path_config.absolute_path {
+        // absolute path, append .html, remove woindows UNC Prefix if present
+        // relative path with separators, just append .hmtl
+        // bare_filename, prepend ./ and append .html
+        let output_html_path = if file_path_config.absolute_path {
             let mut file_path_html = format!("{}.html", &file_path);
             // Remove the UNC prefix on Windows if present
             if cfg!(target_os = "windows") && file_path_html.starts_with(r"\\?\") {
                 file_path_html = file_path_html[4..].to_string();
             }
-            output_html_path = file_path_html;
+            file_path_html
         } else if file_path_config.relative_path_with_separators {
-            output_html_path = format!("{}.html", &file_path);
+            format!("{}.html", &file_path)
         } else if file_path_config.bare_filename {
-            output_html_path = format!("./{}.html", &file_path);
+            format!("./{}.html", &file_path)
         } else {
             panic!(
                 "file_path_config must have one true value: {:?}",
                 file_path_config
             );
-        }
+        };
         generate_plot(&networks, output_html_path.clone());
-        open::plot(output_html_path);
+        open::plot(output_html_path.clone());
     }
 }
 
