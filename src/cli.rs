@@ -128,11 +128,17 @@ impl Config {
     }
 }
 
-fn print_version() {
+pub fn print_version() {
     println!("touchstone {}", env!("CARGO_PKG_VERSION"));
 }
 
-fn print_help() {
+pub fn print_error(error: &str) {
+    const RED: &str = "\x1b[31m";
+    const RESET: &str = "\x1b[0m";
+    println!("{}Problem parsing arguments: {error}{}", RED, RESET);
+}
+
+pub fn print_help() {
     // ANSI color codes
     const BOLD: &str = "\x1b[1m";
     const CYAN: &str = "\x1b[36m";
@@ -140,7 +146,6 @@ fn print_help() {
     const YELLOW: &str = "\x1b[33m";
     const RESET: &str = "\x1b[0m";
 
-    println!();
     println!(
         "📡 Touchstone (s2p, etc.) file parser, plotter, and more - https://github.com/iancleary/touchstone{}",
         RESET
