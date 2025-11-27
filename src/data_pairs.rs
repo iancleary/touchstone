@@ -1,4 +1,5 @@
 use crate::utils::degrees_to_radians;
+use std::ops;
 // FROM docs/touchstone_ver2_1.pdf (Page 6)
 //
 // format    specifies the format of the network parameter data pairs.  Legal values are:
@@ -82,6 +83,76 @@ impl RealImaginary {
 
     pub fn from_decibel_angle(da: DecibelAngle) -> Self {
         RealImaginary(da.real(), da.imaginary())
+    }
+}
+
+// Add
+impl ops::Add for RealImaginary {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        RealImaginary(self.0 + other.0, self.1 + other.1)
+    }
+}
+
+// Sub
+impl ops::Sub for RealImaginary {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        RealImaginary(self.0 - other.0, self.1 - other.1)
+    }
+}
+
+// Mul
+impl ops::Mul for RealImaginary {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        RealImaginary(
+            self.0 * other.0 - self.1 * other.1,
+            self.0 * other.1 + self.1 * other.0,
+        )
+    }
+}
+
+// Mul<f64> for RealImaginary
+impl ops::Mul<f64> for RealImaginary {
+    type Output = Self;
+
+    fn mul(self, other: f64) -> Self {
+        RealImaginary(self.0 * other, self.1 * other)
+    }
+}
+
+// Mul<RealImaginary> for f64
+impl ops::Mul<RealImaginary> for f64 {
+    type Output = RealImaginary;
+
+    fn mul(self, other: RealImaginary) -> RealImaginary {
+        RealImaginary(self * other.0, self * other.1)
+    }
+}
+
+// Div
+impl ops::Div for RealImaginary {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self {
+        let denominator = other.0 * other.0 + other.1 * other.1;
+        RealImaginary(
+            (self.0 * other.0 + self.1 * other.1) / denominator,
+            (self.1 * other.0 - self.0 * other.1) / denominator,
+        )
+    }
+}
+
+// Div<f64> for RealImaginary
+impl ops::Div<f64> for RealImaginary {
+    type Output = Self;
+
+    fn div(self, other: f64) -> Self {
+        RealImaginary(self.0 / other, self.1 / other)
     }
 }
 
@@ -196,6 +267,97 @@ impl RealImaginaryMatrix {
             (2, 2) => self.1 .1,
             _ => panic!("Invalid port numbers: {}, {}", j, k),
         }
+    }
+}
+
+impl ops::Mul for RealImaginaryMatrix {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        let a11 = self.0 .0;
+        let a12 = self.0 .1;
+        let a21 = self.1 .0;
+        let a22 = self.1 .1;
+
+        let b11 = other.0 .0;
+        let b12 = other.0 .1;
+        let b21 = other.1 .0;
+        let b22 = other.1 .1;
+
+        // C = A * B
+        // C11 = A11*B11 + A12*B21
+        let c11 = a11 * b11 + a12 * b21;
+        // C12 = A11*B12 + A12*B22
+        let c12 = a11 * b12 + a12 * b22;
+        // C21 = A21*B11 + A22*B21
+        let c21 = a21 * b11 + a22 * b21;
+        // C22 = A21*B12 + A22*B22
+        let c22 = a21 * b12 + a22 * b22;
+
+        RealImaginaryMatrix((c11, c12), (c21, c22))
+    }
+}
+impl RealImaginaryMatrix {
+    // Convert S-parameters to ABCD parameters
+    // https://en.wikipedia.org/wiki/Scattering_parameters#Scattering_transfer_parameters
+    // But we want ABCD (Transmission Matrix), not T-parameters (Scattering Transfer Matrix)
+    // https://en.wikipedia.org/wiki/ABCD_parameters#S_parameters
+    // A = ((1+S11)(1-S22) + S12S21) / (2S21)
+    // B = Z0 * ((1+S11)(1+S22) - S12S21) / (2S21)
+    // C = (1/Z0) * ((1-S11)(1-S22) - S12S21) / (2S21)
+    // D = ((1-S11)(1+S22) + S12S21) / (2S21)
+    pub fn to_abcd(self, z0: f64) -> RealImaginaryMatrix {
+        let s11 = self.0 .0;
+        let s12 = self.0 .1;
+        let s21 = self.1 .0;
+        let s22 = self.1 .1;
+
+        let one = RealImaginary(1.0, 0.0);
+        let two_s21 = s21 * 2.0;
+
+        // A = ((1+S11)(1-S22) + S12S21) / (2S21)
+        let a = ((one + s11) * (one - s22) + s12 * s21) / two_s21;
+
+        // B = Z0 * ((1+S11)(1+S22) - S12S21) / (2S21)
+        let b = ((one + s11) * (one + s22) - s12 * s21) * z0 / two_s21;
+
+        // C = (1/Z0) * ((1-S11)(1-S22) - S12S21) / (2S21)
+        let c = ((one - s11) * (one - s22) - s12 * s21) / z0 / two_s21;
+
+        // D = ((1-S11)(1+S22) + S12S21) / (2S21)
+        let d = ((one - s11) * (one + s22) + s12 * s21) / two_s21;
+
+        RealImaginaryMatrix((a, b), (c, d))
+    }
+
+    // Convert ABCD parameters to S-parameters
+    // https://en.wikipedia.org/wiki/ABCD_parameters#S_parameters
+    // Denom = A + B/Z0 + C*Z0 + D
+    // S11 = (A + B/Z0 - C*Z0 - D) / Denom
+    // S12 = 2(AD - BC) / Denom  <-- Note: AD-BC is determinant, usually 1 for reciprocal networks
+    // S21 = 2 / Denom
+    // S22 = (-A + B/Z0 - C*Z0 + D) / Denom
+    pub fn to_s(self, z0: f64) -> RealImaginaryMatrix {
+        let a = self.0 .0;
+        let b = self.0 .1;
+        let c = self.1 .0;
+        let d = self.1 .1;
+
+        let denom = a + b / z0 + c * z0 + d;
+
+        // S11 = (A + B/Z0 - C*Z0 - D) / Denom
+        let s11 = (a + b / z0 - c * z0 - d) / denom;
+
+        // S12 = 2(AD - BC) / Denom
+        let s12 = (a * d - b * c) * 2.0 / denom;
+
+        // S21 = 2 / Denom
+        let s21 = RealImaginary(2.0, 0.0) / denom;
+
+        // S22 = (-A + B/Z0 - C*Z0 + D) / Denom
+        let s22 = (RealImaginary(0.0, 0.0) - a + b / z0 - c * z0 + d) / denom;
+
+        RealImaginaryMatrix((s11, s12), (s21, s22))
     }
 }
 
@@ -393,5 +555,66 @@ mod tests {
 
         // keeps 9 decimal places
         assert_eq!(round_to_nine_decimal_places(ri.imaginary()), -20.0);
+    }
+
+    #[test]
+    fn test_real_imaginary_arithmetic() {
+        let a = RealImaginary(1.0, 2.0);
+        let b = RealImaginary(3.0, 4.0);
+
+        // Add
+        let c = a + b;
+        assert_eq!(c, RealImaginary(4.0, 6.0));
+
+        // Sub
+        let d = b - a;
+        assert_eq!(d, RealImaginary(2.0, 2.0));
+
+        // Mul
+        // (1+2i)(3+4i) = 3 + 4i + 6i - 8 = -5 + 10i
+        let e = a * b;
+        assert_eq!(e, RealImaginary(-5.0, 10.0));
+
+        // Div
+        // (1+2i)/(3+4i) = (1+2i)(3-4i)/(9+16) = (3 - 4i + 6i + 8)/25 = (11 + 2i)/25 = 0.44 + 0.08i
+        let f = a / b;
+        assert_eq!(f, RealImaginary(0.44, 0.08));
+    }
+
+    #[test]
+    fn test_s_to_abcd_conversion() {
+        // Identity S-matrix (matched, no transmission) -> ABCD?
+        // S = [[0, 0], [0, 0]] -> Z0 * [[1, 0], [0, 1]] ? No, that's not right.
+        // Let's use a known conversion.
+        // S to ABCD
+        // A = ((1+S11)(1-S22) + S12S21) / (2S21)
+        // B = Z0 * ((1+S11)(1+S22) - S12S21) / (2S21)
+        // C = (1/Z0) * ((1-S11)(1-S22) - S12S21) / (2S21)
+        // D = ((1-S11)(1+S22) + S12S21) / (2S21)
+
+        // Let's just verify the functions exist and compile for now in the main code,
+        // and maybe add a simple test case if I can calculate one easily.
+        // S = [[0, 1], [1, 0]] (Through connection)
+        // A = ((1)(1) + 1) / 2 = 1
+        // B = 50 * ((1)(1) - 1) / 2 = 0
+        // C = (1/50) * ((1)(1) - 1) / 2 = 0
+        // D = ((1)(1) + 1) / 2 = 1
+        // So S=[[0,1],[1,0]] -> ABCD=[[1,0],[0,1]]
+
+        let s = RealImaginaryMatrix(
+            (RealImaginary(0.0, 0.0), RealImaginary(1.0, 0.0)),
+            (RealImaginary(1.0, 0.0), RealImaginary(0.0, 0.0)),
+        );
+
+        let abcd = s.to_abcd(50.0);
+        // A=1, B=0, C=0, D=1
+        assert_eq!(abcd.0 .0 .0, 1.0); // A real
+        assert_eq!(abcd.0 .0 .1, 0.0); // A imag
+        assert_eq!(abcd.0 .1 .0, 0.0); // B real
+        assert_eq!(abcd.1 .0 .0, 0.0); // C real
+        assert_eq!(abcd.1 .1 .0, 1.0); // D real
+
+        let s_back = abcd.to_s(50.0);
+        assert_eq!(s_back, s);
     }
 }

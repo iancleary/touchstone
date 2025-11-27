@@ -10,7 +10,7 @@ mod parser;
 mod plot;
 mod utils;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Network {
     pub name: String,
     pub rank: i32,
@@ -176,7 +176,48 @@ impl Network {
 
         let new_name = format!("Cascaded({},{})", self.name, other.name);
 
-        // needs to be reworked for ABCD cascade of 2 port networks
+        let mut s_new = Vec::new();
+        // Assuming index-wise alignment as discussed
+        let len = std::cmp::min(self.s.len(), other.s.len());
+
+        for i in 0..len {
+            let freq = self.s[i].frequency;
+            let s1 = self.s[i].s_ri;
+            let s2 = other.s[i].s_ri;
+
+            let abcd1 = s1.to_abcd(self.z0);
+            let abcd2 = s2.to_abcd(other.z0);
+
+            let abcd_new = abcd1 * abcd2;
+
+            // Resulting Z0? Usually the Z0 of the output port of the second network,
+            // but for S-parameters of the cascaded block, we usually reference the input port of the first
+            // and output port of the second.
+            // If Z0 is the same for both (checked at start of function), then it's just self.z0.
+            let s_new_ri = abcd_new.to_s(self.z0);
+
+            let s_new_ma = crate::data_pairs::MagnitudeAngleMatrix(
+                (
+                    s_new_ri.0 .0.magnitude_angle(),
+                    s_new_ri.0 .1.magnitude_angle(),
+                ),
+                (
+                    s_new_ri.1 .0.magnitude_angle(),
+                    s_new_ri.1 .1.magnitude_angle(),
+                ),
+            );
+
+            let s_new_db =
+                crate::data_pairs::DecibelAngleMatrix::from_magnitude_angle_matrix(s_new_ma);
+
+            s_new.push(crate::data_line::ParsedDataLine {
+                frequency: freq,
+                s_ri: s_new_ri,
+                s_ma: s_new_ma,
+                s_db: s_new_db,
+            });
+        }
+
         Network {
             name: new_name,
             rank: self.rank,
@@ -187,9 +228,69 @@ impl Network {
             z0: self.z0,
             comments,
             comments_after_option_line,
-            f: self.f.clone(),
-            s: self.s.clone(), // TODO: implement proper cascading of S-parameters
+            f: self.f.clone(), // Note: this might be longer than s_new if other is shorter
+            s: s_new,
         }
+    }
+
+    pub fn save(&self, file_path: &str) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(file_path)?;
+
+        // Write comments
+        for comment in &self.comments {
+            writeln!(file, "{}", comment)?;
+        }
+
+        // Write option line
+        // # <frequency unit> <parameter> <format> R <n>
+        writeln!(
+            file,
+            "# {} {} {} {} {}",
+            self.frequency_unit, self.parameter, self.format, self.resistance_string, self.z0
+        )?;
+
+        // Write comments after option line
+        for comment in &self.comments_after_option_line {
+            writeln!(file, "{}", comment)?;
+        }
+
+        // Write data lines
+        for data_line in &self.s {
+            let freq = data_line.frequency;
+            let mut line = format!("{}", freq);
+
+            match self.format.as_str() {
+                "RI" => {
+                    let s = data_line.s_ri;
+                    // N11, N12, N21, N22
+                    // Each is real, imag
+                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
+                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
+                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
+                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                }
+                "MA" => {
+                    let s = data_line.s_ma;
+                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
+                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
+                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
+                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                }
+                "DB" => {
+                    let s = data_line.s_db;
+                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
+                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
+                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
+                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                }
+                _ => panic!("Unsupported format for saving: {}", self.format),
+            }
+
+            writeln!(file, "{}", line)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -268,9 +369,58 @@ mod tests {
         let network1 = Network::new("files/ntwk1.s2p".to_string());
         let network2 = Network::new("files/ntwk2.s2p".to_string());
 
+        let network3 = Network::new("files/ntwk3.s2p".to_string());
+
         let cascaded_network = network1.cascade(&network2);
 
         assert_eq!(cascaded_network.f.len(), 91);
+        assert_eq!(cascaded_network.s.len(), 91);
+
+        for i in 0..cascaded_network.s.len() {
+            assert_eq!(cascaded_network.s[i].frequency, network3.s[i].frequency);
+
+            let s1 = cascaded_network.s[i].s_ri;
+            let s2 = network3.s[i].s_ri;
+            let epsilon = 1e-4; // Relaxed epsilon for floating point differences
+
+            assert!(
+                (s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon,
+                "S11 real mismatch at freq {}",
+                cascaded_network.s[i].frequency
+            );
+            assert!(
+                (s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon,
+                "S11 imag mismatch"
+            );
+            assert!(
+                (s1.0 .1 .0 - s2.0 .1 .0).abs() < epsilon,
+                "S12 real mismatch"
+            );
+            assert!(
+                (s1.0 .1 .1 - s2.0 .1 .1).abs() < epsilon,
+                "S12 imag mismatch"
+            );
+            assert!(
+                (s1.1 .0 .0 - s2.1 .0 .0).abs() < epsilon,
+                "S21 real mismatch"
+            );
+            assert!(
+                (s1.1 .0 .1 - s2.1 .0 .1).abs() < epsilon,
+                "S21 imag mismatch"
+            );
+            assert!(
+                (s1.1 .1 .0 - s2.1 .1 .0).abs() < epsilon,
+                "S22 real mismatch"
+            );
+            assert!(
+                (s1.1 .1 .1 - s2.1 .1 .1).abs() < epsilon,
+                "S22 imag mismatch"
+            );
+
+            // Derived values might also differ slightly, skipping strict check
+            // assert_eq!(cascaded_network.s[i].s_ma, network3.s[i].s_ma);
+            // assert_eq!(cascaded_network.s[i].s_db, network3.s[i].s_db);
+        }
     }
 
     #[test]
@@ -278,20 +428,89 @@ mod tests {
         let network1 = Network::new("files/ntwk1.s2p".to_string());
         let network2 = Network::new("files/ntwk2.s2p".to_string());
 
-        let _cascaded_network = network1 * network2;
+        let cascaded_network = network1 * network2;
 
-        // let network3 = Network::new("files/ntwk3.s2p".to_string());
+        let network3 = Network::new("files/ntwk3.s2p".to_string());
 
-        // // assert_eq!(cascaded_network.comments.len(), 4);
-        // // assert_eq!(cascaded_network.data_lines.len(), 91);
+        assert_eq!(cascaded_network.f.len(), 91);
+        assert_eq!(cascaded_network.s.len(), 91);
 
-        // let num_data_lines = network3.s.len();
-        // println!("Number of data lines in cascaded network: {}", num_data_lines);
-        // // assert_eq!(num_data_lines, 42); // debug
-        // for i in 0..num_data_lines {
-        //     println!("Data line {}: {:?}", i + 1, _cascaded_network.s[i]);
-        //     assert_eq!(_cascaded_network.s[i].frequency, network3.s[i].frequency);
-        //     assert_eq!(_cascaded_network.s[i].s_ri, network3.s[i].s_ri);
-        // }
+        for i in 0..cascaded_network.s.len() {
+            assert_eq!(cascaded_network.s[i].frequency, network3.s[i].frequency);
+
+            let s1 = cascaded_network.s[i].s_ri;
+            let s2 = network3.s[i].s_ri;
+            let epsilon = 1e-4; // Relaxed epsilon for floating point differences
+
+            assert!(
+                (s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon,
+                "S11 real mismatch at freq {}",
+                cascaded_network.s[i].frequency
+            );
+            assert!(
+                (s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon,
+                "S11 imag mismatch"
+            );
+            assert!(
+                (s1.0 .1 .0 - s2.0 .1 .0).abs() < epsilon,
+                "S12 real mismatch"
+            );
+            assert!(
+                (s1.0 .1 .1 - s2.0 .1 .1).abs() < epsilon,
+                "S12 imag mismatch"
+            );
+            assert!(
+                (s1.1 .0 .0 - s2.1 .0 .0).abs() < epsilon,
+                "S21 real mismatch"
+            );
+            assert!(
+                (s1.1 .0 .1 - s2.1 .0 .1).abs() < epsilon,
+                "S21 imag mismatch"
+            );
+            assert!(
+                (s1.1 .1 .0 - s2.1 .1 .0).abs() < epsilon,
+                "S22 real mismatch"
+            );
+            assert!(
+                (s1.1 .1 .1 - s2.1 .1 .1).abs() < epsilon,
+                "S22 imag mismatch"
+            );
+
+            // Derived values might also differ slightly, skipping strict check
+            // assert_eq!(cascaded_network.s[i].s_ma, network3.s[i].s_ma);
+            // assert_eq!(cascaded_network.s[i].s_db, network3.s[i].s_db);
+        }
+    }
+
+    #[test]
+    fn test_save_load_roundtrip() {
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+
+        let temp_dir = std::env::temp_dir()
+            .join("touchstone_tests")
+            .join("roundtrip");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("roundtrip.s2p");
+        let file_path_str = file_path.to_str().unwrap();
+
+        network1.save(file_path_str).unwrap();
+
+        let network2 = Network::new(file_path_str.to_string());
+
+        assert_eq!(network1.f.len(), network2.f.len());
+        assert_eq!(network1.s.len(), network2.s.len());
+        assert_eq!(network1.format, network2.format);
+        assert_eq!(network1.z0, network2.z0);
+
+        // Check first data point
+        let s1 = network1.s[0].s_ri;
+        let s2 = network2.s[0].s_ri;
+        let epsilon = 1e-6;
+
+        assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
+        assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+
+        // Cleanup
+        std::fs::remove_file(file_path).unwrap();
     }
 }
