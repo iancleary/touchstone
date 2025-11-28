@@ -128,7 +128,7 @@ Success! Opening: file:///Users/iancleary/Development/touchstone/files/combined_
 
 This command created an html file that is interactive, and designed to not have any network dependence.
 
-[![HTML file created for the files directory by running `touchstone files/` in the root of this directory](https://github.com/iancleary/touchstone/blob/main/examples/ntwk3.s2p.html.png?raw=true)](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html)
+[![HTML file created for the files directory by running `touchstone files/` in the root of this directory](https://github.com/iancleary/touchstone/blob/main/examples/combined_plot.html.png?raw=true)](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html)
 
 You can view the HTML source file itself here directly: [examples/combined_plot.html](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html).
 
