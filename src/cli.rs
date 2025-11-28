@@ -232,12 +232,11 @@ fn generate_plot(networks: &[Network], file_path_plot: String) {
 fn parse_plot_open_in_browser(file_path: String) {
     println!("\n");
     println!("============================");
-    println!("In file {}", file_path);
-
     let path = std::path::Path::new(&file_path);
     let mut networks = Vec::new();
 
     if path.is_dir() {
+        println!("In directory: {}", file_path);
         println!("Directory detected. Plotting all valid network files in directory.");
         // Iterate over files in directory
         if let Ok(entries) = std::fs::read_dir(path) {
@@ -268,6 +267,9 @@ fn parse_plot_open_in_browser(file_path: String) {
         open::plot(output_html_path.clone());
     } else {
         // Single file
+        println!("Single file detected. Plotting.");
+        println!("In file: {}", file_path);
+
         let s2p = Network::new(file_path.clone());
         networks.push(s2p);
 
