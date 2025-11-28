@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Clone)]
 pub struct Options {
     pub frequency_unit: String,
@@ -66,6 +68,36 @@ impl Options {
             resistance_string: "R".to_string(),
             reference_resistance: "50".to_string(),
         }
+    }
+
+    pub fn new(
+        frequency_unit: String,
+        parameter: String,
+        format: String,
+        resistance_string: String,
+        reference_resistance: String,
+    ) -> Self {
+        Self {
+            frequency_unit,
+            parameter,
+            format,
+            resistance_string,
+            reference_resistance,
+        }
+    }
+}
+
+impl fmt::Display for Options {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let line = format!(
+            "# {} {} {} {} {}",
+            self.frequency_unit,
+            self.parameter,
+            self.format,
+            self.resistance_string,
+            self.reference_resistance
+        );
+        write!(f, "{}", line)
     }
 }
 
@@ -317,5 +349,11 @@ mod tests {
         assert_eq!(options.format, "DB");
         assert_eq!(options.resistance_string, "R");
         assert_eq!(options.reference_resistance, "100");
+    }
+
+    #[test]
+    fn to_string() {
+        let options = Options::default();
+        assert_eq!(options.to_string(), "# GHz S MA R 50");
     }
 }

@@ -244,11 +244,14 @@ impl Network {
 
         // Write option line
         // # <frequency unit> <parameter> <format> R <n>
-        writeln!(
-            file,
-            "# {} {} {} {} {}",
-            self.frequency_unit, self.parameter, self.format, self.resistance_string, self.z0
-        )?;
+        let option_line = option_line::Options::new(
+            self.frequency_unit.clone(),
+            self.parameter.clone(),
+            self.format.clone(),
+            self.resistance_string.clone(),
+            self.z0.to_string().clone(),
+        );
+        writeln!(file, "{}", option_line)?;
 
         // Write comments after option line
         for comment in &self.comments_after_option_line {
@@ -257,7 +260,19 @@ impl Network {
 
         // Write data lines
         for data_line in &self.s {
-            let freq = data_line.frequency;
+            let mut freq = data_line.frequency;
+            let frequency_unit = self.frequency_unit.clone();
+
+            if frequency_unit == "THz" {
+                freq = rfconversions::frequency::hz_to_thz(freq);
+            } else if frequency_unit == "GHz" {
+                freq = rfconversions::frequency::hz_to_ghz(freq);
+            } else if frequency_unit == "MHz" {
+                freq = rfconversions::frequency::hz_to_mhz(freq);
+            } else if frequency_unit == "kHz" {
+                freq = rfconversions::frequency::hz_to_khz(freq);
+            }
+
             let mut line = format!("{}", freq);
 
             match self.format.as_str() {
@@ -438,6 +453,11 @@ mod tests {
         for i in 0..cascaded_network.s.len() {
             assert_eq!(cascaded_network.s[i].frequency, network3.s[i].frequency);
 
+            let f1 = cascaded_network.f[i];
+            let f2 = network3.f[i];
+
+            assert_eq!(f1, f2);
+
             let s1 = cascaded_network.s[i].s_ri;
             let s2 = network3.s[i].s_ri;
             let epsilon = 1e-4; // Relaxed epsilon for floating point differences
@@ -502,13 +522,26 @@ mod tests {
         assert_eq!(network1.format, network2.format);
         assert_eq!(network1.z0, network2.z0);
 
-        // Check first data point
-        let s1 = network1.s[0].s_ri;
-        let s2 = network2.s[0].s_ri;
-        let epsilon = 1e-6;
+        let path_temp = file_path_str.to_string();
+        let binding = std::path::Path::new(&path_temp);
+        let network2_name = binding.to_str().unwrap();
 
-        assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
-        assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+        assert_eq!(network2.name, network2_name);
+        assert_eq!(network1.parameter, network2.parameter);
+
+        assert_eq!(network1.f.len(), network2.f.len());
+        for i in 0..network1.f.len() {
+            assert_eq!(network1.f[i], network2.f[i]);
+        }
+
+        assert_eq!(network1.s.len(), network2.s.len());
+        for i in 0..network1.s.len() {
+            let s1 = network1.s[i].s_ri;
+            let s2 = network2.s[i].s_ri;
+            let epsilon = 1e-6;
+            assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
+            assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+        }
 
         // Cleanup
         std::fs::remove_file(file_path).unwrap();
