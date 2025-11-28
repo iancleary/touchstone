@@ -522,13 +522,26 @@ mod tests {
         assert_eq!(network1.format, network2.format);
         assert_eq!(network1.z0, network2.z0);
 
-        // Check first data point
-        let s1 = network1.s[0].s_ri;
-        let s2 = network2.s[0].s_ri;
-        let epsilon = 1e-6;
+        let path_temp = file_path_str.to_string();
+        let binding = std::path::Path::new(&path_temp);
+        let network2_name = binding.to_str().unwrap();
 
-        assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
-        assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+        assert_eq!(network2.name, network2_name);
+        assert_eq!(network1.parameter, network2.parameter);
+
+        assert_eq!(network1.f.len(), network2.f.len());
+        for i in 0..network1.f.len() {
+            assert_eq!(network1.f[i], network2.f[i]);
+        }
+
+        assert_eq!(network1.s.len(), network2.s.len());
+        for i in 0..network1.s.len() {
+            let s1 = network1.s[i].s_ri;
+            let s2 = network2.s[i].s_ri;
+            let epsilon = 1e-6;
+            assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
+            assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+        }
 
         // Cleanup
         std::fs::remove_file(file_path).unwrap();
