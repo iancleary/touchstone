@@ -73,8 +73,8 @@ impl Network {
         let mut s_db_vector: Vec<FrequencyDB> = Vec::new();
         for i in 0..self.s.len() {
             let frequency = self.s[i].frequency;
-            let s_db_matrix = self.s[i].s_db;
-            let s_db_value = s_db_matrix.get(j, k);
+            let s_db_matrix = &self.s[i].s_db;
+            let s_db_value = s_db_matrix.get(j as usize, k as usize);
             let frequency_db = FrequencyDB {
                 frequency,
                 s_db: s_db_value,
@@ -88,8 +88,8 @@ impl Network {
         let mut s_ri_vector: Vec<FrequencyRI> = Vec::new();
         for i in 0..self.s.len() {
             let frequency = self.s[i].frequency;
-            let s_ri_matrix = self.s[i].s_ri;
-            let s_ri_value = s_ri_matrix.get(j, k);
+            let s_ri_matrix = &self.s[i].s_ri;
+            let s_ri_value = s_ri_matrix.get(j as usize, k as usize);
             let frequency_ri = FrequencyRI {
                 frequency,
                 s_ri: s_ri_value,
@@ -103,8 +103,8 @@ impl Network {
         let mut s_ma_vector: Vec<FrequencyMA> = Vec::new();
         for i in 0..self.s.len() {
             let frequency = self.s[i].frequency;
-            let s_ma_matrix = self.s[i].s_ma;
-            let s_ma_value = s_ma_matrix.get(j, k);
+            let s_ma_matrix = &self.s[i].s_ma;
+            let s_ma_value = s_ma_matrix.get(j as usize, k as usize);
             let frequency_ma = FrequencyMA {
                 frequency,
                 s_ma: s_ma_value,
@@ -182,8 +182,8 @@ impl Network {
 
         for i in 0..len {
             let freq = self.s[i].frequency;
-            let s1 = self.s[i].s_ri;
-            let s2 = other.s[i].s_ri;
+            let s1 = &self.s[i].s_ri;
+            let s2 = &other.s[i].s_ri;
 
             let abcd1 = s1.to_abcd(self.z0);
             let abcd2 = s2.to_abcd(other.z0);
@@ -196,19 +196,19 @@ impl Network {
             // If Z0 is the same for both (checked at start of function), then it's just self.z0.
             let s_new_ri = abcd_new.to_s(self.z0);
 
-            let s_new_ma = crate::data_pairs::MagnitudeAngleMatrix(
-                (
-                    s_new_ri.0 .0.magnitude_angle(),
-                    s_new_ri.0 .1.magnitude_angle(),
-                ),
-                (
-                    s_new_ri.1 .0.magnitude_angle(),
-                    s_new_ri.1 .1.magnitude_angle(),
-                ),
-            );
+            let s_new_ma = crate::data_pairs::MagnitudeAngleMatrix::from_vec(vec![
+                vec![
+                    s_new_ri.get(1, 1).magnitude_angle(),
+                    s_new_ri.get(1, 2).magnitude_angle(),
+                ],
+                vec![
+                    s_new_ri.get(2, 1).magnitude_angle(),
+                    s_new_ri.get(2, 2).magnitude_angle(),
+                ],
+            ]);
 
             let s_new_db =
-                crate::data_pairs::DecibelAngleMatrix::from_magnitude_angle_matrix(s_new_ma);
+                crate::data_pairs::DecibelAngleMatrix::from_magnitude_angle_matrix(&s_new_ma);
 
             s_new.push(crate::data_line::ParsedDataLine {
                 frequency: freq,
@@ -277,27 +277,27 @@ impl Network {
 
             match self.format.as_str() {
                 "RI" => {
-                    let s = data_line.s_ri;
+                    let s = &data_line.s_ri;
                     // N11, N12, N21, N22
                     // Each is real, imag
-                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
-                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
-                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
-                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                    line.push_str(&format!(" {} {}", s.get(1, 1).0, s.get(1, 1).1));
+                    line.push_str(&format!(" {} {}", s.get(1, 2).0, s.get(1, 2).1));
+                    line.push_str(&format!(" {} {}", s.get(2, 1).0, s.get(2, 1).1));
+                    line.push_str(&format!(" {} {}", s.get(2, 2).0, s.get(2, 2).1));
                 }
                 "MA" => {
-                    let s = data_line.s_ma;
-                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
-                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
-                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
-                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                    let s = &data_line.s_ma;
+                    line.push_str(&format!(" {} {}", s.get(1, 1).0, s.get(1, 1).1));
+                    line.push_str(&format!(" {} {}", s.get(1, 2).0, s.get(1, 2).1));
+                    line.push_str(&format!(" {} {}", s.get(2, 1).0, s.get(2, 1).1));
+                    line.push_str(&format!(" {} {}", s.get(2, 2).0, s.get(2, 2).1));
                 }
                 "DB" => {
-                    let s = data_line.s_db;
-                    line.push_str(&format!(" {} {}", s.0 .0 .0, s.0 .0 .1));
-                    line.push_str(&format!(" {} {}", s.0 .1 .0, s.0 .1 .1));
-                    line.push_str(&format!(" {} {}", s.1 .0 .0, s.1 .0 .1));
-                    line.push_str(&format!(" {} {}", s.1 .1 .0, s.1 .1 .1));
+                    let s = &data_line.s_db;
+                    line.push_str(&format!(" {} {}", s.get(1, 1).0, s.get(1, 1).1));
+                    line.push_str(&format!(" {} {}", s.get(1, 2).0, s.get(1, 2).1));
+                    line.push_str(&format!(" {} {}", s.get(2, 1).0, s.get(2, 1).1));
+                    line.push_str(&format!(" {} {}", s.get(2, 2).0, s.get(2, 2).1));
                 }
                 _ => panic!("Unsupported format for saving: {}", self.format),
             }
@@ -394,41 +394,41 @@ mod tests {
         for i in 0..cascaded_network.s.len() {
             assert_eq!(cascaded_network.s[i].frequency, network3.s[i].frequency);
 
-            let s1 = cascaded_network.s[i].s_ri;
-            let s2 = network3.s[i].s_ri;
+            let s1 = &cascaded_network.s[i].s_ri;
+            let s2 = &network3.s[i].s_ri;
             let epsilon = 1e-4; // Relaxed epsilon for floating point differences
 
             assert!(
-                (s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon,
+                (s1.get(1, 1).0 - s2.get(1, 1).0).abs() < epsilon,
                 "S11 real mismatch at freq {}",
                 cascaded_network.s[i].frequency
             );
             assert!(
-                (s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon,
+                (s1.get(1, 1).1 - s2.get(1, 1).1).abs() < epsilon,
                 "S11 imag mismatch"
             );
             assert!(
-                (s1.0 .1 .0 - s2.0 .1 .0).abs() < epsilon,
+                (s1.get(1, 2).0 - s2.get(1, 2).0).abs() < epsilon,
                 "S12 real mismatch"
             );
             assert!(
-                (s1.0 .1 .1 - s2.0 .1 .1).abs() < epsilon,
+                (s1.get(1, 2).1 - s2.get(1, 2).1).abs() < epsilon,
                 "S12 imag mismatch"
             );
             assert!(
-                (s1.1 .0 .0 - s2.1 .0 .0).abs() < epsilon,
+                (s1.get(2, 1).0 - s2.get(2, 1).0).abs() < epsilon,
                 "S21 real mismatch"
             );
             assert!(
-                (s1.1 .0 .1 - s2.1 .0 .1).abs() < epsilon,
+                (s1.get(2, 1).1 - s2.get(2, 1).1).abs() < epsilon,
                 "S21 imag mismatch"
             );
             assert!(
-                (s1.1 .1 .0 - s2.1 .1 .0).abs() < epsilon,
+                (s1.get(2, 2).0 - s2.get(2, 2).0).abs() < epsilon,
                 "S22 real mismatch"
             );
             assert!(
-                (s1.1 .1 .1 - s2.1 .1 .1).abs() < epsilon,
+                (s1.get(2, 2).1 - s2.get(2, 2).1).abs() < epsilon,
                 "S22 imag mismatch"
             );
 
@@ -458,41 +458,41 @@ mod tests {
 
             assert_eq!(f1, f2);
 
-            let s1 = cascaded_network.s[i].s_ri;
-            let s2 = network3.s[i].s_ri;
+            let s1 = &cascaded_network.s[i].s_ri;
+            let s2 = &network3.s[i].s_ri;
             let epsilon = 1e-4; // Relaxed epsilon for floating point differences
 
             assert!(
-                (s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon,
+                (s1.get(1, 1).0 - s2.get(1, 1).0).abs() < epsilon,
                 "S11 real mismatch at freq {}",
                 cascaded_network.s[i].frequency
             );
             assert!(
-                (s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon,
+                (s1.get(1, 1).1 - s2.get(1, 1).1).abs() < epsilon,
                 "S11 imag mismatch"
             );
             assert!(
-                (s1.0 .1 .0 - s2.0 .1 .0).abs() < epsilon,
+                (s1.get(1, 2).0 - s2.get(1, 2).0).abs() < epsilon,
                 "S12 real mismatch"
             );
             assert!(
-                (s1.0 .1 .1 - s2.0 .1 .1).abs() < epsilon,
+                (s1.get(1, 2).1 - s2.get(1, 2).1).abs() < epsilon,
                 "S12 imag mismatch"
             );
             assert!(
-                (s1.1 .0 .0 - s2.1 .0 .0).abs() < epsilon,
+                (s1.get(2, 1).0 - s2.get(2, 1).0).abs() < epsilon,
                 "S21 real mismatch"
             );
             assert!(
-                (s1.1 .0 .1 - s2.1 .0 .1).abs() < epsilon,
+                (s1.get(2, 1).1 - s2.get(2, 1).1).abs() < epsilon,
                 "S21 imag mismatch"
             );
             assert!(
-                (s1.1 .1 .0 - s2.1 .1 .0).abs() < epsilon,
+                (s1.get(2, 2).0 - s2.get(2, 2).0).abs() < epsilon,
                 "S22 real mismatch"
             );
             assert!(
-                (s1.1 .1 .1 - s2.1 .1 .1).abs() < epsilon,
+                (s1.get(2, 2).1 - s2.get(2, 2).1).abs() < epsilon,
                 "S22 imag mismatch"
             );
 
@@ -536,11 +536,11 @@ mod tests {
 
         assert_eq!(network1.s.len(), network2.s.len());
         for i in 0..network1.s.len() {
-            let s1 = network1.s[i].s_ri;
-            let s2 = network2.s[i].s_ri;
+            let s1 = &network1.s[i].s_ri;
+            let s2 = &network2.s[i].s_ri;
             let epsilon = 1e-6;
-            assert!((s1.0 .0 .0 - s2.0 .0 .0).abs() < epsilon);
-            assert!((s1.0 .0 .1 - s2.0 .0 .1).abs() < epsilon);
+            assert!((s1.get(1, 1).0 - s2.get(1, 1).0).abs() < epsilon);
+            assert!((s1.get(1, 1).1 - s2.get(1, 1).1).abs() < epsilon);
         }
 
         // Cleanup
