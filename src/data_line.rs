@@ -7,7 +7,7 @@ use crate::data_pairs::MagnitudeAngleMatrix;
 use crate::data_pairs::RealImaginary;
 use crate::data_pairs::RealImaginaryMatrix;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ParsedDataLine {
     pub frequency: f64,
     pub s_ri: RealImaginaryMatrix,
@@ -16,7 +16,7 @@ pub struct ParsedDataLine {
 }
 
 pub(crate) fn parse_data_line(
-    data_line: String,
+    data_lines: Vec<String>,
     format: &String,
     n: &i32,
     frequency_unit: &String,
@@ -42,8 +42,17 @@ pub(crate) fn parse_data_line(
     let expect_number_of_parts = 1 + (2 * (n * n));
     // println!("expected number of parts: {:?}", expect_number_of_parts);
 
-    // println!("Data Line: {data_line}");
-    let parts = data_line.split_whitespace().collect::<Vec<_>>();
+    // Combine all lines into a single vector of parts
+    // This handles both single-line and multi-line format
+    let mut parts = Vec::new();
+    for line in &data_lines {
+        // println!("Data Line: {}", line);
+        let line_parts: Vec<_> = line
+            .split_whitespace()
+            .filter(|s| !s.starts_with('!')) // Skip inline comments
+            .collect();
+        parts.extend(line_parts);
+    }
 
     let len_parts = parts.len();
     // println!("Data Line Parts (len {}): {:?}", len_parts, parts);
@@ -61,12 +70,7 @@ pub(crate) fn parse_data_line(
     // println!("{}", len_parts);
     // println!("f64_parts (len {}): {:?}", len_parts, f64_parts);
 
-    if n != &2 {
-        panic!(
-            "Only 2-port data lines are currently supported. Found {}-port data line.",
-            n
-        );
-    }
+    let n_usize = *n as usize;
 
     let mut frequency = str_to_f64(parts[0]);
 
@@ -103,38 +107,43 @@ pub(crate) fn parse_data_line(
 
     if format == "RI" {
         // Real-Imaginary format
-        let s_ri = RealImaginaryMatrix(
-            (
-                RealImaginary(f64_parts[1], f64_parts[2]),
-                RealImaginary(f64_parts[3], f64_parts[4]),
-            ),
-            (
-                RealImaginary(f64_parts[5], f64_parts[6]),
-                RealImaginary(f64_parts[7], f64_parts[8]),
-            ),
-        );
+        // Build NxN matrix from f64_parts in row-major order
+        let mut s_ri_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                let idx = 1 + 2 * (row * n_usize + col);
+                row_vec.push(RealImaginary(f64_parts[idx], f64_parts[idx + 1]));
+            }
+            s_ri_data.push(row_vec);
+        }
+        let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
 
-        let s_db = DecibelAngleMatrix(
-            (
-                DecibelAngle::from_real_imaginary(s_ri.0 .0),
-                DecibelAngle::from_real_imaginary(s_ri.0 .1),
-            ),
-            (
-                DecibelAngle::from_real_imaginary(s_ri.1 .0),
-                DecibelAngle::from_real_imaginary(s_ri.1 .1),
-            ),
-        );
+        // Convert to DecibelAngle format
+        let mut s_db_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(DecibelAngle::from_real_imaginary(
+                    s_ri.get(row + 1, col + 1),
+                ));
+            }
+            s_db_data.push(row_vec);
+        }
+        let s_db = DecibelAngleMatrix::from_vec(s_db_data);
 
-        let s_ma = MagnitudeAngleMatrix(
-            (
-                MagnitudeAngle::from_real_imaginary(s_ri.0 .0),
-                MagnitudeAngle::from_real_imaginary(s_ri.0 .1),
-            ),
-            (
-                MagnitudeAngle::from_real_imaginary(s_ri.1 .0),
-                MagnitudeAngle::from_real_imaginary(s_ri.1 .1),
-            ),
-        );
+        // Convert to MagnitudeAngle format
+        let mut s_ma_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(MagnitudeAngle::from_real_imaginary(
+                    s_ri.get(row + 1, col + 1),
+                ));
+            }
+            s_ma_data.push(row_vec);
+        }
+        let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
 
         ParsedDataLine {
             frequency,
@@ -144,38 +153,44 @@ pub(crate) fn parse_data_line(
         }
     } else if format == "MA" {
         // Magnitude-Angle format
-        let s_ma = MagnitudeAngleMatrix(
-            (
-                MagnitudeAngle(f64_parts[1], f64_parts[2]),
-                MagnitudeAngle(f64_parts[3], f64_parts[4]),
-            ),
-            (
-                MagnitudeAngle(f64_parts[5], f64_parts[6]),
-                MagnitudeAngle(f64_parts[7], f64_parts[8]),
-            ),
-        );
+        // Build NxN matrix from f64_parts in row-major order
+        let mut s_ma_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                let idx = 1 + 2 * (row * n_usize + col);
+                row_vec.push(MagnitudeAngle(f64_parts[idx], f64_parts[idx + 1]));
+            }
+            s_ma_data.push(row_vec);
+        }
+        let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
 
-        let s_ri = RealImaginaryMatrix(
-            (
-                RealImaginary::from_magnitude_angle(s_ma.0 .0),
-                RealImaginary::from_magnitude_angle(s_ma.0 .1),
-            ),
-            (
-                RealImaginary::from_magnitude_angle(s_ma.1 .0),
-                RealImaginary::from_magnitude_angle(s_ma.1 .1),
-            ),
-        );
+        // Convert to RealImaginary format
+        let mut s_ri_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(RealImaginary::from_magnitude_angle(
+                    s_ma.get(row + 1, col + 1),
+                ));
+            }
+            s_ri_data.push(row_vec);
+        }
+        let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
 
-        let s_db = DecibelAngleMatrix(
-            (
-                DecibelAngle::from_magnitude_angle(s_ma.0 .0),
-                DecibelAngle::from_magnitude_angle(s_ma.0 .1),
-            ),
-            (
-                DecibelAngle::from_magnitude_angle(s_ma.1 .0),
-                DecibelAngle::from_magnitude_angle(s_ma.1 .1),
-            ),
-        );
+        // Convert to DecibelAngle format
+        let mut s_db_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(DecibelAngle::from_magnitude_angle(
+                    s_ma.get(row + 1, col + 1),
+                ));
+            }
+            s_db_data.push(row_vec);
+        }
+        let s_db = DecibelAngleMatrix::from_vec(s_db_data);
+
         ParsedDataLine {
             frequency,
             s_ri,
@@ -184,38 +199,44 @@ pub(crate) fn parse_data_line(
         }
     } else if format == "DB" {
         // Decibel-Angle format
-        let s_db = DecibelAngleMatrix(
-            (
-                DecibelAngle(f64_parts[1], f64_parts[2]),
-                DecibelAngle(f64_parts[3], f64_parts[4]),
-            ),
-            (
-                DecibelAngle(f64_parts[5], f64_parts[6]),
-                DecibelAngle(f64_parts[7], f64_parts[8]),
-            ),
-        );
+        // Build NxN matrix from f64_parts in row-major order
+        let mut s_db_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                let idx = 1 + 2 * (row * n_usize + col);
+                row_vec.push(DecibelAngle(f64_parts[idx], f64_parts[idx + 1]));
+            }
+            s_db_data.push(row_vec);
+        }
+        let s_db = DecibelAngleMatrix::from_vec(s_db_data);
 
-        let s_ri = RealImaginaryMatrix(
-            (
-                RealImaginary::from_decibel_angle(s_db.0 .0),
-                RealImaginary::from_decibel_angle(s_db.0 .1),
-            ),
-            (
-                RealImaginary::from_decibel_angle(s_db.1 .0),
-                RealImaginary::from_decibel_angle(s_db.1 .1),
-            ),
-        );
+        // Convert to RealImaginary format
+        let mut s_ri_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(RealImaginary::from_decibel_angle(
+                    s_db.get(row + 1, col + 1),
+                ));
+            }
+            s_ri_data.push(row_vec);
+        }
+        let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
 
-        let s_ma = MagnitudeAngleMatrix(
-            (
-                MagnitudeAngle::from_decibel_angle(s_db.0 .0),
-                MagnitudeAngle::from_decibel_angle(s_db.0 .1),
-            ),
-            (
-                MagnitudeAngle::from_decibel_angle(s_db.1 .0),
-                MagnitudeAngle::from_decibel_angle(s_db.1 .1),
-            ),
-        );
+        // Convert to MagnitudeAngle format
+        let mut s_ma_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(MagnitudeAngle::from_decibel_angle(
+                    s_db.get(row + 1, col + 1),
+                ));
+            }
+            s_ma_data.push(row_vec);
+        }
+        let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
+
         ParsedDataLine {
             frequency,
             s_ri,

@@ -98,70 +98,201 @@ pub fn generate_two_port_plot_html(
     Ok(())
 }
 
+pub fn generate_one_port_plot_html(
+    output_path: &str,
+    network_names: &[String],
+    frequency_data: &[String],
+    s11_data: &[String],
+) -> std::io::Result<()> {
+    let folder_path = Path::new(output_path)
+        .parent()
+        .map(|p| {
+            if p.as_os_str().is_empty() {
+                Path::new(".")
+            } else {
+                p
+            }
+        })
+        .unwrap_or(Path::new("."));
+    std::fs::create_dir_all(folder_path)?;
+
+    let mut html_content = include_str!("assets/template_1port.html").to_string();
+
+    // Format arrays for JS injection
+    let format_js_string_array = |arr: &[String]| -> String {
+        let items: Vec<String> = arr.iter().map(|s| format!("'{}'", s)).collect();
+        format!("[{}]", items.join(", "))
+    };
+
+    let format_js_data_array = |arr: &[String]| -> String { format!("[{}]", arr.join(", ")) };
+
+    html_content = html_content.replace(
+        "{{ network_names }}",
+        &format_js_string_array(network_names),
+    );
+    html_content = html_content.replace(
+        "{{ frequency_data }}",
+        &format_js_data_array(frequency_data),
+    );
+    html_content = html_content.replace("{{ s11_data }}", &format_js_data_array(s11_data));
+
+    write_plot_html(output_path, &html_content)?;
+
+    let js_assets_path = format!(
+        "{}/js",
+        std::path::Path::new(output_path)
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
+    std::fs::create_dir_all(&js_assets_path)?;
+    let plotly_js_path = format!("{}/plotly-3.3.0.min.js", js_assets_path);
+    let tailwind_js_path = format!("{}/tailwindcss-3.4.17.js", js_assets_path);
+    std::fs::write(plotly_js_path, get_plotly_js())?;
+    std::fs::write(tailwind_js_path, get_tailwind_css())?;
+    Ok(())
+}
+
 pub fn generate_plot_from_networks(
     networks: &[crate::Network],
     output_path: &str,
 ) -> std::io::Result<()> {
-    let mut network_names = Vec::new();
-    let mut frequency_data_list = Vec::new();
-    let mut s11_data_list = Vec::new();
-    let mut s21_data_list = Vec::new();
-    let mut s12_data_list = Vec::new();
-    let mut s22_data_list = Vec::new();
-
-    for network in networks {
-        network_names.push(network.name.clone());
-
-        let freq = network
-            .f
-            .iter()
-            .map(|f| f.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        frequency_data_list.push(format!("[{}]", freq));
-
-        let s11 = network
-            .s_db(1, 1)
-            .iter()
-            .map(|s| s.s_db.decibel().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        s11_data_list.push(format!("[{}]", s11));
-
-        let s21 = network
-            .s_db(2, 1)
-            .iter()
-            .map(|s| s.s_db.decibel().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        s21_data_list.push(format!("[{}]", s21));
-
-        let s12 = network
-            .s_db(1, 2)
-            .iter()
-            .map(|s| s.s_db.decibel().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        s12_data_list.push(format!("[{}]", s12));
-
-        let s22 = network
-            .s_db(2, 2)
-            .iter()
-            .map(|s| s.s_db.decibel().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        s22_data_list.push(format!("[{}]", s22));
+    // Check if all networks have the same rank
+    if networks.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "No networks provided for plotting",
+        ));
     }
 
-    generate_two_port_plot_html(
-        output_path,
-        &network_names,
-        &frequency_data_list,
-        &s11_data_list,
-        &s21_data_list,
-        &s12_data_list,
-        &s22_data_list,
-    )
+    let rank = networks[0].rank;
+
+    // Verify all networks have the same rank
+    for network in networks {
+        if network.rank != rank {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "All networks must have the same rank. Found {} and {}",
+                    rank, network.rank
+                ),
+            ));
+        }
+    }
+
+    // Handle different ranks
+    match rank {
+        1 => {
+            // 1-port network plotting
+            let mut network_names = Vec::new();
+            let mut frequency_data_list = Vec::new();
+            let mut s11_data_list = Vec::new();
+
+            for network in networks {
+                network_names.push(network.name.clone());
+
+                let freq = network
+                    .f
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                frequency_data_list.push(format!("[{}]", freq));
+
+                let s11 = network
+                    .s_db(1, 1)
+                    .iter()
+                    .map(|s| s.s_db.decibel().to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s11_data_list.push(format!("[{}]", s11));
+            }
+
+            generate_one_port_plot_html(
+                output_path,
+                &network_names,
+                &frequency_data_list,
+                &s11_data_list,
+            )
+        }
+        2 => {
+            // 2-port network plotting (existing code)
+            let mut network_names = Vec::new();
+            let mut frequency_data_list = Vec::new();
+            let mut s11_data_list = Vec::new();
+            let mut s21_data_list = Vec::new();
+            let mut s12_data_list = Vec::new();
+            let mut s22_data_list = Vec::new();
+
+            for network in networks {
+                network_names.push(network.name.clone());
+
+                let freq = network
+                    .f
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                frequency_data_list.push(format!("[{}]", freq));
+
+                let s11 = network
+                    .s_db(1, 1)
+                    .iter()
+                    .map(|s| s.s_db.decibel().to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s11_data_list.push(format!("[{}]", s11));
+
+                let s21 = network
+                    .s_db(2, 1)
+                    .iter()
+                    .map(|s| s.s_db.decibel().to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s21_data_list.push(format!("[{}]", s21));
+
+                let s12 = network
+                    .s_db(1, 2)
+                    .iter()
+                    .map(|s| s.s_db.decibel().to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s12_data_list.push(format!("[{}]", s12));
+
+                let s22 = network
+                    .s_db(2, 2)
+                    .iter()
+                    .map(|s| s.s_db.decibel().to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s22_data_list.push(format!("[{}]", s22));
+            }
+
+            generate_two_port_plot_html(
+                output_path,
+                &network_names,
+                &frequency_data_list,
+                &s11_data_list,
+                &s21_data_list,
+                &s12_data_list,
+                &s22_data_list,
+            )
+        }
+        _ => {
+            // N-port where N > 2: Not yet supported for plotting
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                format!(
+                    "Plotting for {}-port networks is not yet supported. \
+                     Currently only 1-port and 2-port networks can be plotted. \
+                     For {}-port networks, you can still parse and access S-parameters programmatically, \
+                     but interactive HTML plots are not available yet.",
+                    rank, rank
+                ),
+            ))
+        }
+    }
 }
 
 #[cfg(test)]

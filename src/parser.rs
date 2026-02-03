@@ -52,6 +52,19 @@ pub fn read_file(file_path: String) -> Network {
     let mut resistance_string = String::new();
     let mut reference_resistance = String::new();
 
+    // Helper function to count numeric values on a line (excluding inline comments)
+    let count_values_on_line = |line: &str| -> usize {
+        line.split_whitespace()
+            .filter(|s| !s.starts_with('!'))
+            .count()
+    };
+
+    // Expected number of values per complete data entry
+    let expected_values = (1 + 2 * n_ports * n_ports) as usize;
+
+    let mut current_data_segment: Vec<String> = Vec::new();
+    let mut current_value_count: usize = 0;
+
     for line in contents.lines() {
         // println!("\nWith line: ");
 
@@ -81,25 +94,48 @@ pub fn read_file(file_path: String) -> Network {
             } else {
                 comments_after_option_line.push(line.to_string());
             }
-        } else {
+        } else if !line.trim().is_empty() {
             // is_data is true (not a variable, just communicating in terms of the pattern)
 
-            // println!("\nWith data: {line}");
-            // let parts = line.split_whitespace().collect::<Vec<_>>();
-            // println!("Data (len: {}):\n{:?}", parts.len(), parts);
+            // Add line to current segment
+            current_data_segment.push(line.to_string());
+            current_value_count += count_values_on_line(line);
 
-            let line_matrix_data = data_line::parse_data_line(
-                line.to_string(),
-                &parsed_options.format,
-                &n_ports,
-                &parsed_options.frequency_unit,
-            );
-            parser_state.data_lines.push(line.to_string());
+            // Check if we have collected enough values for a complete entry
+            if current_value_count >= expected_values {
+                // Process this complete segment
+                let line_matrix_data = data_line::parse_data_line(
+                    current_data_segment.clone(),
+                    &parsed_options.format,
+                    &n_ports,
+                    &parsed_options.frequency_unit,
+                );
 
-            f.push(line_matrix_data.frequency);
+                f.push(line_matrix_data.frequency);
+                s.push(line_matrix_data);
 
-            s.push(line_matrix_data);
+                parser_state.data_lines.extend(current_data_segment.clone());
+
+                // Reset for next segment
+                current_data_segment.clear();
+                current_value_count = 0;
+            }
         }
+    }
+
+    // Process the last data segment
+    if !current_data_segment.is_empty() {
+        let line_matrix_data = data_line::parse_data_line(
+            current_data_segment.clone(),
+            &parsed_options.format,
+            &n_ports,
+            &parsed_options.frequency_unit,
+        );
+
+        f.push(line_matrix_data.frequency);
+        s.push(line_matrix_data);
+
+        parser_state.data_lines.extend(current_data_segment);
     }
 
     // println!("parsed options:\n{:?}", parsed_options);
@@ -179,5 +215,57 @@ mod tests {
         assert_eq!(network.comments_after_option_line.len(), 3);
         assert_eq!(network.f.len(), 91);
         assert_eq!(network.s.len(), 91);
+    }
+
+    #[test]
+    fn parse_3port_hfss() {
+        let network = read_file("files/hfss_18.2.s3p".to_string());
+        assert_eq!(network.name, "files/hfss_18.2.s3p".to_string());
+
+        assert_eq!(network.rank, 3);
+
+        assert_eq!(network.frequency_unit, "GHz");
+        assert_eq!(network.parameter, "S");
+        assert_eq!(network.format, "MA");
+        assert_eq!(network.resistance_string, "R");
+        assert_eq!(network.z0, 50.0);
+
+        // Multi-line format file
+        assert!(!network.f.is_empty());
+        assert_eq!(network.f.len(), network.s.len());
+
+        // Verify we can access all 9 S-parameters (3x3 matrix)
+        for i in 1..=3 {
+            for j in 1..=3 {
+                let s_db = network.s_db(i as i8, j as i8);
+                assert_eq!(s_db.len(), network.f.len());
+            }
+        }
+    }
+
+    #[test]
+    fn parse_4port_agilent() {
+        let network = read_file("files/Agilent_E5071B.s4p".to_string());
+        assert_eq!(network.name, "files/Agilent_E5071B.s4p".to_string());
+
+        assert_eq!(network.rank, 4);
+
+        assert_eq!(network.frequency_unit, "Hz");
+        assert_eq!(network.parameter, "S");
+        assert_eq!(network.format, "DB");
+        assert_eq!(network.resistance_string, "R");
+        assert_eq!(network.z0, 75.0);
+
+        // Multi-line format file
+        assert!(!network.f.is_empty());
+        assert_eq!(network.f.len(), network.s.len());
+
+        // Verify we can access all 16 S-parameters (4x4 matrix)
+        for i in 1..=4 {
+            for j in 1..=4 {
+                let s_db = network.s_db(i as i8, j as i8);
+                assert_eq!(s_db.len(), network.f.len());
+            }
+        }
     }
 }
