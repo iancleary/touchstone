@@ -114,9 +114,12 @@ impl Network {
         s_ma_vector
     }
 
+    /// Cascade two 2-port networks (standard connection: port 2 → port 1)
+    ///
+    /// For more control over port connections, use `cascade_ports()`.
     pub fn cascade(&self, other: &Network) -> Network {
         if self.rank != 2 || other.rank != 2 {
-            panic!("Cascading is only implemented for 2-port networks.");
+            panic!("Cascading is only implemented for 2-port networks. Use cascade_ports() for explicit port specification.");
         }
 
         if self.z0 != other.z0 {
@@ -233,6 +236,81 @@ impl Network {
         }
     }
 
+    /// Cascade two networks with explicit port specification
+    ///
+    /// # Arguments
+    /// * `other` - The network to cascade with
+    /// * `from_port` - Output port of self to connect (1-indexed)
+    /// * `to_port` - Input port of other to connect (1-indexed)
+    ///
+    /// # Examples
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net1 = Network::new("files/ntwk1.s2p".to_string());
+    /// let net2 = Network::new("files/ntwk2.s2p".to_string());
+    ///
+    /// // Standard 2-port cascade (port 2 → port 1)
+    /// let result = net1.cascade_ports(&net2, 2, 1);
+    /// ```
+    ///
+    /// # Current Limitations
+    /// - Only 2-port networks with standard connection (2→1) are currently supported
+    /// - N-port cascade (N > 2) will be implemented in a future release
+    ///
+    /// # Panics
+    /// - If port numbers are out of range
+    /// - If networks are not 2-port
+    /// - If connection is not standard (2→1) for 2-port networks
+    pub fn cascade_ports(&self, other: &Network, from_port: usize, to_port: usize) -> Network {
+        // Validate port numbers
+        assert!(
+            from_port >= 1 && from_port <= self.rank as usize,
+            "from_port {} out of range for {}-port network (valid range: 1-{})",
+            from_port,
+            self.rank,
+            self.rank
+        );
+        assert!(
+            to_port >= 1 && to_port <= other.rank as usize,
+            "to_port {} out of range for {}-port network (valid range: 1-{})",
+            to_port,
+            other.rank,
+            other.rank
+        );
+
+        // For 2-port networks: use existing ABCD-based cascade
+        if self.rank == 2 && other.rank == 2 {
+            // Currently only support standard connection (port 2 → port 1)
+            if from_port != 2 || to_port != 1 {
+                panic!(
+                    "For 2-port networks, only standard cascade (port 2 → port 1) is currently supported.\n\
+                     Requested connection: port {} → port {}\n\
+                     Use cascade() method for standard 2-port cascade, or wait for future N-port cascade implementation.",
+                    from_port, to_port
+                );
+            }
+
+            // Delegate to existing cascade implementation
+            return self.cascade(other);
+        }
+
+        // For N-port where N > 2: Future enhancement
+        panic!(
+            "Cascading {}-port and {}-port networks is not yet supported.\n\
+             Currently only 2-port networks can be cascaded (with standard port 2 → port 1 connection).\n\
+             \n\
+             Future enhancement: Full N-port cascade with arbitrary port connections.\n\
+             \n\
+             Workaround: Extract 2-port sub-networks from your {}-port and {}-port networks,\n\
+             then cascade those 2-port networks.",
+            self.rank,
+            other.rank,
+            self.rank,
+            other.rank
+        );
+    }
+
     pub fn save(&self, file_path: &str) -> std::io::Result<()> {
         use std::io::Write;
         let mut file = std::fs::File::create(file_path)?;
@@ -259,6 +337,7 @@ impl Network {
         }
 
         // Write data lines
+        let n = self.rank as usize;
         for data_line in &self.s {
             let mut freq = data_line.frequency;
             let frequency_unit = self.frequency_unit.clone();
@@ -273,36 +352,125 @@ impl Network {
                 freq = rfconversions::frequency::hz_to_khz(freq);
             }
 
-            let mut line = format!("{}", freq);
+            // For 1-port and 2-port: use single-line format
+            // For 3+ port: use multi-line format
+            if n <= 2 {
+                // Single-line format
+                let mut line = format!("{}", freq);
 
-            match self.format.as_str() {
-                "RI" => {
-                    let s = &data_line.s_ri;
-                    // N11, N12, N21, N22
-                    // Each is real, imag
-                    line.push_str(&format!(" {} {}", s.get(1, 1).0, s.get(1, 1).1));
-                    line.push_str(&format!(" {} {}", s.get(1, 2).0, s.get(1, 2).1));
-                    line.push_str(&format!(" {} {}", s.get(2, 1).0, s.get(2, 1).1));
-                    line.push_str(&format!(" {} {}", s.get(2, 2).0, s.get(2, 2).1));
+                match self.format.as_str() {
+                    "RI" => {
+                        let s = &data_line.s_ri;
+                        for row in 1..=n {
+                            for col in 1..=n {
+                                line.push_str(&format!(
+                                    " {} {}",
+                                    s.get(row, col).0,
+                                    s.get(row, col).1
+                                ));
+                            }
+                        }
+                    }
+                    "MA" => {
+                        let s = &data_line.s_ma;
+                        for row in 1..=n {
+                            for col in 1..=n {
+                                line.push_str(&format!(
+                                    " {} {}",
+                                    s.get(row, col).0,
+                                    s.get(row, col).1
+                                ));
+                            }
+                        }
+                    }
+                    "DB" => {
+                        let s = &data_line.s_db;
+                        for row in 1..=n {
+                            for col in 1..=n {
+                                line.push_str(&format!(
+                                    " {} {}",
+                                    s.get(row, col).0,
+                                    s.get(row, col).1
+                                ));
+                            }
+                        }
+                    }
+                    _ => panic!("Unsupported format for saving: {}", self.format),
                 }
-                "MA" => {
-                    let s = &data_line.s_ma;
-                    line.push_str(&format!(" {} {}", s.get(1, 1).0, s.get(1, 1).1));
-                    line.push_str(&format!(" {} {}", s.get(1, 2).0, s.get(1, 2).1));
-                    line.push_str(&format!(" {} {}", s.get(2, 1).0, s.get(2, 1).1));
-                    line.push_str(&format!(" {} {}", s.get(2, 2).0, s.get(2, 2).1));
+
+                writeln!(file, "{}", line)?;
+            } else {
+                // Multi-line format for 3+ port
+                // First line: frequency and first row of S-parameters
+                let mut line = format!("{}", freq);
+
+                match self.format.as_str() {
+                    "RI" => {
+                        let s = &data_line.s_ri;
+                        // First row on same line as frequency
+                        for col in 1..=n {
+                            line.push_str(&format!(" {} {}", s.get(1, col).0, s.get(1, col).1));
+                        }
+                        writeln!(file, "{}", line)?;
+
+                        // Subsequent rows on their own lines
+                        for row in 2..=n {
+                            let mut row_line = String::new();
+                            for col in 1..=n {
+                                row_line.push_str(&format!(
+                                    " {} {}",
+                                    s.get(row, col).0,
+                                    s.get(row, col).1
+                                ));
+                            }
+                            writeln!(file, "{}", row_line)?;
+                        }
+                    }
+                    "MA" => {
+                        let s = &data_line.s_ma;
+                        // First row on same line as frequency
+                        for col in 1..=n {
+                            line.push_str(&format!(" {} {}", s.get(1, col).0, s.get(1, col).1));
+                        }
+                        writeln!(file, "{}", line)?;
+
+                        // Subsequent rows on their own lines
+                        for row in 2..=n {
+                            let mut row_line = String::new();
+                            for col in 1..=n {
+                                row_line.push_str(&format!(
+                                    " {} {}",
+                                    s.get(row, col).0,
+                                    s.get(row, col).1
+                                ));
+                            }
+                            writeln!(file, "{}", row_line)?;
+                        }
+                    }
+                    "DB" => {
+                        let s = &data_line.s_db;
+                        // First row on same line as frequency
+                        for col in 1..=n {
+                            line.push_str(&format!(" {} {}", s.get(1, col).0, s.get(1, col).1));
+                        }
+                        writeln!(file, "{}", line)?;
+
+                        // Subsequent rows on their own lines
+                        for row in 2..=n {
+                            let mut row_line = String::new();
+                            for col in 1..=n {
+                                row_line.push_str(&format!(
+                                    " {} {}",
+                                    s.get(row, col).0,
+                                    s.get(row, col).1
+                                ));
+                            }
+                            writeln!(file, "{}", row_line)?;
+                        }
+                    }
+                    _ => panic!("Unsupported format for saving: {}", self.format),
                 }
-                "DB" => {
-                    let s = &data_line.s_db;
-                    line.push_str(&format!(" {} {}", s.get(1, 1).0, s.get(1, 1).1));
-                    line.push_str(&format!(" {} {}", s.get(1, 2).0, s.get(1, 2).1));
-                    line.push_str(&format!(" {} {}", s.get(2, 1).0, s.get(2, 1).1));
-                    line.push_str(&format!(" {} {}", s.get(2, 2).0, s.get(2, 2).1));
-                }
-                _ => panic!("Unsupported format for saving: {}", self.format),
             }
-
-            writeln!(file, "{}", line)?;
         }
 
         Ok(())
@@ -545,5 +713,189 @@ mod tests {
 
         // Cleanup
         std::fs::remove_file(file_path).unwrap();
+    }
+
+    #[test]
+    fn test_save_load_roundtrip_3port() {
+        let network1 = Network::new("files/hfss_18.2.s3p".to_string());
+
+        let temp_dir = std::env::temp_dir()
+            .join("touchstone_tests")
+            .join("roundtrip");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("roundtrip_3port.s3p");
+        let file_path_str = file_path.to_str().unwrap();
+
+        network1.save(file_path_str).unwrap();
+
+        let network2 = Network::new(file_path_str.to_string());
+
+        // Verify metadata
+        assert_eq!(network1.rank, network2.rank);
+        assert_eq!(network1.rank, 3);
+        assert_eq!(network1.f.len(), network2.f.len());
+        assert_eq!(network1.s.len(), network2.s.len());
+        assert_eq!(network1.format, network2.format);
+        assert_eq!(network1.z0, network2.z0);
+
+        // Verify frequencies
+        for i in 0..network1.f.len() {
+            assert_eq!(network1.f[i], network2.f[i]);
+        }
+
+        // Verify all S-parameters (3x3 matrix)
+        let epsilon = 1e-6;
+        for i in 0..network1.s.len() {
+            for row in 1..=3 {
+                for col in 1..=3 {
+                    let s1_ma = &network1.s[i].s_ma;
+                    let s2_ma = &network2.s[i].s_ma;
+                    assert!(
+                        (s1_ma.get(row, col).0 - s2_ma.get(row, col).0).abs() < epsilon,
+                        "S{}{} magnitude mismatch at frequency index {}",
+                        row,
+                        col,
+                        i
+                    );
+                    assert!(
+                        (s1_ma.get(row, col).1 - s2_ma.get(row, col).1).abs() < epsilon,
+                        "S{}{} angle mismatch at frequency index {}",
+                        row,
+                        col,
+                        i
+                    );
+                }
+            }
+        }
+
+        // Cleanup
+        std::fs::remove_file(file_path).unwrap();
+    }
+
+    #[test]
+    fn test_save_load_roundtrip_4port() {
+        let network1 = Network::new("files/Agilent_E5071B.s4p".to_string());
+
+        let temp_dir = std::env::temp_dir()
+            .join("touchstone_tests")
+            .join("roundtrip");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("roundtrip_4port.s4p");
+        let file_path_str = file_path.to_str().unwrap();
+
+        network1.save(file_path_str).unwrap();
+
+        let network2 = Network::new(file_path_str.to_string());
+
+        // Verify metadata
+        assert_eq!(network1.rank, network2.rank);
+        assert_eq!(network1.rank, 4);
+        assert_eq!(network1.f.len(), network2.f.len());
+        assert_eq!(network1.s.len(), network2.s.len());
+        assert_eq!(network1.format, network2.format);
+        assert_eq!(network1.z0, network2.z0);
+
+        // Verify frequencies
+        for i in 0..network1.f.len() {
+            assert_eq!(network1.f[i], network2.f[i]);
+        }
+
+        // Verify all S-parameters (4x4 matrix)
+        let epsilon = 1e-6;
+        for i in 0..network1.s.len() {
+            for row in 1..=4 {
+                for col in 1..=4 {
+                    let s1_db = &network1.s[i].s_db;
+                    let s2_db = &network2.s[i].s_db;
+                    assert!(
+                        (s1_db.get(row, col).0 - s2_db.get(row, col).0).abs() < epsilon,
+                        "S{}{} dB mismatch at frequency index {}",
+                        row,
+                        col,
+                        i
+                    );
+                    assert!(
+                        (s1_db.get(row, col).1 - s2_db.get(row, col).1).abs() < epsilon,
+                        "S{}{} angle mismatch at frequency index {}",
+                        row,
+                        col,
+                        i
+                    );
+                }
+            }
+        }
+
+        // Cleanup
+        std::fs::remove_file(file_path).unwrap();
+    }
+
+    #[test]
+    fn test_cascade_ports_2port_standard() {
+        // Test cascade_ports with standard 2-port connection (2→1)
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network3 = Network::new("files/ntwk3.s2p".to_string());
+
+        // cascade_ports(2, 1) should give same result as cascade()
+        let result_ports = network1.cascade_ports(&network2, 2, 1);
+        let result_standard = network1.cascade(&network2);
+
+        assert_eq!(result_ports.rank, result_standard.rank);
+        assert_eq!(result_ports.f.len(), result_standard.f.len());
+        assert_eq!(result_ports.s.len(), result_standard.s.len());
+
+        // Should also match the known good result (ntwk3)
+        let epsilon = 1e-4;
+        for i in 0..result_ports.s.len() {
+            let s1 = &result_ports.s[i].s_ri;
+            let s2 = &network3.s[i].s_ri;
+
+            assert!((s1.get(1, 1).0 - s2.get(1, 1).0).abs() < epsilon);
+            assert!((s1.get(2, 2).0 - s2.get(2, 2).0).abs() < epsilon);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "only standard cascade (port 2 → port 1) is currently supported")]
+    fn test_cascade_ports_2port_nonstandard() {
+        // Test that non-standard port connections panic with helpful message
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
+
+        // This should panic because we don't support 1→2 connection yet
+        network1.cascade_ports(&network2, 1, 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "from_port 3 out of range for 2-port network")]
+    fn test_cascade_ports_invalid_from_port() {
+        // Test that invalid from_port is caught
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
+
+        // This should panic - port 3 doesn't exist on 2-port network
+        network1.cascade_ports(&network2, 3, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "to_port 5 out of range for 2-port network")]
+    fn test_cascade_ports_invalid_to_port() {
+        // Test that invalid to_port is caught
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
+
+        // This should panic - port 5 doesn't exist on 2-port network
+        network1.cascade_ports(&network2, 2, 5);
+    }
+
+    #[test]
+    #[should_panic(expected = "from_port 0 out of range")]
+    fn test_cascade_ports_zero_port() {
+        // Test that port 0 is rejected (ports are 1-indexed)
+        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network2 = Network::new("files/ntwk2.s2p".to_string());
+
+        // This should panic - ports are 1-indexed, not 0-indexed
+        network1.cascade_ports(&network2, 0, 1);
     }
 }
