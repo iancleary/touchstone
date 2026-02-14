@@ -1,6 +1,6 @@
 # touchstone
 
-Touchstone (SNP) parser for RF Engineering - Full N-Port Support
+Touchstone (SNP) parser for RF Engineering — Full N-Port Support
 
 Parse, analyze, and manipulate Touchstone files with any number of ports (1-port, 2-port, 3-port, 4-port, and beyond).
 
@@ -12,102 +12,165 @@ cargo install touchstone
 
 This installs an executable in your `.cargo/bin` directory (`.cargo/bin/touchstone`).
 
-## Features
+---
 
-### Full N-Port Support
-- **Parse any N-port file**: .s1p, .s2p, .s3p, .s4p, and beyond (tested up to 32-port)
-- **Auto-format detection**: Automatically handles single-line (1-2 port) and multi-line (3+ port) formats
-- **Save N-port files**: Write networks back to disk with automatic format selection
-- **All data formats**: RI (Real-Imaginary), MA (Magnitude-Angle), DB (Decibel-Angle)
-- **All frequency units**: Hz, kHz, MHz, GHz, THz
-- **Any reference impedance**: 50Ω, 75Ω, or custom values
+## 1. What Are Touchstone Files?
 
-### Network Operations
-- **Cascade 2-port networks**: Combine networks with ABCD parameter method
-- **Access S-parameters**: Extract any Sij parameter in any format
-- **Interactive plotting**: Generate standalone HTML plots for visualization
-- **Batch processing**: Process entire directories of Touchstone files
+Touchstone files (also called **SNP** files) are the industry-standard format for storing
+**S-parameter** data measured or simulated for RF and microwave networks.
 
-### Production Ready
-- **94 comprehensive tests** with 100% pass rate
-- **Zero regressions** - All original functionality preserved
-- **Well-documented** - Extensive inline documentation and examples
-- **Robust error handling** - Clear, actionable error messages
+Each file describes how electromagnetic signals scatter through an N-port network — reflections,
+transmissions, and coupling — across a range of frequencies.
 
-## Usage
+The file extension encodes the port count: `.s1p` for a 1-port, `.s2p` for a 2-port, `.s3p`
+for a 3-port, and so on up to `.s32p` and beyond.
 
-The `touchstone` executable can be run with a file path as an argument or a directory path as an argument.
+A typical `.s2p` file looks like this:
 
-### Help
-
-```bash
-touchstone --help
+```text
+! Two-port network measurement
+# GHz S RI R 50
+1.0  0.5 -0.3  0.1 0.2  0.1 0.2  0.5 -0.3
+2.0  0.4 -0.2  0.2 0.1  0.2 0.1  0.4 -0.2
 ```
 
-Outputs:
+The `#` line is the **option line**: it declares the frequency unit (`GHz`), parameter type (`S`),
+data format (`RI` = Real-Imaginary), and reference impedance (`R 50` = 50 Ω).
 
-```bash
-📡 Touchstone (sNp) file parser, plotter, and more - https://github.com/iancleary/touchstone
+---
 
-VERSION:
-    0.10.4
+## 2. Loading a Network
 
-USAGE:
-     touchstone <FILE_PATH>
-     touchstone <DIRECTORY_PATH>
-     touchstone cascade <FILE_1> <FILE_2> ... [--name <OUTPUT_NAME>]
+Use `Network::new` to parse any Touchstone file:
 
-     FILE_PATH: path to a Touchstone file (.s1p, .s2p, .s3p, .s4p, etc.)
-     DIRECTORY_PATH: path to a directory containing Touchstone files
+```rust
+use touchstone::Network;
 
-     The Touchstone file(s) are parsed and an interactive plot (html file and js/ folder)
-     is created next to the source file(s).
+let ntwk = Network::new("files/ntwk1.s2p".to_string());
 
-OPTIONS:
-      -v, --version    Print version information
-      -h, --help       Print help information
-
-EXAMPLES:
-     # Single file - 2-port (Relative path)
-     touchstone files/measurements.s2p
-
-     # Single file - 3-port
-     touchstone files/hfss_18.2.s3p
-
-     # Single file - 4-port
-     touchstone files/Agilent_E5071B.s4p
-
-     # Directory (Plot all files in folder)
-     touchstone files/data_folder
-
-     # Cascade two 2-port networks
-     touchstone cascade ntwk1.s2p ntwk2.s2p
-
-     # Cascade with custom output name
-     touchstone cascade ntwk1.s2p ntwk2.s2p --name result.s2p
-
-     # Bare filename
-     touchstone measurement.s2p
-
-     # Windows absolute path
-     touchstone C:\Users\data\measurements.s2p
-
-     # Windows UNC path (network path)
-     touchstone \\server\mount\folder\measurement.s2p
-
-     # Unix absolute path
-     touchstone /home/user/measurements.s2p
+println!("Ports: {}", ntwk.rank);
+println!("Frequency unit: {}", ntwk.frequency_unit);
+println!("Format: {}", ntwk.format);
+println!("Reference impedance: {} Ω", ntwk.z0);
+println!("Data points: {}", ntwk.f.len());
 ```
+
+`Network::new` auto-detects the port count, data format, and frequency unit from the file.
+
+---
+
+## 3. Accessing S-Parameters
+
+S-parameters are accessed with **1-indexed** port numbers, matching the conventional
+S₁₁, S₂₁, etc. notation used in RF engineering.
+
+Three accessor methods return a `Vec` over all frequencies:
+
+| Method  | Returns                   | Struct fields                          |
+|---------|---------------------------|----------------------------------------|
+| `s_db`  | dB magnitude + angle (°)  | `FrequencyDB { frequency, s_db }`      |
+| `s_ri`  | Real + imaginary parts    | `FrequencyRI { frequency, s_ri }`      |
+| `s_ma`  | Linear magnitude + angle  | `FrequencyMA { frequency, s_ma }`      |
+
+```rust
+use touchstone::Network;
+
+let ntwk = Network::new("files/ntwk1.s2p".to_string());
+
+// S11 in dB (return loss)
+let s11_db = ntwk.s_db(1, 1);
+for point in &s11_db {
+    println!("f={} : dB={}, angle={}", point.frequency, point.s_db.decibel(), point.s_db.angle());
+}
+
+// S21 in Real-Imaginary
+let s21_ri = ntwk.s_ri(2, 1);
+for point in &s21_ri {
+    println!("f={} : re={}, im={}", point.frequency, point.s_ri.real(), point.s_ri.imaginary());
+}
+
+// S21 in Magnitude-Angle
+let s21_ma = ntwk.s_ma(2, 1);
+for point in &s21_ma {
+    println!("f={} : mag={}, angle={}", point.frequency, point.s_ma.magnitude(), point.s_ma.angle());
+}
+```
+
+### Field Aliases
+
+Each S-parameter data pair struct offers multiple accessors for the same underlying data:
+
+| Struct            | Field aliases                                      |
+|-------------------|----------------------------------------------------|
+| `RealImaginary`   | `.real()`, `.imaginary()`, `.magnitude()`, `.decibel()`, `.angle()` |
+| `DecibelAngle`    | `.decibel()`, `.angle()`, `.magnitude()`, `.real()`, `.imaginary()` |
+| `MagnitudeAngle`  | `.magnitude()`, `.angle()`, `.decibel()`, `.real()`, `.imaginary()` |
+
+You can also convert between representations:
+
+| From → To         | Method                                 |
+|-------------------|----------------------------------------|
+| `RealImaginary`   | `.magnitude_angle()`, `.decibel_angle()` |
+| `MagnitudeAngle`  | `.real_imaginary()`, `.decible_angle()` (sic) |
+| `DecibelAngle`    | (convert via `RealImaginary::from_decibel_angle`) |
+
+---
+
+## 4. Saving Networks
+
+Save a `Network` back to disk. The writer auto-selects single-line format (1–2 ports) or
+multi-line format (3+ ports):
+
+```rust
+use touchstone::Network;
+
+let ntwk = Network::new("files/ntwk1.s2p".to_string());
+ntwk.save("output.s2p").unwrap();
+```
+
+---
+
+## 5. Cascading 2-Port Networks
+
+Combine two 2-port networks in series using the ABCD parameter method.
+The standard `cascade` connects port 2 of the first network to port 1 of the second:
+
+```rust
+use touchstone::Network;
+
+let net1 = Network::new("files/ntwk1.s2p".to_string());
+let net2 = Network::new("files/ntwk2.s2p".to_string());
+
+let cascaded = net1.cascade(&net2);
+println!("Cascaded network has {} data points", cascaded.f.len());
+```
+
+For explicit port specification, use `cascade_ports`:
+
+```rust
+use touchstone::Network;
+
+let net1 = Network::new("files/ntwk1.s2p".to_string());
+let net2 = Network::new("files/ntwk2.s2p".to_string());
+
+let cascaded = net1.cascade_ports(&net2, 2, 1);
+```
+
+---
+
+## 6. CLI Usage
 
 ### File Path
+
+Plot a single Touchstone file:
 
 ```bash
 touchstone files/ntwk3.s2p
 ```
 
-which outputs:
+Output:
 
-```bash
+```text
 ============================
 Single file detected. Plotting.
 In file: files/ntwk3.s2p
@@ -119,29 +182,23 @@ Attempting to open plot in your default browser...
 Success! Opening: file:///Users/iancleary/Development/touchstone/files/ntwk3.s2p.html
 ```
 
-> This works on Windows, MacOS, and Linux file systems!
-
-* MacOS: `file:///Users/iancleary/touchstone/files/ntwk3.s2p.html`
-* Windows: `file:///C:/Users/iancleary/touchstone/files/ntwk3.s2p.html`
-* Linux: `file:///home/iancleary/touchstone/files/ntwk3.s2p.html`
-
-This command created an html file that is interactive, and designed to not have any network dependence.
+> Works on Windows, macOS, and Linux file systems!
 
 [![HTML file created for ntwk3.s2p by running `touchstone files/ntwk3.s2p` in the root of this directory](https://github.com/iancleary/touchstone/blob/main/examples/ntwk3.s2p.html.png?raw=true)](https://github.com/iancleary/touchstone/tree/main/examples/ntwk3.s2p.html)
 
-You can view the HTML source file itself here directly: [examples/ntwk3.s2p.html](https://github.com/iancleary/touchstone/tree/main/examples/ntwk3.s2p.html).
-
-> Note that the crate's execution templates in the data parsed from the touchstone file's network object.  So this example will only match for the [files/ntwk3.s2p](https://github.com/iancleary/touchstone/blob/main/files/ntwk3.s2p?raw=true) data.
+You can view the HTML source file itself here: [examples/ntwk3.s2p.html](https://github.com/iancleary/touchstone/tree/main/examples/ntwk3.s2p.html).
 
 ### Directory Path
+
+Plot all Touchstone files in a directory:
 
 ```bash
 touchstone files/
 ```
 
-which outputs:
+Output:
 
-```bash
+```text
 ============================
 In directory: files/
 Directory detected. Plotting all valid network files in directory.
@@ -149,107 +206,78 @@ Found network file: "files/ntwk1.s2p"
 Found network file: "files/ntwk2.s2p"
 Found network file: "files/ntwk3.s2p"
 Plot HTML generated at files/combined_plot.html
-You can open the plot in your browser at:
-file:///Users/iancleary/Development/touchstone/files/combined_plot.html
-Attempting to open plot in your default browser...
-Success! Opening: file:///Users/iancleary/Development/touchstone/files/combined_plot.html
 ```
-
-
-This command created an html file that is interactive, and designed to not have any network dependence.
 
 [![HTML file created for the files directory by running `touchstone files/` in the root of this directory](https://github.com/iancleary/touchstone/blob/main/examples/combined_plot.html.png?raw=true)](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html)
 
-You can view the HTML source file itself here directly: [examples/combined_plot.html](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html).
+You can view the HTML source file itself here: [examples/combined_plot.html](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html).
 
-> Note that the crate's execution templates in the data parsed from the touchstone file's network object.   So this example will only match for the [files/ntwk1.s2p](https://github.com/iancleary/touchstone/blob/main/files/ntwk1.s2p?raw=true), [files/ntwk2.s2p](https://github.com/iancleary/touchstone/blob/main/files/ntwk2.s2p?raw=true), and [files/ntwk3.s2p](https://github.com/iancleary/touchstone/blob/main/files/ntwk3.s2p?raw=true) data.
+### Cascade Command
 
-## Library Usage
+Cascade two or more 2-port networks from the command line:
 
-The `touchstone` crate can also be used as a library in your Rust projects:
+```bash
+# Cascade two networks
+touchstone cascade ntwk1.s2p ntwk2.s2p
 
-```rust
-use touchstone::Network;
-
-// Load any N-port network
-let network = Network::new("path/to/file.s3p".to_string());
-
-// Access metadata
-println!("Ports: {}", network.rank);
-println!("Frequency unit: {}", network.frequency_unit);
-println!("Format: {}", network.format);
-
-// Access S-parameters (1-indexed)
-let s11_db = network.s_db(1, 1);  // S11 in dB format
-let s21_ri = network.s_ri(2, 1);  // S21 in Real-Imaginary format
-let s32_ma = network.s_ma(3, 2);  // S32 in Magnitude-Angle format
-
-// Save network (auto-selects single-line or multi-line format)
-network.save("output.s3p").unwrap();
-
-// Cascade 2-port networks
-let net1 = Network::new("amp.s2p".to_string());
-let net2 = Network::new("filter.s2p".to_string());
-
-// Standard cascade (port 2 → port 1)
-let cascaded = net1.cascade(&net2);
-
-// Cascade with port specification
-let cascaded = net1.cascade_ports(&net2, 2, 1);
+# Cascade with custom output name
+touchstone cascade ntwk1.s2p ntwk2.s2p --name result.s2p
 ```
 
-### Supported File Types
+### Full Help
 
-- `.s1p` - 1-port networks (e.g., terminations, loads)
-- `.s2p` - 2-port networks (e.g., amplifiers, filters, cables)
-- `.s3p` - 3-port networks (e.g., power dividers, circulators)
-- `.s4p` - 4-port networks (e.g., differential pairs, couplers)
-- `.sNp` - Any N-port network (tested up to 32-port)
+```bash
+touchstone --help
+```
+
+---
+
+## 7. Supported File Types, Data Formats, and Frequency Units
+
+### File Types
+
+| Extension | Ports | Example use case                       |
+|-----------|-------|----------------------------------------|
+| `.s1p`    | 1     | Terminations, loads, antennas          |
+| `.s2p`    | 2     | Amplifiers, filters, cables            |
+| `.s3p`    | 3     | Power dividers, circulators            |
+| `.s4p`    | 4     | Differential pairs, couplers           |
+| `.sNp`    | N     | Any N-port (tested up to 32-port)      |
 
 ### Data Formats
 
-All three Touchstone data formats are fully supported:
-
-- **RI** (Real-Imaginary) - Cartesian coordinates
-- **MA** (Magnitude-Angle) - Polar coordinates with angle in degrees
-- **DB** (Decibel-Angle) - Magnitude in dB, angle in degrees
+| Code | Name             | Pair values              |
+|------|------------------|--------------------------|
+| `RI` | Real-Imaginary   | real, imaginary          |
+| `MA` | Magnitude-Angle  | linear magnitude, degrees|
+| `DB` | Decibel-Angle    | dB magnitude, degrees    |
 
 ### Frequency Units
 
-All Touchstone frequency units are supported with automatic conversion:
+`Hz`, `kHz`, `MHz`, `GHz`, `THz` — all supported with automatic conversion.
 
-- **Hz** - Hertz
-- **kHz** - Kilohertz
-- **MHz** - Megahertz
-- **GHz** - Gigahertz
-- **THz** - Terahertz
+---
 
-## Recent Updates
+## 8. API Summary
 
-### Full N-Port Support (v0.10.4)
+| Item                          | Description                                  |
+|-------------------------------|----------------------------------------------|
+| `Network::new(path)`          | Parse a Touchstone file into a `Network`     |
+| `network.rank`                | Number of ports                              |
+| `network.frequency_unit`      | Frequency unit string                        |
+| `network.format`              | Data format (`RI`, `MA`, or `DB`)            |
+| `network.z0`                  | Reference impedance (Ω)                      |
+| `network.f`                   | Frequency vector (`Vec<f64>`)                |
+| `network.f()`                 | Clone of frequency vector                    |
+| `network.s_db(j, k)`         | S_jk in dB+angle — `Vec<FrequencyDB>`       |
+| `network.s_ri(j, k)`         | S_jk in real+imag — `Vec<FrequencyRI>`       |
+| `network.s_ma(j, k)`         | S_jk in mag+angle — `Vec<FrequencyMA>`       |
+| `network.save(path)`         | Write network to file                        |
+| `network.cascade(&other)`    | Cascade two 2-port networks                  |
+| `network.cascade_ports(&other, from, to)` | Cascade with explicit port mapping |
+| `network.print_summary()`    | Print metadata to stdout                     |
 
-The library has been completely refactored to support N-port networks:
-
-**What's New:**
-- ✅ Parse any N-port Touchstone file (1 to 32+ ports tested)
-- ✅ Auto-detect single-line vs multi-line format
-- ✅ Save N-port networks with automatic format selection
-- ✅ Access any S-parameter for any port combination
-- ✅ 94 comprehensive tests with 100% pass rate
-- ✅ Zero regressions - all original 2-port functionality preserved
-
-**Technical Improvements:**
-- Refactored matrix structures from hardcoded 2×2 to dynamic N×N
-- Value-based multi-line segment detection
-- Robust error handling with helpful messages
-- Comprehensive test coverage for 1, 2, 3, 4, and higher-port files
-
-**Backwards Compatibility:**
-- All existing 2-port APIs remain unchanged
-- Existing code will continue to work without modifications
-- Enhanced with new capabilities for N-port support
-- Plotting for 1-port and 2-port networks only
-- Plotting a directory of networks is supported, but only currently if the networks are all 2-port networks (haven't tested mixed rank in a directory).
+---
 
 ## References
 
