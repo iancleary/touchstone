@@ -10,6 +10,19 @@ mod parser;
 mod plot;
 mod utils;
 
+/// A network parsed from a Touchstone (.sNp) file.
+///
+/// Represents an N-port network with S-parameter data at multiple frequencies.
+///
+/// # Examples
+///
+/// ```
+/// use touchstone::Network;
+///
+/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// assert_eq!(net.rank, 2);
+/// println!("Loaded {} frequency points", net.f.len());
+/// ```
 #[derive(Debug, Clone)]
 pub struct Network {
     pub name: String,
@@ -27,18 +40,54 @@ pub struct Network {
     pub s: Vec<data_line::ParsedDataLine>,
 }
 
+/// S-parameter data at a single frequency in Real/Imaginary format.
+///
+/// # Examples
+///
+/// ```
+/// use touchstone::Network;
+///
+/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let s11_ri = net.s_ri(1, 1);
+/// let point = &s11_ri[0];
+/// println!("f = {} Hz, S11 = ({}, {})", point.frequency, point.s_ri.0, point.s_ri.1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct FrequencyRI {
     pub frequency: f64,
     pub s_ri: data_pairs::RealImaginary,
 }
 
+/// S-parameter data at a single frequency in Decibel/Angle format.
+///
+/// # Examples
+///
+/// ```
+/// use touchstone::Network;
+///
+/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let s21_db = net.s_db(2, 1);
+/// let point = &s21_db[0];
+/// println!("f = {} Hz, S21 = {} dB ∠ {}°", point.frequency, point.s_db.0, point.s_db.1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct FrequencyDB {
     pub frequency: f64,
     pub s_db: data_pairs::DecibelAngle,
 }
 
+/// S-parameter data at a single frequency in Magnitude/Angle format.
+///
+/// # Examples
+///
+/// ```
+/// use touchstone::Network;
+///
+/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let s11_ma = net.s_ma(1, 1);
+/// let point = &s11_ma[0];
+/// println!("f = {} Hz, S11 = {} ∠ {}°", point.frequency, point.s_ma.0, point.s_ma.1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct FrequencyMA {
     pub frequency: f64,
@@ -46,10 +95,31 @@ pub struct FrequencyMA {
 }
 
 impl Network {
+    /// Parse a Touchstone file and return a [`Network`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// assert_eq!(net.rank, 2);
+    /// assert!(!net.f.is_empty());
+    /// ```
     pub fn new(file_path: String) -> Self {
         parser::read_file(file_path)
     }
 
+    /// Print a human-readable summary of the network to stdout.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// net.print_summary();
+    /// ```
     pub fn print_summary(&self) {
         println!("Network Summary:");
         println!("Name: {}", self.name);
@@ -65,10 +135,35 @@ impl Network {
         }
     }
 
+    /// Return the frequency vector in Hz.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let freqs = net.f();
+    /// assert_eq!(freqs.len(), net.f.len());
+    /// ```
     pub fn f(&self) -> Vec<f64> {
         self.f.clone()
     }
 
+    /// Return S-parameter S(j,k) in dB/angle format at all frequencies.
+    ///
+    /// Port indices `j` and `k` are 1-indexed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let s21 = net.s_db(2, 1);
+    /// assert_eq!(s21.len(), net.f.len());
+    /// println!("S21 at first freq: {} dB", s21[0].s_db.0);
+    /// ```
     pub fn s_db(&self, j: i8, k: i8) -> Vec<FrequencyDB> {
         let mut s_db_vector: Vec<FrequencyDB> = Vec::new();
         for i in 0..self.s.len() {
@@ -84,6 +179,20 @@ impl Network {
         s_db_vector
     }
 
+    /// Return S-parameter S(j,k) in real/imaginary format at all frequencies.
+    ///
+    /// Port indices `j` and `k` are 1-indexed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let s11 = net.s_ri(1, 1);
+    /// assert_eq!(s11.len(), net.f.len());
+    /// println!("S11 at first freq: {} + j{}", s11[0].s_ri.0, s11[0].s_ri.1);
+    /// ```
     pub fn s_ri(&self, j: i8, k: i8) -> Vec<FrequencyRI> {
         let mut s_ri_vector: Vec<FrequencyRI> = Vec::new();
         for i in 0..self.s.len() {
@@ -99,6 +208,20 @@ impl Network {
         s_ri_vector
     }
 
+    /// Return S-parameter S(j,k) in magnitude/angle format at all frequencies.
+    ///
+    /// Port indices `j` and `k` are 1-indexed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let s11 = net.s_ma(1, 1);
+    /// assert_eq!(s11.len(), net.f.len());
+    /// println!("S11 at first freq: {} ∠ {}°", s11[0].s_ma.0, s11[0].s_ma.1);
+    /// ```
     pub fn s_ma(&self, j: i8, k: i8) -> Vec<FrequencyMA> {
         let mut s_ma_vector: Vec<FrequencyMA> = Vec::new();
         for i in 0..self.s.len() {
@@ -114,9 +237,20 @@ impl Network {
         s_ma_vector
     }
 
-    /// Cascade two 2-port networks (standard connection: port 2 → port 1)
+    /// Cascade two 2-port networks (standard connection: port 2 → port 1).
     ///
-    /// For more control over port connections, use `cascade_ports()`.
+    /// For more control over port connections, use [`cascade_ports()`](Network::cascade_ports).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net1 = Network::new("files/ntwk1.s2p".to_string());
+    /// let net2 = Network::new("files/ntwk2.s2p".to_string());
+    /// let cascaded = net1.cascade(&net2);
+    /// assert_eq!(cascaded.rank, 2);
+    /// ```
     pub fn cascade(&self, other: &Network) -> Network {
         if self.rank != 2 || other.rank != 2 {
             panic!("Cascading is only implemented for 2-port networks. Use cascade_ports() for explicit port specification.");
@@ -311,6 +445,18 @@ impl Network {
         );
     }
 
+    /// Save the network to a Touchstone file.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let tmp = std::env::temp_dir().join("example_output.s2p");
+    /// net.save(tmp.to_str().unwrap()).unwrap();
+    /// std::fs::remove_file(tmp).unwrap();
+    /// ```
     pub fn save(&self, file_path: &str) -> std::io::Result<()> {
         use std::io::Write;
         let mut file = std::fs::File::create(file_path)?;
