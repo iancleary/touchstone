@@ -8,9 +8,11 @@ use crate::open;
 use crate::plot;
 use crate::Network;
 
+/// Command-line interface configuration and entry point.
 pub struct Config {}
 
 impl Config {
+    /// Parse command-line arguments and execute the appropriate action.
     pub fn run(args: &[String]) -> Result<Config, &'static str> {
         if args.len() < 2 {
             return Err("not enough arguments");
@@ -128,16 +130,19 @@ impl Config {
     }
 }
 
+/// Print the crate version to stdout.
 pub fn print_version() {
     println!("touchstone {}", env!("CARGO_PKG_VERSION"));
 }
 
+/// Print a formatted error message to stdout.
 pub fn print_error(error: &str) {
     const RED: &str = "\x1b[31m";
     const RESET: &str = "\x1b[0m";
     println!("{}Problem parsing arguments: {error}{}", RED, RESET);
 }
 
+/// Print usage help text to stdout.
 pub fn print_help() {
     // ANSI color codes
     const BOLD: &str = "\x1b[1m";
