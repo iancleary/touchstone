@@ -1,4 +1,20 @@
+#![warn(missing_docs)]
+//! # Touchstone
+//!
+//! A Rust library for parsing, manipulating, and plotting Touchstone (`.sNp`) files
+//! containing S-parameter data for RF and microwave networks.
+//!
+//! # Examples
+//!
+//! ```
+//! use touchstone::Network;
+//!
+//! let net = Network::new("files/ntwk1.s2p".to_string());
+//! assert_eq!(net.rank, 2);
+//! ```
+
 use std::ops;
+/// Command-line interface helpers for the touchstone binary.
 pub mod cli;
 mod data_line;
 mod data_pairs;
@@ -10,7 +26,7 @@ mod parser;
 mod plot;
 mod utils;
 
-/// A network parsed from a Touchstone (.sNp) file.
+/// A network parsed from a Touchstone (`.sNp`) file.
 ///
 /// Represents an N-port network with S-parameter data at multiple frequencies.
 ///
@@ -23,20 +39,35 @@ mod utils;
 /// assert_eq!(net.rank, 2);
 /// println!("Loaded {} frequency points", net.f.len());
 /// ```
+#[doc(alias = "S-parameters")]
+#[doc(alias = "S2P")]
+#[doc(alias = "SNP")]
+#[doc(alias = "Touchstone")]
+#[doc(alias = "scattering parameters")]
 #[derive(Debug, Clone)]
 pub struct Network {
+    /// File path or name identifying the network.
     pub name: String,
+    /// Number of ports (e.g. 2 for a two-port network).
     pub rank: i32,
+    /// Frequency unit from the option line (e.g. `"GHz"`).
     pub frequency_unit: String,
+    /// Network parameter type (e.g. `"S"` for scattering parameters).
     pub parameter: String,
+    /// Data format from the option line (e.g. `"RI"`, `"MA"`, `"DB"`).
     pub format: String,
-    pub resistance_string: String, // "R"
-    pub z0: f64,                   // If "R" is not present, this is 50
+    /// Resistance keyword from the option line (typically `"R"`).
+    pub resistance_string: String,
+    /// Reference impedance in ohms (default 50 Ω).
+    pub z0: f64,
+    /// Comment lines appearing before the option line.
     pub comments: Vec<String>,
+    /// Comment lines appearing after the option line.
     pub comments_after_option_line: Vec<String>,
 
-    // data
+    /// Frequency vector in Hz.
     pub f: Vec<f64>,
+    /// S-parameter data at each frequency point.
     pub s: Vec<data_line::ParsedDataLine>,
 }
 
@@ -54,7 +85,9 @@ pub struct Network {
 /// ```
 #[derive(Debug, Clone)]
 pub struct FrequencyRI {
+    /// Frequency in Hz.
     pub frequency: f64,
+    /// S-parameter value as a real/imaginary pair.
     pub s_ri: data_pairs::RealImaginary,
 }
 
@@ -72,7 +105,9 @@ pub struct FrequencyRI {
 /// ```
 #[derive(Debug, Clone)]
 pub struct FrequencyDB {
+    /// Frequency in Hz.
     pub frequency: f64,
+    /// S-parameter value as a decibel/angle pair.
     pub s_db: data_pairs::DecibelAngle,
 }
 
@@ -90,7 +125,9 @@ pub struct FrequencyDB {
 /// ```
 #[derive(Debug, Clone)]
 pub struct FrequencyMA {
+    /// Frequency in Hz.
     pub frequency: f64,
+    /// S-parameter value as a magnitude/angle pair.
     pub s_ma: data_pairs::MagnitudeAngle,
 }
 
@@ -106,6 +143,7 @@ impl Network {
     /// assert_eq!(net.rank, 2);
     /// assert!(!net.f.is_empty());
     /// ```
+    #[must_use]
     pub fn new(file_path: String) -> Self {
         parser::read_file(file_path)
     }
@@ -146,6 +184,7 @@ impl Network {
     /// let freqs = net.f();
     /// assert_eq!(freqs.len(), net.f.len());
     /// ```
+    #[must_use]
     pub fn f(&self) -> Vec<f64> {
         self.f.clone()
     }
@@ -164,6 +203,10 @@ impl Network {
     /// assert_eq!(s21.len(), net.f.len());
     /// println!("S21 at first freq: {} dB", s21[0].s_db.0);
     /// ```
+    #[must_use]
+    #[doc(alias = "S-parameters")]
+    #[doc(alias = "insertion loss")]
+    #[doc(alias = "return loss")]
     pub fn s_db(&self, j: i8, k: i8) -> Vec<FrequencyDB> {
         let mut s_db_vector: Vec<FrequencyDB> = Vec::new();
         for i in 0..self.s.len() {
@@ -193,6 +236,7 @@ impl Network {
     /// assert_eq!(s11.len(), net.f.len());
     /// println!("S11 at first freq: {} + j{}", s11[0].s_ri.0, s11[0].s_ri.1);
     /// ```
+    #[must_use]
     pub fn s_ri(&self, j: i8, k: i8) -> Vec<FrequencyRI> {
         let mut s_ri_vector: Vec<FrequencyRI> = Vec::new();
         for i in 0..self.s.len() {
@@ -222,6 +266,7 @@ impl Network {
     /// assert_eq!(s11.len(), net.f.len());
     /// println!("S11 at first freq: {} ∠ {}°", s11[0].s_ma.0, s11[0].s_ma.1);
     /// ```
+    #[must_use]
     pub fn s_ma(&self, j: i8, k: i8) -> Vec<FrequencyMA> {
         let mut s_ma_vector: Vec<FrequencyMA> = Vec::new();
         for i in 0..self.s.len() {
@@ -251,6 +296,10 @@ impl Network {
     /// let cascaded = net1.cascade(&net2);
     /// assert_eq!(cascaded.rank, 2);
     /// ```
+    #[must_use]
+    #[doc(alias = "network cascading")]
+    #[doc(alias = "ABCD parameters")]
+    #[doc(alias = "chain")]
     pub fn cascade(&self, other: &Network) -> Network {
         if self.rank != 2 || other.rank != 2 {
             panic!("Cascading is only implemented for 2-port networks. Use cascade_ports() for explicit port specification.");
@@ -396,6 +445,7 @@ impl Network {
     /// - If port numbers are out of range
     /// - If networks are not 2-port
     /// - If connection is not standard (2→1) for 2-port networks
+    #[must_use]
     pub fn cascade_ports(&self, other: &Network, from_port: usize, to_port: usize) -> Network {
         // Validate port numbers
         assert!(

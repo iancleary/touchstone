@@ -10,7 +10,7 @@ checksum = "360d2e51a74ba62e9ae05960bf4af0f2d968adfab9d4f5217da8c3d97dd3992a"
 
 [[package]]
 name = "touchstone"
-version = "0.11.2"
+version = "0.11.3"
 dependencies = [
  "rfconversions",
 ]
