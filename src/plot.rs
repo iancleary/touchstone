@@ -320,6 +320,119 @@ mod tests {
     }
 
     #[test]
+    fn test_get_plotly_js_not_empty() {
+        let js = get_plotly_js();
+        assert!(!js.is_empty());
+        assert!(js.len() > 1000); // Plotly is a large library
+    }
+
+    #[test]
+    fn test_get_tailwind_css_not_empty() {
+        let css = get_tailwind_css();
+        assert!(!css.is_empty());
+        assert!(css.len() > 1000);
+    }
+
+    #[test]
+    fn test_write_plot_html() {
+        let test_dir = setup_test_dir("test_write_plot_html");
+        let output_path = test_dir.join("output.html");
+        let output_str = output_path.to_str().unwrap();
+        let content = "<html><body>test</body></html>";
+
+        write_plot_html(output_str, content).unwrap();
+
+        let read_back = fs::read_to_string(&output_path).unwrap();
+        assert_eq!(read_back, content);
+    }
+
+    #[test]
+    fn test_generate_one_port_plot_html() {
+        let test_dir = setup_test_dir("test_generate_one_port_plot_html");
+        let s1p_path = test_dir.join("test.s1p");
+        fs::copy("files/hfss_oneport.s1p", &s1p_path).unwrap();
+
+        let network = Network::new(s1p_path.to_str().unwrap().to_string());
+        let output_path = test_dir.join("oneport_plot.html");
+        let output_str = output_path.to_str().unwrap().to_string();
+
+        let freq_data = vec![network
+            .f
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join(", ")];
+        let freq_data = vec![format!("[{}]", freq_data[0])];
+        let s11_data: Vec<String> = vec![format!(
+            "[{}]",
+            network
+                .s_db(1, 1)
+                .iter()
+                .map(|s| s.s_db.decibel().to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )];
+
+        generate_one_port_plot_html(
+            &output_str,
+            &[network.name.clone()],
+            &freq_data,
+            &s11_data,
+        )
+        .unwrap();
+
+        assert!(output_path.exists());
+        let html = fs::read_to_string(&output_path).unwrap();
+        assert!(html.contains("plotly"));
+        assert!(test_dir.join("js").exists());
+    }
+
+    #[test]
+    fn test_generate_plot_from_networks_empty() {
+        let test_dir = setup_test_dir("test_empty_networks");
+        let output_path = test_dir.join("empty.html");
+        let result = generate_plot_from_networks(&[], output_path.to_str().unwrap());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidInput);
+    }
+
+    #[test]
+    fn test_generate_plot_from_networks_rank_mismatch() {
+        let n1 = Network::new("files/hfss_oneport.s1p".to_string());
+        let n2 = Network::new("files/ntwk1.s2p".to_string());
+        let test_dir = setup_test_dir("test_rank_mismatch");
+        let output_path = test_dir.join("mismatch.html");
+        let result = generate_plot_from_networks(&[n1, n2], output_path.to_str().unwrap());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("same rank"));
+    }
+
+    #[test]
+    fn test_generate_plot_from_networks_one_port() {
+        let network = Network::new("files/hfss_oneport.s1p".to_string());
+        let test_dir = setup_test_dir("test_plot_one_port");
+        let output_path = test_dir.join("oneport.html");
+        generate_plot_from_networks(&[network], output_path.to_str().unwrap()).unwrap();
+        assert!(output_path.exists());
+        assert!(test_dir.join("js").exists());
+    }
+
+    #[test]
+    fn test_generate_plot_from_networks_multi_two_port() {
+        let n1 = Network::new("files/ntwk1.s2p".to_string());
+        let n2 = Network::new("files/ntwk2.s2p".to_string());
+        let test_dir = setup_test_dir("test_plot_multi_two_port");
+        let output_path = test_dir.join("overlay.html");
+        generate_plot_from_networks(&[n1, n2], output_path.to_str().unwrap()).unwrap();
+        assert!(output_path.exists());
+        let html = fs::read_to_string(&output_path).unwrap();
+        assert!(html.contains("ntwk1"));
+        assert!(html.contains("ntwk2"));
+    }
+
+    #[test]
     fn test_generate_two_port_plot_html() {
         let test_dir = setup_test_dir("test_generate_two_port_plot_html");
         let s2p_path = test_dir.join("test_plot.s2p");
