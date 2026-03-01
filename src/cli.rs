@@ -99,7 +99,7 @@ impl Config {
                     // Let's return error.
                     return Err("Failed to save S2P file");
                 }
-                println!("Saved cascaded network to {}", output_s2p_path);
+                tracing::info!("Saved cascaded network to {}", output_s2p_path);
 
                 // Generate plot
                 // Plot should be named based on the output s2p file
@@ -172,7 +172,6 @@ pub fn print_help() {
     println!();
     println!("     The s2p file(s) are parsed and an interactive plot (html file and js/ folder) ");
     println!("     is created next to the source file(s).");
-    // println!("     ");
     println!();
     println!("{}{}OPTIONS:{}", BOLD, YELLOW, RESET);
     println!(
@@ -231,18 +230,16 @@ pub fn print_help() {
 fn generate_plot(networks: &[Network], file_path_plot: String) {
     // creates a html file from network
     plot::generate_plot_from_networks(networks, &file_path_plot).unwrap();
-    println!("Plot HTML generated at {}", file_path_plot);
+    tracing::info!("Plot HTML generated at {}", file_path_plot);
 }
 
 fn parse_plot_open_in_browser(file_path: String) {
-    println!("\n");
-    println!("============================");
     let path = std::path::Path::new(&file_path);
     let mut networks = Vec::new();
 
     if path.is_dir() {
-        println!("In directory: {}", file_path);
-        println!("Directory detected. Plotting all valid network files in directory.");
+        tracing::info!("Directory detected: {}", file_path);
+        tracing::debug!("Plotting all valid network files in directory");
         // Iterate over files in directory
         if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
@@ -253,7 +250,7 @@ fn parse_plot_open_in_browser(file_path: String) {
                         // Check for s2p, s1p, etc. (s*p)
                         if ext_str.starts_with('s') && ext_str.ends_with('p') && ext_str.len() == 3
                         {
-                            println!("Found network file: {:?}", path);
+                            tracing::debug!("Found network file: {:?}", path);
                             networks.push(Network::new(path.to_string_lossy().to_string()));
                         }
                     }
@@ -272,8 +269,7 @@ fn parse_plot_open_in_browser(file_path: String) {
         open::plot(output_html_path.clone());
     } else {
         // Single file
-        println!("Single file detected. Plotting.");
-        println!("In file: {}", file_path);
+        tracing::info!("Single file detected: {}", file_path);
 
         let s2p = Network::new(file_path.clone());
         networks.push(s2p);
