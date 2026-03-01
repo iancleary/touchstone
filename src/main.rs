@@ -4,6 +4,16 @@ use std::process;
 use touchstone::cli;
 
 fn main() {
+    // Initialize tracing subscriber (controlled via RUST_LOG env var)
+    // e.g. RUST_LOG=touchstone=debug touchstone files/ntwk1.s2p
+    #[cfg(feature = "cli")]
+    {
+        use tracing_subscriber::EnvFilter;
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .init();
+    }
+
     let args: Vec<String> = env::args().collect();
 
     let _ = cli::Config::run(&args).unwrap_or_else(|err| {

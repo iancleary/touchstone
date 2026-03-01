@@ -230,6 +230,23 @@ touchstone cascade ntwk1.s2p ntwk2.s2p --name result.s2p
 touchstone --help
 ```
 
+### Diagnostics (Tracing)
+
+`touchstone` uses [`tracing`](https://docs.rs/tracing) for structured, runtime-controllable diagnostics. Set the `RUST_LOG` environment variable to see what the CLI is doing:
+
+```bash
+# See file detection, plot generation, and cascade output paths
+RUST_LOG=touchstone=info touchstone files/ntwk1.s2p
+
+# See all diagnostics including per-file discovery in directories
+RUST_LOG=touchstone=debug touchstone files/data_folder/
+
+# Only warnings and errors (quiet mode)
+RUST_LOG=touchstone=warn touchstone files/ntwk1.s2p
+```
+
+If you use `touchstone` as a library, install any `tracing` subscriber in your application to capture events. Without a subscriber, all tracing calls are zero-cost no-ops.
+
 ---
 
 ## 7. Supported File Types, Data Formats, and Frequency Units
