@@ -682,7 +682,7 @@ impl ops::Mul<Network> for Network {
     type Output = Network;
 
     fn mul(self, _rhs: Network) -> Network {
-        println!("> Network.mul(Network) was called");
+        tracing::debug!("Network cascade (mul) operation");
 
         self.cascade(&_rhs)
     }

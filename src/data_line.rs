@@ -79,7 +79,7 @@ pub(crate) fn parse_data_line(
         // println!("Converting frequency from THz to Hz");
         // println!("Original frequency: {} THz", frequency);
         frequency = rfconversions::frequency::thz_to_hz(frequency);
-        println!("Converted frequency: {} Hz", frequency);
+        tracing::trace!("Converted frequency: {} Hz", frequency);
     } else if frequency_unit == "GHz" {
         // convert to Hz
         // println!("Converting frequency from GHz to Hz");

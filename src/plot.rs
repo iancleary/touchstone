@@ -167,6 +167,12 @@ pub fn generate_plot_from_networks(
     }
 
     let rank = networks[0].rank;
+    tracing::debug!(
+        num_networks = networks.len(),
+        rank,
+        output_path,
+        "Generating plot"
+    );
 
     // Verify all networks have the same rank
     for network in networks {

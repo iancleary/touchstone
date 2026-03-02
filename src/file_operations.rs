@@ -15,7 +15,7 @@ pub fn get_file_path_config(path_str: &str) -> FilePathConfig {
 
     if path.is_absolute() {
         // /home/user/files/measured.s2p, etc.
-        println!("'{}' is an Absolute path.", path_str);
+        tracing::debug!("Absolute path: {}", path_str);
         FilePathConfig {
             absolute_path: true,
             relative_path_with_separators: false,
@@ -25,10 +25,7 @@ pub fn get_file_path_config(path_str: &str) -> FilePathConfig {
     // If it's not absolute, we check the number of parts
     else if path.components().count() > 1 {
         // files/measured.s2p, etc.
-        println!(
-            "'{}' is a Relative path with separators (nested).",
-            path_str
-        );
+        tracing::debug!("Relative path with separators: {}", path_str);
         FilePathConfig {
             absolute_path: false,
             relative_path_with_separators: true,
@@ -36,7 +33,7 @@ pub fn get_file_path_config(path_str: &str) -> FilePathConfig {
         }
     } else {
         // measured.s2p, etc.
-        println!("'{}' is a Bare filename (no separators).", path_str);
+        tracing::debug!("Bare filename: {}", path_str);
         FilePathConfig {
             absolute_path: false,
             relative_path_with_separators: false,

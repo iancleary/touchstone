@@ -94,7 +94,7 @@ impl Config {
 
                 // Save S2P file
                 if let Err(e) = result.save(&output_s2p_path) {
-                    eprintln!("Failed to save S2P file: {}", e);
+                    tracing::error!("Failed to save S2P file: {}", e);
                     // Continue to plot generation? Or return error?
                     // Let's return error.
                     return Err("Failed to save S2P file");
@@ -258,7 +258,7 @@ fn parse_plot_open_in_browser(file_path: String) {
             }
         }
         if networks.is_empty() {
-            eprintln!("No valid network files found in directory.");
+            tracing::warn!("No valid network files found in directory.");
         }
         // Output HTML in the directory
         let output_html_path = path
