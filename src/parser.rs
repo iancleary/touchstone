@@ -13,6 +13,7 @@ struct ParserState {
 }
 
 pub fn read_file(file_path: String) -> Network {
+    tracing::debug!("Parsing touchstone file: {}", file_path);
     let contents = fs::read_to_string(&file_path).expect("Should have been able to read the file");
 
     let file_type = file_path
@@ -138,7 +139,13 @@ pub fn read_file(file_path: String) -> Network {
         parser_state.data_lines.extend(current_data_segment);
     }
 
-    // println!("parsed options:\n{:?}", parsed_options);
+    tracing::debug!(
+        num_ports = n_ports,
+        num_frequencies = f.len(),
+        format = %parsed_options.format,
+        frequency_unit = %parsed_options.frequency_unit,
+        "Parsing complete"
+    );
 
     Network {
         name: file_path,
