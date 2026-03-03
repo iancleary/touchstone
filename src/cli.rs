@@ -495,6 +495,30 @@ mod tests {
     }
 
     #[test]
+    fn test_too_many_args_non_cascade() {
+        let args = vec![
+            String::from("program_name"),
+            String::from("file1.s2p"),
+            String::from("extra"),
+        ];
+        let result = Config::run(&args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cascade_missing_name_value() {
+        let args = vec![
+            String::from("program_name"),
+            String::from("cascade"),
+            String::from("files/ntwk1.s2p"),
+            String::from("files/ntwk2.s2p"),
+            String::from("--name"),
+        ];
+        let result = Config::run(&args);
+        assert_eq!(result.err(), Some("missing argument for --name"));
+    }
+
+    #[test]
     fn test_directory_plot() {
         let test_dir = setup_test_dir("test_directory_plot");
         let s2p1 = test_dir.join("ntwk1.s2p");
