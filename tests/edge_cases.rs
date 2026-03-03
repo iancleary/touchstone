@@ -211,13 +211,13 @@ fn s_db_ri_ma_consistency() {
 #[test]
 #[should_panic]
 fn nonexistent_file_panics() {
-    Network::new("files/does_not_exist.s2p".to_string());
+    let _ = Network::new("files/does_not_exist.s2p".to_string());
 }
 
 #[test]
 #[should_panic]
 fn invalid_extension_panics() {
-    Network::new("files/ntwk1.txt".to_string());
+    let _ = Network::new("files/ntwk1.txt".to_string());
 }
 
 // ============================================================
