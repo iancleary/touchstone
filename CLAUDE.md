@@ -2,12 +2,12 @@
 
 ## Overview
 
-Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), and 2-port network cascading via ABCD parameters. Published on crates.io (v0.11.4).
+Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), and 2-port network cascading via ABCD parameters. Published on crates.io (v0.12.1).
 
 ## Commands
 
 ```bash
-cargo test                        # Run all 166 tests
+cargo test                        # Run all 127 tests
 cargo clippy -- -D warnings       # Lint
 cargo fmt -- --check              # Format check
 cargo run -- files/ntwk3.s2p      # CLI: plot a single file (opens HTML)
