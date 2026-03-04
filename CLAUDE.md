@@ -7,7 +7,7 @@ Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the in
 ## Commands
 
 ```bash
-cargo test                        # Run all 127 tests
+cargo test                        # Run all 127 tests (v0.12.1)
 cargo clippy -- -D warnings       # Lint
 cargo fmt -- --check              # Format check
 cargo run -- files/ntwk3.s2p      # CLI: plot a single file (opens HTML)
