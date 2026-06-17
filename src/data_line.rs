@@ -15,11 +15,45 @@ pub struct ParsedDataLine {
     pub s_ma: MagnitudeAngleMatrix,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum TwoPortDataOrder {
+    #[default]
+    N21N12,
+    N12N21,
+}
+
+impl TwoPortDataOrder {
+    pub(crate) fn from_keyword_argument(argument: &str) -> Self {
+        match argument.trim().to_ascii_lowercase().as_str() {
+            "21_12" => Self::N21N12,
+            "12_21" => Self::N12N21,
+            _ => panic!("Unsupported [Two-Port Data Order]: {}", argument),
+        }
+    }
+}
+
+#[cfg(test)]
 pub(crate) fn parse_data_line(
     data_lines: Vec<String>,
     format: &String,
     n: &i32,
     frequency_unit: &String,
+) -> ParsedDataLine {
+    parse_data_line_with_order(
+        data_lines,
+        format,
+        n,
+        frequency_unit,
+        TwoPortDataOrder::default(),
+    )
+}
+
+pub(crate) fn parse_data_line_with_order(
+    data_lines: Vec<String>,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+    two_port_order: TwoPortDataOrder,
 ) -> ParsedDataLine {
     // println!("\n");
     // println!("format:\n{:?}", *format);
@@ -27,8 +61,8 @@ pub(crate) fn parse_data_line(
 
     // FROM docs/touchstone_ver2_1.pdf (Page 16)
     //
-    // 2-port data (line)
-    // <frequency value>  <N11> <N12> <N21> <N22>
+    // Legacy/default 2-port data is N11, N21, N12, N22. Touchstone 2.0/2.1
+    // files may explicitly select N11, N12, N21, N22 with [Two-Port Data Order] 12_21.
 
     // where
     // frequency value  frequency at which the network parameter data was taken or derived.
@@ -48,8 +82,10 @@ pub(crate) fn parse_data_line(
     for line in &data_lines {
         // println!("Data Line: {}", line);
         let line_parts: Vec<_> = line
+            .split('!')
+            .next()
+            .unwrap_or("")
             .split_whitespace()
-            .filter(|s| !s.starts_with('!')) // Skip inline comments
             .collect();
         parts.extend(line_parts);
     }
@@ -107,16 +143,8 @@ pub(crate) fn parse_data_line(
 
     if format == "RI" {
         // Real-Imaginary format
-        // Build NxN matrix from f64_parts in row-major order
-        let mut s_ri_data = Vec::new();
-        for row in 0..n_usize {
-            let mut row_vec = Vec::new();
-            for col in 0..n_usize {
-                let idx = 1 + 2 * (row * n_usize + col);
-                row_vec.push(RealImaginary(f64_parts[idx], f64_parts[idx + 1]));
-            }
-            s_ri_data.push(row_vec);
-        }
+        let pairs = parse_pairs(&f64_parts, n_usize, RealImaginary);
+        let s_ri_data = pairs_to_matrix(pairs, n_usize, two_port_order);
         let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
 
         // Convert to DecibelAngle format
@@ -153,16 +181,8 @@ pub(crate) fn parse_data_line(
         }
     } else if format == "MA" {
         // Magnitude-Angle format
-        // Build NxN matrix from f64_parts in row-major order
-        let mut s_ma_data = Vec::new();
-        for row in 0..n_usize {
-            let mut row_vec = Vec::new();
-            for col in 0..n_usize {
-                let idx = 1 + 2 * (row * n_usize + col);
-                row_vec.push(MagnitudeAngle(f64_parts[idx], f64_parts[idx + 1]));
-            }
-            s_ma_data.push(row_vec);
-        }
+        let pairs = parse_pairs(&f64_parts, n_usize, MagnitudeAngle);
+        let s_ma_data = pairs_to_matrix(pairs, n_usize, two_port_order);
         let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
 
         // Convert to RealImaginary format
@@ -199,16 +219,8 @@ pub(crate) fn parse_data_line(
         }
     } else if format == "DB" {
         // Decibel-Angle format
-        // Build NxN matrix from f64_parts in row-major order
-        let mut s_db_data = Vec::new();
-        for row in 0..n_usize {
-            let mut row_vec = Vec::new();
-            for col in 0..n_usize {
-                let idx = 1 + 2 * (row * n_usize + col);
-                row_vec.push(DecibelAngle(f64_parts[idx], f64_parts[idx + 1]));
-            }
-            s_db_data.push(row_vec);
-        }
+        let pairs = parse_pairs(&f64_parts, n_usize, DecibelAngle);
+        let s_db_data = pairs_to_matrix(pairs, n_usize, two_port_order);
         let s_db = DecibelAngleMatrix::from_vec(s_db_data);
 
         // Convert to RealImaginary format
@@ -245,6 +257,42 @@ pub(crate) fn parse_data_line(
         }
     } else {
         panic!("Unsupported format: {}", format);
+    }
+}
+
+fn parse_pairs<T, F>(f64_parts: &[f64], n_usize: usize, pair_constructor: F) -> Vec<T>
+where
+    F: Fn(f64, f64) -> T,
+{
+    (0..(n_usize * n_usize))
+        .map(|pair_index| {
+            let idx = 1 + 2 * pair_index;
+            pair_constructor(f64_parts[idx], f64_parts[idx + 1])
+        })
+        .collect()
+}
+
+fn pairs_to_matrix<T: Copy>(
+    pairs: Vec<T>,
+    n_usize: usize,
+    two_port_order: TwoPortDataOrder,
+) -> Vec<Vec<T>> {
+    if n_usize == 2 {
+        let s11 = pairs[0];
+        let p1 = pairs[1];
+        let p2 = pairs[2];
+        let s22 = pairs[3];
+        let (s21, s12) = match two_port_order {
+            TwoPortDataOrder::N21N12 => (p1, p2),
+            TwoPortDataOrder::N12N21 => (p2, p1),
+        };
+
+        vec![vec![s11, s12], vec![s21, s22]]
+    } else {
+        pairs
+            .chunks(n_usize)
+            .map(|row| row.to_vec())
+            .collect::<Vec<_>>()
     }
 }
 
@@ -328,10 +376,35 @@ mod tests {
 
     // --- 2-port RI format ---
     #[test]
-    fn test_parse_2port_ri() {
-        // S11, S12, S21, S22
+    fn test_parse_2port_ri_default_21_12_order() {
+        // S11, S21, S12, S22
         let lines = vec!["1e9 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8".to_string()];
         let result = parse_data_line(lines, &"RI".to_string(), &2, &"Hz".to_string());
+        let s11 = result.s_ri.get(1, 1);
+        assert!(approx_eq(s11.0, 0.1, 1e-10));
+        assert!(approx_eq(s11.1, 0.2, 1e-10));
+        let s12 = result.s_ri.get(1, 2);
+        assert!(approx_eq(s12.0, 0.5, 1e-10));
+        assert!(approx_eq(s12.1, 0.6, 1e-10));
+        let s21 = result.s_ri.get(2, 1);
+        assert!(approx_eq(s21.0, 0.3, 1e-10));
+        assert!(approx_eq(s21.1, 0.4, 1e-10));
+        let s22 = result.s_ri.get(2, 2);
+        assert!(approx_eq(s22.0, 0.7, 1e-10));
+        assert!(approx_eq(s22.1, 0.8, 1e-10));
+    }
+
+    #[test]
+    fn test_parse_2port_ri_explicit_12_21_order() {
+        // S11, S12, S21, S22
+        let lines = vec!["1e9 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8".to_string()];
+        let result = parse_data_line_with_order(
+            lines,
+            &"RI".to_string(),
+            &2,
+            &"Hz".to_string(),
+            TwoPortDataOrder::N12N21,
+        );
         let s11 = result.s_ri.get(1, 1);
         assert!(approx_eq(s11.0, 0.1, 1e-10));
         assert!(approx_eq(s11.1, 0.2, 1e-10));

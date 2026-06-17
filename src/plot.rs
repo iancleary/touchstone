@@ -362,13 +362,15 @@ mod tests {
         let output_path = test_dir.join("oneport_plot.html");
         let output_str = output_path.to_str().unwrap().to_string();
 
-        let freq_data = vec![network
-            .f
-            .iter()
-            .map(|f| f.to_string())
-            .collect::<Vec<String>>()
-            .join(", ")];
-        let freq_data = vec![format!("[{}]", freq_data[0])];
+        let freq_data = vec![format!(
+            "[{}]",
+            network
+                .f
+                .iter()
+                .map(|f| f.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )];
         let s11_data: Vec<String> = vec![format!(
             "[{}]",
             network
@@ -381,7 +383,7 @@ mod tests {
 
         generate_one_port_plot_html(
             &output_str,
-            &[network.name.clone()],
+            std::slice::from_ref(&network.name),
             &freq_data,
             &s11_data,
         )
