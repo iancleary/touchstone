@@ -9,7 +9,7 @@
 //! ```
 //! use touchstone::Network;
 //!
-//! let net = Network::new("files/ntwk1.s2p".to_string());
+//! let net = Network::new("files/ntwk1.s2p").unwrap();
 //! assert_eq!(net.rank, 2);
 //! ```
 
@@ -38,7 +38,7 @@ pub use error::TouchstoneError;
 /// ```
 /// use touchstone::Network;
 ///
-/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let net = Network::new("files/ntwk1.s2p").unwrap();
 /// assert_eq!(net.rank, 2);
 /// println!("Loaded {} frequency points", net.f.len());
 /// ```
@@ -81,7 +81,7 @@ pub struct Network {
 /// ```
 /// use touchstone::Network;
 ///
-/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let net = Network::new("files/ntwk1.s2p").unwrap();
 /// let s11_ri = net.s_ri(1, 1);
 /// let point = &s11_ri[0];
 /// println!("f = {} Hz, S11 = ({}, {})", point.frequency, point.s_ri.0, point.s_ri.1);
@@ -101,7 +101,7 @@ pub struct FrequencyRI {
 /// ```
 /// use touchstone::Network;
 ///
-/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let net = Network::new("files/ntwk1.s2p").unwrap();
 /// let s21_db = net.s_db(2, 1);
 /// let point = &s21_db[0];
 /// println!("f = {} Hz, S21 = {} dB ∠ {}°", point.frequency, point.s_db.0, point.s_db.1);
@@ -121,7 +121,7 @@ pub struct FrequencyDB {
 /// ```
 /// use touchstone::Network;
 ///
-/// let net = Network::new("files/ntwk1.s2p".to_string());
+/// let net = Network::new("files/ntwk1.s2p").unwrap();
 /// let s11_ma = net.s_ma(1, 1);
 /// let point = &s11_ma[0];
 /// println!("f = {} Hz, S11 = {} ∠ {}°", point.frequency, point.s_ma.0, point.s_ma.1);
@@ -142,25 +142,12 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p")?;
     /// assert_eq!(net.rank, 2);
     /// assert!(!net.f.is_empty());
-    /// ```
-    #[must_use]
-    pub fn new(file_path: String) -> Self {
-        Self::try_new(file_path).expect("failed to parse Touchstone file")
-    }
-
-    /// Creates a Network from a file path, returning parse and I/O errors.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let network = touchstone::Network::try_new("files/ntwk1.s2p")?;
-    /// assert_eq!(network.rank, 2);
     /// # Ok::<(), touchstone::TouchstoneError>(())
     /// ```
-    pub fn try_new<P: AsRef<std::path::Path>>(file_path: P) -> Result<Self, TouchstoneError> {
+    pub fn new<P: AsRef<std::path::Path>>(file_path: P) -> Result<Self, TouchstoneError> {
         parser::try_read_file(file_path)
     }
 
@@ -212,7 +199,7 @@ impl Network {
     /// ```no_run
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// net.print_summary();
     /// ```
     pub fn print_summary(&self) {
@@ -237,7 +224,7 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let freqs = net.f();
     /// assert_eq!(freqs.len(), net.f.len());
     /// ```
@@ -255,7 +242,7 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let s21 = net.s_db(2, 1);
     /// assert_eq!(s21.len(), net.f.len());
     /// println!("S21 at first freq: {} dB", s21[0].s_db.0);
@@ -288,7 +275,7 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let s11 = net.s_ri(1, 1);
     /// assert_eq!(s11.len(), net.f.len());
     /// println!("S11 at first freq: {} + j{}", s11[0].s_ri.0, s11[0].s_ri.1);
@@ -318,7 +305,7 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let s11 = net.s_ma(1, 1);
     /// assert_eq!(s11.len(), net.f.len());
     /// println!("S11 at first freq: {} ∠ {}°", s11[0].s_ma.0, s11[0].s_ma.1);
@@ -348,8 +335,8 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net1 = Network::new("files/ntwk1.s2p".to_string());
-    /// let net2 = Network::new("files/ntwk2.s2p".to_string());
+    /// let net1 = Network::new("files/ntwk1.s2p").unwrap();
+    /// let net2 = Network::new("files/ntwk2.s2p").unwrap();
     /// let cascaded = net1.cascade(&net2);
     /// assert_eq!(cascaded.rank, 2);
     /// ```
@@ -487,8 +474,8 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net1 = Network::new("files/ntwk1.s2p".to_string());
-    /// let net2 = Network::new("files/ntwk2.s2p".to_string());
+    /// let net1 = Network::new("files/ntwk1.s2p").unwrap();
+    /// let net2 = Network::new("files/ntwk2.s2p").unwrap();
     ///
     /// // Standard 2-port cascade (port 2 → port 1)
     /// let result = net1.cascade_ports(&net2, 2, 1);
@@ -559,7 +546,7 @@ impl Network {
     /// ```
     /// use touchstone::Network;
     ///
-    /// let net = Network::new("files/ntwk1.s2p".to_string());
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let tmp = std::env::temp_dir().join("example_output.s2p");
     /// net.save(tmp.to_str().unwrap()).unwrap();
     /// std::fs::remove_file(tmp).unwrap();
@@ -770,7 +757,7 @@ mod tests {
 
     #[test]
     fn f() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
         let f = network1.f();
 
         assert_eq!(f.len(), network1.f.len());
@@ -778,7 +765,7 @@ mod tests {
 
     #[test]
     fn s_db() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
 
         let s11 = network1.s_db(1, 1);
         let s12 = network1.s_db(1, 2);
@@ -792,7 +779,7 @@ mod tests {
 
     #[test]
     fn s_ri() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
 
         let s11 = network1.s_ri(1, 1);
         let s12 = network1.s_ri(1, 2);
@@ -806,7 +793,7 @@ mod tests {
 
     #[test]
     fn s_ma() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
 
         let s11 = network1.s_ma(1, 1);
         let s12 = network1.s_ma(1, 2);
@@ -820,10 +807,10 @@ mod tests {
 
     #[test]
     fn cascade_2port_networks() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
 
-        let network3 = Network::new("files/ntwk3.s2p".to_string());
+        let network3 = Network::new("files/ntwk3.s2p").unwrap();
 
         let cascaded_network = network1.cascade(&network2);
 
@@ -879,12 +866,12 @@ mod tests {
 
     #[test]
     fn cascade_2port_networks_operator() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
 
         let cascaded_network = network1 * network2;
 
-        let network3 = Network::new("files/ntwk3.s2p".to_string());
+        let network3 = Network::new("files/ntwk3.s2p").unwrap();
 
         assert_eq!(cascaded_network.f.len(), 91);
         assert_eq!(cascaded_network.s.len(), 91);
@@ -943,7 +930,7 @@ mod tests {
 
     #[test]
     fn test_save_load_roundtrip() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
 
         let temp_dir = std::env::temp_dir()
             .join("touchstone_tests")
@@ -954,7 +941,7 @@ mod tests {
 
         network1.save(file_path_str).unwrap();
 
-        let network2 = Network::new(file_path_str.to_string());
+        let network2 = Network::new(file_path_str).unwrap();
 
         assert_eq!(network1.f.len(), network2.f.len());
         assert_eq!(network1.s.len(), network2.s.len());
@@ -1005,7 +992,7 @@ mod tests {
         )
         .unwrap();
 
-        let network = Network::new(input_path.to_str().unwrap().to_string());
+        let network = Network::new(input_path.to_str().unwrap()).unwrap();
         assert_eq!(
             network.s_ri(2, 1)[0].s_ri,
             data_pairs::RealImaginary(4.0, 0.0)
@@ -1035,7 +1022,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(values, vec![1.0, 0.1, 0.0, 4.0, 0.0, 0.01, 0.0, 0.2, 0.0]);
 
-        let reloaded = Network::new(output_path.to_str().unwrap().to_string());
+        let reloaded = Network::new(output_path.to_str().unwrap()).unwrap();
         assert_eq!(
             reloaded.s_ri(2, 1)[0].s_ri,
             data_pairs::RealImaginary(4.0, 0.0)
@@ -1051,7 +1038,7 @@ mod tests {
 
     #[test]
     fn test_save_load_roundtrip_3port() {
-        let network1 = Network::new("files/hfss_18.2.s3p".to_string());
+        let network1 = Network::new("files/hfss_18.2.s3p").unwrap();
 
         let temp_dir = std::env::temp_dir()
             .join("touchstone_tests")
@@ -1062,7 +1049,7 @@ mod tests {
 
         network1.save(file_path_str).unwrap();
 
-        let network2 = Network::new(file_path_str.to_string());
+        let network2 = Network::new(file_path_str).unwrap();
 
         // Verify metadata
         assert_eq!(network1.rank, network2.rank);
@@ -1108,7 +1095,7 @@ mod tests {
 
     #[test]
     fn test_save_load_roundtrip_4port() {
-        let network1 = Network::new("files/Agilent_E5071B.s4p".to_string());
+        let network1 = Network::new("files/Agilent_E5071B.s4p").unwrap();
 
         let temp_dir = std::env::temp_dir()
             .join("touchstone_tests")
@@ -1119,7 +1106,7 @@ mod tests {
 
         network1.save(file_path_str).unwrap();
 
-        let network2 = Network::new(file_path_str.to_string());
+        let network2 = Network::new(file_path_str).unwrap();
 
         // Verify metadata
         assert_eq!(network1.rank, network2.rank);
@@ -1166,9 +1153,9 @@ mod tests {
     #[test]
     fn test_cascade_ports_2port_standard() {
         // Test cascade_ports with standard 2-port connection (2→1)
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
-        let network3 = Network::new("files/ntwk3.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
+        let network3 = Network::new("files/ntwk3.s2p").unwrap();
 
         // cascade_ports(2, 1) should give same result as cascade()
         let result_ports = network1.cascade_ports(&network2, 2, 1);
@@ -1193,8 +1180,8 @@ mod tests {
     #[should_panic(expected = "only standard cascade (port 2 → port 1) is currently supported")]
     fn test_cascade_ports_2port_nonstandard() {
         // Test that non-standard port connections panic with helpful message
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
 
         // This should panic because we don't support 1→2 connection yet
         let _ = network1.cascade_ports(&network2, 1, 2);
@@ -1203,30 +1190,30 @@ mod tests {
     #[test]
     #[should_panic(expected = "from_port 3 out of range for 2-port network")]
     fn test_cascade_ports_invalid_from_port() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
         let _ = network1.cascade_ports(&network2, 3, 1);
     }
 
     #[test]
     #[should_panic(expected = "to_port 5 out of range for 2-port network")]
     fn test_cascade_ports_invalid_to_port() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
         let _ = network1.cascade_ports(&network2, 2, 5);
     }
 
     #[test]
     #[should_panic(expected = "from_port 0 out of range")]
     fn test_cascade_ports_zero_port() {
-        let network1 = Network::new("files/ntwk1.s2p".to_string());
-        let network2 = Network::new("files/ntwk2.s2p".to_string());
+        let network1 = Network::new("files/ntwk1.s2p").unwrap();
+        let network2 = Network::new("files/ntwk2.s2p").unwrap();
         let _ = network1.cascade_ports(&network2, 0, 1);
     }
 
     #[test]
     fn test_save_load_roundtrip_ma_format() {
-        let network1 = Network::new("files/hfss_threeport_MA.s3p".to_string());
+        let network1 = Network::new("files/hfss_threeport_MA.s3p").unwrap();
         assert_eq!(network1.format, "MA");
 
         let temp_dir = std::env::temp_dir()
@@ -1237,7 +1224,7 @@ mod tests {
         let file_path_str = file_path.to_str().unwrap();
 
         network1.save(file_path_str).unwrap();
-        let network2 = Network::new(file_path_str.to_string());
+        let network2 = Network::new(file_path_str).unwrap();
 
         assert_eq!(network1.rank, network2.rank);
         assert_eq!(network1.format, network2.format);
@@ -1272,7 +1259,7 @@ mod tests {
 
     #[test]
     fn test_save_load_roundtrip_db_format() {
-        let network1 = Network::new("files/hfss_threeport_DB.s3p".to_string());
+        let network1 = Network::new("files/hfss_threeport_DB.s3p").unwrap();
         assert_eq!(network1.format, "DB");
 
         let temp_dir = std::env::temp_dir()
@@ -1283,7 +1270,7 @@ mod tests {
         let file_path_str = file_path.to_str().unwrap();
 
         network1.save(file_path_str).unwrap();
-        let network2 = Network::new(file_path_str.to_string());
+        let network2 = Network::new(file_path_str).unwrap();
 
         assert_eq!(network1.rank, network2.rank);
         assert_eq!(network1.format, network2.format);
@@ -1318,7 +1305,7 @@ mod tests {
 
     #[test]
     fn test_save_load_roundtrip_1port() {
-        let network1 = Network::new("files/hfss_oneport.s1p".to_string());
+        let network1 = Network::new("files/hfss_oneport.s1p").unwrap();
 
         let temp_dir = std::env::temp_dir()
             .join("touchstone_tests")
@@ -1328,7 +1315,7 @@ mod tests {
         let file_path_str = file_path.to_str().unwrap();
 
         network1.save(file_path_str).unwrap();
-        let network2 = Network::new(file_path_str.to_string());
+        let network2 = Network::new(file_path_str).unwrap();
 
         assert_eq!(network1.rank, 1);
         assert_eq!(network1.rank, network2.rank);
@@ -1348,8 +1335,8 @@ mod tests {
     #[test]
     #[should_panic(expected = "Cannot cascade networks with different reference impedances")]
     fn test_cascade_different_z0() {
-        let mut net1 = Network::new("files/ntwk1.s2p".to_string());
-        let net2 = Network::new("files/ntwk2.s2p".to_string());
+        let mut net1 = Network::new("files/ntwk1.s2p").unwrap();
+        let net2 = Network::new("files/ntwk2.s2p").unwrap();
         net1.z0 = 75.0;
         let _ = net1.cascade(&net2);
     }
@@ -1357,8 +1344,8 @@ mod tests {
     #[test]
     #[should_panic(expected = "Cannot cascade networks with different frequency units")]
     fn test_cascade_different_freq_units() {
-        let mut net1 = Network::new("files/ntwk1.s2p".to_string());
-        let net2 = Network::new("files/ntwk2.s2p".to_string());
+        let mut net1 = Network::new("files/ntwk1.s2p").unwrap();
+        let net2 = Network::new("files/ntwk2.s2p").unwrap();
         net1.frequency_unit = "MHz".to_string();
         let _ = net1.cascade(&net2);
     }
@@ -1366,21 +1353,21 @@ mod tests {
     #[test]
     #[should_panic(expected = "Cascading is only implemented for 2-port networks")]
     fn test_cascade_non_2port() {
-        let net1 = Network::new("files/hfss_18.2.s3p".to_string());
-        let net2 = Network::new("files/hfss_18.2.s3p".to_string());
+        let net1 = Network::new("files/hfss_18.2.s3p").unwrap();
+        let net2 = Network::new("files/hfss_18.2.s3p").unwrap();
         let _ = net1.cascade(&net2);
     }
 
     #[test]
     fn test_print_summary() {
-        let net = Network::new("files/ntwk1.s2p".to_string());
+        let net = Network::new("files/ntwk1.s2p").unwrap();
         // Just verify it doesn't panic
         net.print_summary();
     }
 
     #[test]
     fn test_clone() {
-        let net1 = Network::new("files/ntwk1.s2p".to_string());
+        let net1 = Network::new("files/ntwk1.s2p").unwrap();
         let net2 = net1.clone();
         assert_eq!(net1.rank, net2.rank);
         assert_eq!(net1.f.len(), net2.f.len());
@@ -1389,7 +1376,7 @@ mod tests {
 
     #[test]
     fn test_debug() {
-        let net = Network::new("files/ntwk1.s2p".to_string());
+        let net = Network::new("files/ntwk1.s2p").unwrap();
         let debug_str = format!("{:?}", net);
         assert!(debug_str.contains("Network"));
     }

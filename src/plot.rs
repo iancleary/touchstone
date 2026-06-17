@@ -358,7 +358,7 @@ mod tests {
         let s1p_path = test_dir.join("test.s1p");
         fs::copy("files/hfss_oneport.s1p", &s1p_path).unwrap();
 
-        let network = Network::new(s1p_path.to_str().unwrap().to_string());
+        let network = Network::new(s1p_path.to_str().unwrap()).unwrap();
         let output_path = test_dir.join("oneport_plot.html");
         let output_str = output_path.to_str().unwrap().to_string();
 
@@ -406,8 +406,8 @@ mod tests {
 
     #[test]
     fn test_generate_plot_from_networks_rank_mismatch() {
-        let n1 = Network::new("files/hfss_oneport.s1p".to_string());
-        let n2 = Network::new("files/ntwk1.s2p".to_string());
+        let n1 = Network::new("files/hfss_oneport.s1p").unwrap();
+        let n2 = Network::new("files/ntwk1.s2p").unwrap();
         let test_dir = setup_test_dir("test_rank_mismatch");
         let output_path = test_dir.join("mismatch.html");
         let result = generate_plot_from_networks(&[n1, n2], output_path.to_str().unwrap());
@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_generate_plot_from_networks_one_port() {
-        let network = Network::new("files/hfss_oneport.s1p".to_string());
+        let network = Network::new("files/hfss_oneport.s1p").unwrap();
         let test_dir = setup_test_dir("test_plot_one_port");
         let output_path = test_dir.join("oneport.html");
         generate_plot_from_networks(&[network], output_path.to_str().unwrap()).unwrap();
@@ -429,8 +429,8 @@ mod tests {
 
     #[test]
     fn test_generate_plot_from_networks_multi_two_port() {
-        let n1 = Network::new("files/ntwk1.s2p".to_string());
-        let n2 = Network::new("files/ntwk2.s2p".to_string());
+        let n1 = Network::new("files/ntwk1.s2p").unwrap();
+        let n2 = Network::new("files/ntwk2.s2p").unwrap();
         let test_dir = setup_test_dir("test_plot_multi_two_port");
         let output_path = test_dir.join("overlay.html");
         generate_plot_from_networks(&[n1, n2], output_path.to_str().unwrap()).unwrap();
@@ -446,7 +446,7 @@ mod tests {
         let s2p_path = test_dir.join("test_plot.s2p");
         fs::copy("files/test_plot/test_plot.s2p", &s2p_path).unwrap();
 
-        let network = Network::new(s2p_path.to_str().unwrap().to_string());
+        let network = Network::new(s2p_path.to_str().unwrap()).unwrap();
 
         // network.name is derived from filename, so it will be "test_plot.s2p" (or similar depending on implementation)
         // Network::new uses parser::read_file which sets name.

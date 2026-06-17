@@ -63,7 +63,11 @@ impl Config {
 
                 let mut networks = Vec::new();
                 for path in file_paths.iter() {
-                    networks.push(Network::new(path.clone()));
+                    let network = Network::new(path).map_err(|error| {
+                        tracing::error!("Failed to parse Touchstone file {}: {}", path, error);
+                        "Failed to parse Touchstone file"
+                    })?;
+                    networks.push(network);
                 }
 
                 let mut result = networks[0].clone();
@@ -124,7 +128,7 @@ impl Config {
         // touchstone arg[1], such as touchstone files/ntwk1.s2p
         let file_argument = args[1].clone();
 
-        parse_plot_open_in_browser(file_argument.clone());
+        parse_plot_open_in_browser(file_argument.clone())?;
 
         Ok(Config {})
     }
@@ -233,7 +237,7 @@ fn generate_plot(networks: &[Network], file_path_plot: String) {
     tracing::info!("Plot HTML generated at {}", file_path_plot);
 }
 
-fn parse_plot_open_in_browser(file_path: String) {
+fn parse_plot_open_in_browser(file_path: String) -> Result<(), &'static str> {
     let path = std::path::Path::new(&file_path);
     let mut networks = Vec::new();
 
@@ -251,7 +255,15 @@ fn parse_plot_open_in_browser(file_path: String) {
                         if ext_str.starts_with('s') && ext_str.ends_with('p') && ext_str.len() == 3
                         {
                             tracing::debug!("Found network file: {:?}", path);
-                            networks.push(Network::new(path.to_string_lossy().to_string()));
+                            let network = Network::new(&path).map_err(|error| {
+                                tracing::error!(
+                                    "Failed to parse Touchstone file {}: {}",
+                                    path.display(),
+                                    error
+                                );
+                                "Failed to parse Touchstone file"
+                            })?;
+                            networks.push(network);
                         }
                     }
                 }
@@ -271,7 +283,10 @@ fn parse_plot_open_in_browser(file_path: String) {
         // Single file
         tracing::info!("Single file detected: {}", file_path);
 
-        let s2p = Network::new(file_path.clone());
+        let s2p = Network::new(&file_path).map_err(|error| {
+            tracing::error!("Failed to parse Touchstone file {}: {}", file_path, error);
+            "Failed to parse Touchstone file"
+        })?;
         networks.push(s2p);
 
         let file_path_config: file_operations::FilePathConfig =
@@ -303,6 +318,8 @@ fn parse_plot_open_in_browser(file_path: String) {
         generate_plot(&networks, output_html_path.clone());
         open::plot(output_html_path.clone());
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -399,7 +416,7 @@ mod tests {
         )
         .unwrap();
 
-        parse_plot_open_in_browser(s2p_path_rel.to_str().unwrap().to_string());
+        parse_plot_open_in_browser(s2p_path_rel.to_str().unwrap().to_string()).unwrap();
         // Output should be next to it
         assert!(s2p_path_rel.with_extension("s2p.html").exists());
         assert!(test_dir_rel.join("js").exists());
@@ -417,7 +434,7 @@ mod tests {
             "test_cli_run_bare_filename.s2p",
         );
         let bare_filename = String::from("test_cli_run_bare_filename.s2p");
-        parse_plot_open_in_browser(bare_filename);
+        parse_plot_open_in_browser(bare_filename).unwrap();
         let _bare_filename_remove_file_s2p = fs::remove_file("test_cli_run_bare_filename.s2p");
         let _bare_filename_remove_file_html =
             fs::remove_file("test_cli_run_bare_filename.s2p.html");
@@ -435,7 +452,7 @@ mod tests {
         let path_buf = std::fs::canonicalize(&s2p_path_abs).unwrap();
         let absolute_path: String = path_buf.to_string_lossy().to_string();
 
-        parse_plot_open_in_browser(absolute_path);
+        parse_plot_open_in_browser(absolute_path).unwrap();
 
         assert!(s2p_path_abs.with_extension("s2p.html").exists());
         assert!(test_dir_abs.join("js").exists());
@@ -531,7 +548,7 @@ mod tests {
         fs::write(&txt_file, "ignore me").unwrap();
 
         // Pass the directory path
-        parse_plot_open_in_browser(test_dir.to_str().unwrap().to_string());
+        parse_plot_open_in_browser(test_dir.to_str().unwrap().to_string()).unwrap();
 
         // Check for combined output
         let expected_output = test_dir.join("combined_plot.html");

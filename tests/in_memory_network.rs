@@ -5,8 +5,8 @@ use touchstone::{Network, TouchstoneError};
 const TWO_PORT_RI: &str = "# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n";
 
 #[test]
-fn try_new_reads_existing_touchstone_file() {
-    let network = Network::try_new("files/ntwk1.s2p").unwrap();
+fn new_reads_existing_touchstone_file() {
+    let network = Network::new("files/ntwk1.s2p").unwrap();
 
     assert_eq!(network.name, "files/ntwk1.s2p");
     assert_eq!(network.rank, 2);
@@ -37,13 +37,13 @@ fn from_bytes_parses_uploaded_touchstone_data_without_file() {
 }
 
 #[test]
-fn from_memory_matches_try_new_for_s1p_file() {
-    assert_from_memory_matches_try_new("files/hfss_oneport.s1p");
+fn from_memory_matches_new_for_s1p_file() {
+    assert_from_memory_matches_new("files/hfss_oneport.s1p");
 }
 
 #[test]
-fn from_memory_matches_try_new_for_s3p_file() {
-    assert_from_memory_matches_try_new("files/hfss_18.2.s3p");
+fn from_memory_matches_new_for_s3p_file() {
+    assert_from_memory_matches_new("files/hfss_18.2.s3p");
 }
 
 #[test]
@@ -76,11 +76,11 @@ fn from_str_returns_malformed_data_errors() {
     ));
 }
 
-fn assert_from_memory_matches_try_new(path: &str) {
+fn assert_from_memory_matches_new(path: &str) {
     let contents = fs::read_to_string(path).unwrap();
     let bytes = fs::read(path).unwrap();
 
-    let from_file = Network::try_new(path).unwrap();
+    let from_file = Network::new(path).unwrap();
     let from_str = Network::from_str(path, &contents).unwrap();
     let from_bytes = Network::from_bytes(path, &bytes).unwrap();
 
