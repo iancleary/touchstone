@@ -61,26 +61,6 @@ fn main() -> Result<(), touchstone::TouchstoneError> {
 `Network::new` auto-detects the port count, data format, and frequency unit from the file, and
 returns I/O or parse errors instead of panicking.
 
-Non-fatal parser diagnostics are stored in `network.warnings`:
-
-```rust
-use touchstone::{Network, TouchstoneWarning};
-
-fn main() -> Result<(), touchstone::TouchstoneError> {
-    let ntwk = Network::from_str("uploaded.s1p", "1.0 0.5 0.0\n")?;
-
-    for warning in &ntwk.warnings {
-        println!("{warning}");
-    }
-
-    assert!(matches!(
-        ntwk.warnings.as_slice(),
-        [TouchstoneWarning::MissingOptionLine { .. }]
-    ));
-    Ok(())
-}
-```
-
 For uploaded data or API endpoints, parse Touchstone content directly from memory. The
 `source_name` argument is used as the network name and for `.sNp` extension inference:
 
@@ -92,6 +72,22 @@ fn main() -> Result<(), touchstone::TouchstoneError> {
     let ntwk = Network::from_bytes("uploaded.s2p", body)?;
 
     assert_eq!(ntwk.rank, 2);
+    Ok(())
+}
+```
+
+Non-fatal parser diagnostics are stored in `network.warnings`:
+
+```rust
+use touchstone::{Network, TouchstoneWarning};
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let ntwk = Network::from_str("uploaded.s1p", "1.0 0.5 0.0\n")?;
+
+    assert!(matches!(
+        ntwk.warnings.as_slice(),
+        [TouchstoneWarning::MissingOptionLine { .. }]
+    ));
     Ok(())
 }
 ```

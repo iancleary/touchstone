@@ -196,6 +196,19 @@ impl TouchstoneError {
     }
 
     /// Return parser source-location context when this error has it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let error =
+    ///     touchstone::Network::from_str("uploaded.s1p", "# GHz S RI R 50\n1.0 0.1\n")
+    ///         .unwrap_err();
+    ///
+    /// let context = error.context().unwrap();
+    /// assert_eq!(context.source_name, "uploaded.s1p");
+    /// assert_eq!(context.line_number, Some(2));
+    /// assert_eq!(context.line.as_deref(), Some("1.0 0.1"));
+    /// ```
     #[must_use]
     pub fn context(&self) -> Option<&TouchstoneErrorContext> {
         match self {
@@ -205,6 +218,22 @@ impl TouchstoneError {
     }
 
     /// Return the deepest structured error wrapped by parser context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::{Network, TouchstoneError};
+    ///
+    /// let error = Network::from_str("uploaded.s1p", "# GHz S RI R 50\n1.0 0.1\n").unwrap_err();
+    ///
+    /// assert!(matches!(
+    ///     error.root_cause(),
+    ///     TouchstoneError::InvalidDataLineParts {
+    ///         expected: 3,
+    ///         actual: 2
+    ///     }
+    /// ));
+    /// ```
     #[must_use]
     pub fn root_cause(&self) -> &TouchstoneError {
         let mut current = self;

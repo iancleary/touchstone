@@ -19,10 +19,6 @@ fn loading_a_network() {
 fn parser_warnings() {
     let ntwk = Network::from_str("uploaded.s1p", "1.0 0.5 0.0\n").unwrap();
 
-    for warning in &ntwk.warnings {
-        println!("{warning}");
-    }
-
     assert!(matches!(
         ntwk.warnings.as_slice(),
         [TouchstoneWarning::MissingOptionLine { .. }]
