@@ -1,4 +1,5 @@
-use crate::utils::str_to_f64;
+use crate::utils::try_str_to_f64;
+use crate::TouchstoneError;
 
 use crate::data_pairs::DecibelAngle;
 use crate::data_pairs::DecibelAngleMatrix;
@@ -23,11 +24,13 @@ pub(crate) enum TwoPortDataOrder {
 }
 
 impl TwoPortDataOrder {
-    pub(crate) fn from_keyword_argument(argument: &str) -> Self {
+    pub(crate) fn try_from_keyword_argument(argument: &str) -> Result<Self, TouchstoneError> {
         match argument.trim().to_ascii_lowercase().as_str() {
-            "21_12" => Self::N21N12,
-            "12_21" => Self::N12N21,
-            _ => panic!("Unsupported [Two-Port Data Order]: {}", argument),
+            "21_12" => Ok(Self::N21N12),
+            "12_21" => Ok(Self::N12N21),
+            _ => Err(TouchstoneError::UnsupportedTwoPortDataOrder {
+                order: argument.to_string(),
+            }),
         }
     }
 }
@@ -48,6 +51,7 @@ pub(crate) fn parse_data_line(
     )
 }
 
+#[cfg(test)]
 pub(crate) fn parse_data_line_with_order(
     data_lines: Vec<String>,
     format: &String,
@@ -55,6 +59,17 @@ pub(crate) fn parse_data_line_with_order(
     frequency_unit: &String,
     two_port_order: TwoPortDataOrder,
 ) -> ParsedDataLine {
+    try_parse_data_line_with_order(data_lines, format, n, frequency_unit, two_port_order)
+        .expect("failed to parse data line")
+}
+
+pub(crate) fn try_parse_data_line_with_order(
+    data_lines: Vec<String>,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+    two_port_order: TwoPortDataOrder,
+) -> Result<ParsedDataLine, TouchstoneError> {
     // println!("\n");
     // println!("format:\n{:?}", *format);
     // println!("n (number of ports): {:?}", *n);
@@ -94,21 +109,25 @@ pub(crate) fn parse_data_line_with_order(
     // println!("Data Line Parts (len {}): {:?}", len_parts, parts);
 
     if len_parts != expect_number_of_parts as usize {
-        panic!(
-            "Data line has unexpected number of parts. Expected {}, got {}",
-            expect_number_of_parts, len_parts
-        );
+        return Err(TouchstoneError::InvalidDataLineParts {
+            expected: expect_number_of_parts as usize,
+            actual: len_parts,
+        });
     }
 
     // split into f64 parts, after checking the expected length
-    let f64_parts: Vec<_> = parts.clone().into_iter().map(str_to_f64).collect();
+    let f64_parts: Vec<_> = parts
+        .clone()
+        .into_iter()
+        .map(try_str_to_f64)
+        .collect::<Result<_, _>>()?;
 
     // println!("{}", len_parts);
     // println!("f64_parts (len {}): {:?}", len_parts, f64_parts);
 
     let n_usize = *n as usize;
 
-    let mut frequency = str_to_f64(parts[0]);
+    let mut frequency = f64_parts[0];
 
     if frequency_unit == "THz" {
         // convert to Hz
@@ -138,7 +157,9 @@ pub(crate) fn parse_data_line_with_order(
         // no conversion needed
         // println!("Frequency is already in Hz: {} Hz", frequency);
     } else {
-        panic!("Unsupported frequency unit: {}", frequency_unit);
+        return Err(TouchstoneError::UnsupportedFrequencyUnit {
+            unit: frequency_unit.clone(),
+        });
     }
 
     if format == "RI" {
@@ -173,12 +194,12 @@ pub(crate) fn parse_data_line_with_order(
         }
         let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
 
-        ParsedDataLine {
+        Ok(ParsedDataLine {
             frequency,
             s_ri,
             s_db,
             s_ma,
-        }
+        })
     } else if format == "MA" {
         // Magnitude-Angle format
         let pairs = parse_pairs(&f64_parts, n_usize, MagnitudeAngle);
@@ -211,12 +232,12 @@ pub(crate) fn parse_data_line_with_order(
         }
         let s_db = DecibelAngleMatrix::from_vec(s_db_data);
 
-        ParsedDataLine {
+        Ok(ParsedDataLine {
             frequency,
             s_ri,
             s_db,
             s_ma,
-        }
+        })
     } else if format == "DB" {
         // Decibel-Angle format
         let pairs = parse_pairs(&f64_parts, n_usize, DecibelAngle);
@@ -249,14 +270,16 @@ pub(crate) fn parse_data_line_with_order(
         }
         let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
 
-        ParsedDataLine {
+        Ok(ParsedDataLine {
             frequency,
             s_ri,
             s_db,
             s_ma,
-        }
+        })
     } else {
-        panic!("Unsupported format: {}", format);
+        Err(TouchstoneError::UnsupportedFormat {
+            format: format.clone(),
+        })
     }
 }
 
@@ -459,25 +482,60 @@ mod tests {
         assert!(approx_eq(db.0, 20.0 * mag.log10(), 1e-6));
     }
 
-    // --- Panics ---
     #[test]
-    #[should_panic(expected = "Unsupported format")]
-    fn test_parse_unsupported_format_panics() {
+    fn test_parse_unsupported_format_returns_error() {
         let lines = vec!["1e9 0.1 0.2".to_string()];
-        parse_data_line(lines, &"XX".to_string(), &1, &"Hz".to_string());
+        let error = try_parse_data_line_with_order(
+            lines,
+            &"XX".to_string(),
+            &1,
+            &"Hz".to_string(),
+            TwoPortDataOrder::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::UnsupportedFormat { format } if format == "XX"
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "Unsupported frequency unit")]
-    fn test_parse_unsupported_frequency_unit_panics() {
+    fn test_parse_unsupported_frequency_unit_returns_error() {
         let lines = vec!["1e9 0.1 0.2".to_string()];
-        parse_data_line(lines, &"RI".to_string(), &1, &"PHz".to_string());
+        let error = try_parse_data_line_with_order(
+            lines,
+            &"RI".to_string(),
+            &1,
+            &"PHz".to_string(),
+            TwoPortDataOrder::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::UnsupportedFrequencyUnit { unit } if unit == "PHz"
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "unexpected number of parts")]
-    fn test_parse_wrong_number_of_parts_panics() {
+    fn test_parse_wrong_number_of_parts_returns_error() {
         let lines = vec!["1e9 0.1".to_string()]; // Missing second value for 1-port
-        parse_data_line(lines, &"RI".to_string(), &1, &"Hz".to_string());
+        let error = try_parse_data_line_with_order(
+            lines,
+            &"RI".to_string(),
+            &1,
+            &"Hz".to_string(),
+            TwoPortDataOrder::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::InvalidDataLineParts {
+                expected: 3,
+                actual: 2
+            }
+        ));
     }
 }

@@ -46,16 +46,35 @@ Use `Network::new` to parse any Touchstone file:
 ```rust
 use touchstone::Network;
 
-let ntwk = Network::new("files/ntwk1.s2p".to_string());
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let ntwk = Network::new("files/ntwk1.s2p")?;
 
-println!("Ports: {}", ntwk.rank);
-println!("Frequency unit: {}", ntwk.frequency_unit);
-println!("Format: {}", ntwk.format);
-println!("Reference impedance: {} Ω", ntwk.z0);
-println!("Data points: {}", ntwk.f.len());
+    println!("Ports: {}", ntwk.rank);
+    println!("Frequency unit: {}", ntwk.frequency_unit);
+    println!("Format: {}", ntwk.format);
+    println!("Reference impedance: {} Ω", ntwk.z0);
+    println!("Data points: {}", ntwk.f.len());
+    Ok(())
+}
 ```
 
-`Network::new` auto-detects the port count, data format, and frequency unit from the file.
+`Network::new` auto-detects the port count, data format, and frequency unit from the file, and
+returns I/O or parse errors instead of panicking.
+
+For uploaded data or API endpoints, parse Touchstone content directly from memory. The
+`source_name` argument is used as the network name and for `.sNp` extension inference:
+
+```rust
+use touchstone::Network;
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let body = b"# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n";
+    let ntwk = Network::from_bytes("uploaded.s2p", body)?;
+
+    assert_eq!(ntwk.rank, 2);
+    Ok(())
+}
+```
 
 ---
 
@@ -75,7 +94,7 @@ Three accessor methods return a `Vec` over all frequencies:
 ```rust
 use touchstone::Network;
 
-let ntwk = Network::new("files/ntwk1.s2p".to_string());
+let ntwk = Network::new("files/ntwk1.s2p")?;
 
 // S11 in dB (return loss)
 let s11_db = ntwk.s_db(1, 1);
@@ -124,7 +143,7 @@ multi-line format (3+ ports):
 ```rust
 use touchstone::Network;
 
-let ntwk = Network::new("files/ntwk1.s2p".to_string());
+let ntwk = Network::new("files/ntwk1.s2p")?;
 ntwk.save("output.s2p").unwrap();
 ```
 
@@ -138,8 +157,8 @@ The standard `cascade` connects port 2 of the first network to port 1 of the sec
 ```rust
 use touchstone::Network;
 
-let net1 = Network::new("files/ntwk1.s2p".to_string());
-let net2 = Network::new("files/ntwk2.s2p".to_string());
+let net1 = Network::new("files/ntwk1.s2p")?;
+let net2 = Network::new("files/ntwk2.s2p")?;
 
 let cascaded = net1.cascade(&net2);
 println!("Cascaded network has {} data points", cascaded.f.len());
@@ -150,8 +169,8 @@ For explicit port specification, use `cascade_ports`:
 ```rust
 use touchstone::Network;
 
-let net1 = Network::new("files/ntwk1.s2p".to_string());
-let net2 = Network::new("files/ntwk2.s2p".to_string());
+let net1 = Network::new("files/ntwk1.s2p")?;
+let net2 = Network::new("files/ntwk2.s2p")?;
 
 let cascaded = net1.cascade_ports(&net2, 2, 1);
 ```
@@ -279,7 +298,9 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 
 | Item                          | Description                                  |
 |-------------------------------|----------------------------------------------|
-| `Network::new(path)`          | Parse a Touchstone file into a `Network`     |
+| `Network::new(path)`          | Parse a Touchstone file and return errors    |
+| `Network::from_bytes(name, bytes)` | Parse in-memory UTF-8 Touchstone bytes  |
+| `Network::from_str(name, contents)` | Parse an in-memory Touchstone string    |
 | `network.rank`                | Number of ports                              |
 | `network.frequency_unit`      | Frequency unit string                        |
 | `network.format`              | Data format (`RI`, `MA`, or `DB`)            |

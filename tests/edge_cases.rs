@@ -1,6 +1,6 @@
 //! Edge case and error handling integration tests for the touchstone crate.
 
-use touchstone::Network;
+use touchstone::{Network, TouchstoneError};
 
 // ============================================================
 // 1-port file parsing
@@ -8,7 +8,7 @@ use touchstone::Network;
 
 #[test]
 fn parse_s1p_hfss_oneport() {
-    let ntwk = Network::new("files/hfss_oneport.s1p".to_string());
+    let ntwk = Network::new("files/hfss_oneport.s1p").unwrap();
     assert_eq!(ntwk.rank, 1);
     assert!(!ntwk.f.is_empty());
     assert_eq!(ntwk.frequency_unit, "GHz");
@@ -17,14 +17,14 @@ fn parse_s1p_hfss_oneport() {
 
 #[test]
 fn parse_s1p_powerwave() {
-    let ntwk = Network::new("files/hfss_oneport_powerwave.s1p".to_string());
+    let ntwk = Network::new("files/hfss_oneport_powerwave.s1p").unwrap();
     assert_eq!(ntwk.rank, 1);
     assert!(!ntwk.f.is_empty());
 }
 
 #[test]
 fn s1p_s_parameters_all_formats() {
-    let ntwk = Network::new("files/hfss_oneport.s1p".to_string());
+    let ntwk = Network::new("files/hfss_oneport.s1p").unwrap();
 
     // Only S11 exists for 1-port
     let s11_db = ntwk.s_db(1, 1);
@@ -48,7 +48,7 @@ fn s1p_s_parameters_all_formats() {
 
 #[test]
 fn parse_s4p_agilent() {
-    let ntwk = Network::new("files/Agilent_E5071B.s4p".to_string());
+    let ntwk = Network::new("files/Agilent_E5071B.s4p").unwrap();
     assert_eq!(ntwk.rank, 4);
     assert!(!ntwk.f.is_empty());
     // This file uses Hz and dB format with 75 ohm impedance
@@ -59,14 +59,14 @@ fn parse_s4p_agilent() {
 
 #[test]
 fn parse_s4p_rs_znb8() {
-    let ntwk = Network::new("files/RS_ZNB8.s4p".to_string());
+    let ntwk = Network::new("files/RS_ZNB8.s4p").unwrap();
     assert_eq!(ntwk.rank, 4);
     assert!(!ntwk.f.is_empty());
 }
 
 #[test]
 fn s4p_all_port_combinations() {
-    let ntwk = Network::new("files/Agilent_E5071B.s4p".to_string());
+    let ntwk = Network::new("files/Agilent_E5071B.s4p").unwrap();
 
     // Access all 16 S-parameter combinations for a 4-port
     for j in 1..=4 {
@@ -98,7 +98,7 @@ fn s4p_all_port_combinations() {
 #[test]
 fn option_line_ghz_ma() {
     // hfss_oneport.s1p uses: # GHZ S MA
-    let ntwk = Network::new("files/hfss_oneport.s1p".to_string());
+    let ntwk = Network::new("files/hfss_oneport.s1p").unwrap();
     assert_eq!(ntwk.frequency_unit, "GHz");
     assert_eq!(ntwk.format, "MA");
     assert!((ntwk.z0 - 50.0).abs() < 0.01);
@@ -107,7 +107,7 @@ fn option_line_ghz_ma() {
 #[test]
 fn option_line_ghz_db() {
     // hfss_threeport_DB.s3p uses: # GHZ S DB
-    let ntwk = Network::new("files/hfss_threeport_DB.s3p".to_string());
+    let ntwk = Network::new("files/hfss_threeport_DB.s3p").unwrap();
     assert_eq!(ntwk.frequency_unit, "GHz");
     assert_eq!(ntwk.format, "DB");
 }
@@ -115,7 +115,7 @@ fn option_line_ghz_db() {
 #[test]
 fn option_line_hz_db_75ohm() {
     // Agilent_E5071B.s4p uses: # Hz S dB R 75
-    let ntwk = Network::new("files/Agilent_E5071B.s4p".to_string());
+    let ntwk = Network::new("files/Agilent_E5071B.s4p").unwrap();
     assert_eq!(ntwk.frequency_unit, "Hz");
     assert_eq!(ntwk.format, "DB");
     assert!((ntwk.z0 - 75.0).abs() < 0.01);
@@ -124,8 +124,8 @@ fn option_line_hz_db_75ohm() {
 #[test]
 fn option_line_50ohm_threeport_variants() {
     // Files with explicit 50 ohm
-    let db50 = Network::new("files/hfss_threeport_DB_50Ohm.s3p".to_string());
-    let ma50 = Network::new("files/hfss_threeport_MA_50Ohm.s3p".to_string());
+    let db50 = Network::new("files/hfss_threeport_DB_50Ohm.s3p").unwrap();
+    let ma50 = Network::new("files/hfss_threeport_MA_50Ohm.s3p").unwrap();
     assert!((db50.z0 - 50.0).abs() < 0.01);
     assert!((ma50.z0 - 50.0).abs() < 0.01);
 }
@@ -136,8 +136,8 @@ fn option_line_50ohm_threeport_variants() {
 
 #[test]
 fn cascade_produces_valid_data() {
-    let net1 = Network::new("files/ntwk1.s2p".to_string());
-    let net2 = Network::new("files/ntwk2.s2p".to_string());
+    let net1 = Network::new("files/ntwk1.s2p").unwrap();
+    let net2 = Network::new("files/ntwk2.s2p").unwrap();
     let cascaded = net1.cascade(&net2);
 
     assert_eq!(cascaded.rank, 2);
@@ -153,10 +153,10 @@ fn cascade_produces_valid_data() {
 
 #[test]
 fn cascade_matches_reference_file() {
-    let net1 = Network::new("files/ntwk1.s2p".to_string());
-    let net2 = Network::new("files/ntwk2.s2p".to_string());
+    let net1 = Network::new("files/ntwk1.s2p").unwrap();
+    let net2 = Network::new("files/ntwk2.s2p").unwrap();
     let cascaded = net1.cascade(&net2);
-    let reference = Network::new("files/cascade_ntwk1_ntwk2.s2p".to_string());
+    let reference = Network::new("files/cascade_ntwk1_ntwk2.s2p").unwrap();
 
     assert_eq!(cascaded.f.len(), reference.f.len());
 
@@ -178,9 +178,9 @@ fn cascade_matches_reference_file() {
 
 #[test]
 fn mul_trait_cascade() {
-    let net1 = Network::new("files/ntwk1.s2p".to_string());
+    let net1 = Network::new("files/ntwk1.s2p").unwrap();
     let expected_len = net1.f.len();
-    let net2 = Network::new("files/ntwk2.s2p".to_string());
+    let net2 = Network::new("files/ntwk2.s2p").unwrap();
 
     // Mul trait should also work
     let cascaded = net1 * net2;
@@ -191,7 +191,7 @@ fn mul_trait_cascade() {
 #[test]
 fn s_db_ri_ma_consistency() {
     // Verify that DB, RI, and MA representations are consistent for the same data
-    let ntwk = Network::new("files/ntwk1.s2p".to_string());
+    let ntwk = Network::new("files/ntwk1.s2p").unwrap();
 
     let s11_db = ntwk.s_db(1, 1);
     let s11_ri = ntwk.s_ri(1, 1);
@@ -245,15 +245,28 @@ fn s_db_ri_ma_consistency() {
 // ============================================================
 
 #[test]
-#[should_panic]
-fn nonexistent_file_panics() {
-    let _ = Network::new("files/does_not_exist.s2p".to_string());
+fn nonexistent_file_returns_error() {
+    let error = Network::new("files/does_not_exist.s2p").unwrap_err();
+
+    assert!(matches!(error, TouchstoneError::Io(_)));
 }
 
 #[test]
-#[should_panic]
-fn invalid_extension_panics() {
-    let _ = Network::new("files/ntwk1.txt".to_string());
+fn invalid_extension_returns_error() {
+    let path = std::env::temp_dir().join("touchstone_invalid_extension.txt");
+    std::fs::write(
+        &path,
+        "# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n",
+    )
+    .unwrap();
+
+    let error = Network::new(&path).unwrap_err();
+    std::fs::remove_file(path).unwrap();
+
+    assert!(matches!(
+        error,
+        TouchstoneError::UnsupportedFileType { file_type } if file_type == "txt"
+    ));
 }
 
 // ============================================================
@@ -262,11 +275,11 @@ fn invalid_extension_panics() {
 
 #[test]
 fn round_trip_s2p() {
-    let original = Network::new("files/ntwk1.s2p".to_string());
+    let original = Network::new("files/ntwk1.s2p").unwrap();
     let tmp = "files/test_round_trip_edge.s2p";
 
     original.save(tmp).unwrap();
-    let reloaded = Network::new(tmp.to_string());
+    let reloaded = Network::new(tmp).unwrap();
 
     assert_eq!(original.rank, reloaded.rank);
     assert_eq!(original.f.len(), reloaded.f.len());
@@ -301,11 +314,11 @@ fn round_trip_s2p() {
 
 #[test]
 fn round_trip_s3p() {
-    let original = Network::new("files/hfss_threeport_DB.s3p".to_string());
+    let original = Network::new("files/hfss_threeport_DB.s3p").unwrap();
     let tmp = "files/test_round_trip_s3p.s3p";
 
     original.save(tmp).unwrap();
-    let reloaded = Network::new(tmp.to_string());
+    let reloaded = Network::new(tmp).unwrap();
 
     assert_eq!(original.rank, reloaded.rank);
     assert_eq!(original.f.len(), reloaded.f.len());
@@ -329,13 +342,13 @@ fn round_trip_s3p() {
 
 #[test]
 fn round_trip_preserves_cascade_result() {
-    let net1 = Network::new("files/ntwk1.s2p".to_string());
-    let net2 = Network::new("files/ntwk2.s2p".to_string());
+    let net1 = Network::new("files/ntwk1.s2p").unwrap();
+    let net2 = Network::new("files/ntwk2.s2p").unwrap();
     let cascaded = net1.cascade(&net2);
 
     let tmp = "files/test_round_trip_cascade.s2p";
     cascaded.save(tmp).unwrap();
-    let reloaded = Network::new(tmp.to_string());
+    let reloaded = Network::new(tmp).unwrap();
 
     assert_eq!(cascaded.f.len(), reloaded.f.len());
 
@@ -359,21 +372,21 @@ fn round_trip_preserves_cascade_result() {
 
 #[test]
 fn parse_s32p() {
-    let ntwk = Network::new("files/ntwk.s32p".to_string());
+    let ntwk = Network::new("files/ntwk.s32p").unwrap();
     assert_eq!(ntwk.rank, 32);
     assert!(!ntwk.f.is_empty());
 }
 
 #[test]
 fn parse_s8p() {
-    let ntwk = Network::new("files/hfss_19.2.s8p".to_string());
+    let ntwk = Network::new("files/hfss_19.2.s8p").unwrap();
     assert_eq!(ntwk.rank, 8);
     assert!(!ntwk.f.is_empty());
 }
 
 #[test]
 fn parse_s10p() {
-    let ntwk = Network::new("files/hfss_19.2.s10p".to_string());
+    let ntwk = Network::new("files/hfss_19.2.s10p").unwrap();
     assert_eq!(ntwk.rank, 10);
     assert!(!ntwk.f.is_empty());
 }
@@ -393,7 +406,7 @@ fn parse_all_threeport_variants() {
     ];
 
     for file in files {
-        let ntwk = Network::new(file.to_string());
+        let ntwk = Network::new(file).unwrap();
         assert_eq!(ntwk.rank, 3, "Wrong rank for {}", file);
         assert!(!ntwk.f.is_empty(), "No frequencies for {}", file);
     }
