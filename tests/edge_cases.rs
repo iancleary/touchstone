@@ -74,8 +74,18 @@ fn s4p_all_port_combinations() {
             let s = ntwk.s_db(j, k);
             assert_eq!(s.len(), ntwk.f.len(), "S{}{} length mismatch", j, k);
             for point in &s {
-                assert!(point.s_db.decibel().is_finite(), "S{}{} has non-finite dB", j, k);
-                assert!(point.s_db.angle().is_finite(), "S{}{} has non-finite angle", j, k);
+                assert!(
+                    point.s_db.decibel().is_finite(),
+                    "S{}{} has non-finite dB",
+                    j,
+                    k
+                );
+                assert!(
+                    point.s_db.angle().is_finite(),
+                    "S{}{} has non-finite angle",
+                    j,
+                    k
+                );
             }
         }
     }
@@ -155,8 +165,14 @@ fn cascade_matches_reference_file() {
     let ref_s21 = reference.s_db(2, 1);
     for i in 0..cas_s21.len() {
         let diff = (cas_s21[i].s_db.decibel() - ref_s21[i].s_db.decibel()).abs();
-        assert!(diff < 0.5, "S21 dB mismatch at index {}: {} vs {} (diff {})",
-            i, cas_s21[i].s_db.decibel(), ref_s21[i].s_db.decibel(), diff);
+        assert!(
+            diff < 0.5,
+            "S21 dB mismatch at index {}: {} vs {} (diff {})",
+            i,
+            cas_s21[i].s_db.decibel(),
+            ref_s21[i].s_db.decibel(),
+            diff
+        );
     }
 }
 
@@ -187,20 +203,40 @@ fn s_db_ri_ma_consistency() {
         let mag_from_ri = s11_ri[i].s_ri.magnitude();
         let mag_from_db = s11_db[i].s_db.magnitude();
 
-        assert!((mag_from_ma - mag_from_ri).abs() < 1e-6,
-            "MA vs RI magnitude mismatch at {}: {} vs {}", i, mag_from_ma, mag_from_ri);
-        assert!((mag_from_ma - mag_from_db).abs() < 1e-6,
-            "MA vs DB magnitude mismatch at {}: {} vs {}", i, mag_from_ma, mag_from_db);
+        assert!(
+            (mag_from_ma - mag_from_ri).abs() < 1e-6,
+            "MA vs RI magnitude mismatch at {}: {} vs {}",
+            i,
+            mag_from_ma,
+            mag_from_ri
+        );
+        assert!(
+            (mag_from_ma - mag_from_db).abs() < 1e-6,
+            "MA vs DB magnitude mismatch at {}: {} vs {}",
+            i,
+            mag_from_ma,
+            mag_from_db
+        );
 
         // Angles should match
         let angle_from_ma = s11_ma[i].s_ma.angle();
         let angle_from_ri = s11_ri[i].s_ri.angle();
         let angle_from_db = s11_db[i].s_db.angle();
 
-        assert!((angle_from_ma - angle_from_ri).abs() < 1e-4,
-            "MA vs RI angle mismatch at {}: {} vs {}", i, angle_from_ma, angle_from_ri);
-        assert!((angle_from_ma - angle_from_db).abs() < 1e-4,
-            "MA vs DB angle mismatch at {}: {} vs {}", i, angle_from_ma, angle_from_db);
+        assert!(
+            (angle_from_ma - angle_from_ri).abs() < 1e-4,
+            "MA vs RI angle mismatch at {}: {} vs {}",
+            i,
+            angle_from_ma,
+            angle_from_ri
+        );
+        assert!(
+            (angle_from_ma - angle_from_db).abs() < 1e-4,
+            "MA vs DB angle mismatch at {}: {} vs {}",
+            i,
+            angle_from_ma,
+            angle_from_db
+        );
     }
 }
 
@@ -239,7 +275,13 @@ fn round_trip_s2p() {
     // Compare frequencies
     for i in 0..original.f.len() {
         let freq_diff = (original.f[i] - reloaded.f[i]).abs();
-        assert!(freq_diff < 1e-3, "Frequency mismatch at {}: {} vs {}", i, original.f[i], reloaded.f[i]);
+        assert!(
+            freq_diff < 1e-3,
+            "Frequency mismatch at {}: {} vs {}",
+            i,
+            original.f[i],
+            reloaded.f[i]
+        );
     }
 
     // Compare all S-parameters
@@ -273,8 +315,13 @@ fn round_trip_s3p() {
     let reload_s11 = reloaded.s_db(1, 1);
     for i in 0..orig_s11.len() {
         let db_diff = (orig_s11[i].s_db.decibel() - reload_s11[i].s_db.decibel()).abs();
-        assert!(db_diff < 0.1, "S11 dB round-trip mismatch at {}: {} vs {}",
-            i, orig_s11[i].s_db.decibel(), reload_s11[i].s_db.decibel());
+        assert!(
+            db_diff < 0.1,
+            "S11 dB round-trip mismatch at {}: {} vs {}",
+            i,
+            orig_s11[i].s_db.decibel(),
+            reload_s11[i].s_db.decibel()
+        );
     }
 
     std::fs::remove_file(tmp).unwrap();
@@ -296,7 +343,11 @@ fn round_trip_preserves_cascade_result() {
     let rel_s21 = reloaded.s_ri(2, 1);
     for i in 0..cas_s21.len() {
         let real_diff = (cas_s21[i].s_ri.real() - rel_s21[i].s_ri.real()).abs();
-        assert!(real_diff < 1e-4, "Cascade round-trip real mismatch at {}", i);
+        assert!(
+            real_diff < 1e-4,
+            "Cascade round-trip real mismatch at {}",
+            i
+        );
     }
 
     std::fs::remove_file(tmp).unwrap();

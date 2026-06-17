@@ -516,6 +516,10 @@ impl Network {
             writeln!(file, "{}", comment)?;
         }
 
+        let n = self.rank as usize;
+
+        writeln!(file, "[Version] 2.1")?;
+
         // Write option line
         // # <frequency unit> <parameter> <format> R <n>
         let option_line = option_line::Options::new(
@@ -527,13 +531,21 @@ impl Network {
         );
         writeln!(file, "{}", option_line)?;
 
-        // Write comments after option line
+        writeln!(file, "[Number of Ports] {}", self.rank)?;
+        if n == 2 {
+            writeln!(file, "[Two-Port Data Order] 21_12")?;
+        }
+        writeln!(file, "[Number of Frequencies] {}", self.f.len())?;
+        writeln!(file, "[Matrix Format] Full")?;
+        writeln!(file, "[Network Data]")?;
+
+        // Keep existing post-option comments with the network data they describe.
         for comment in &self.comments_after_option_line {
             writeln!(file, "{}", comment)?;
         }
 
         // Write data lines
-        let n = self.rank as usize;
+        let single_line_order = full_matrix_data_order(n);
         for data_line in &self.s {
             let mut freq = data_line.frequency;
             let frequency_unit = self.frequency_unit.clone();
@@ -557,38 +569,32 @@ impl Network {
                 match self.format.as_str() {
                     "RI" => {
                         let s = &data_line.s_ri;
-                        for row in 1..=n {
-                            for col in 1..=n {
-                                line.push_str(&format!(
-                                    " {} {}",
-                                    s.get(row, col).0,
-                                    s.get(row, col).1
-                                ));
-                            }
+                        for (row, col) in &single_line_order {
+                            line.push_str(&format!(
+                                " {} {}",
+                                s.get(*row, *col).0,
+                                s.get(*row, *col).1
+                            ));
                         }
                     }
                     "MA" => {
                         let s = &data_line.s_ma;
-                        for row in 1..=n {
-                            for col in 1..=n {
-                                line.push_str(&format!(
-                                    " {} {}",
-                                    s.get(row, col).0,
-                                    s.get(row, col).1
-                                ));
-                            }
+                        for (row, col) in &single_line_order {
+                            line.push_str(&format!(
+                                " {} {}",
+                                s.get(*row, *col).0,
+                                s.get(*row, *col).1
+                            ));
                         }
                     }
                     "DB" => {
                         let s = &data_line.s_db;
-                        for row in 1..=n {
-                            for col in 1..=n {
-                                line.push_str(&format!(
-                                    " {} {}",
-                                    s.get(row, col).0,
-                                    s.get(row, col).1
-                                ));
-                            }
+                        for (row, col) in &single_line_order {
+                            line.push_str(&format!(
+                                " {} {}",
+                                s.get(*row, *col).0,
+                                s.get(*row, *col).1
+                            ));
                         }
                     }
                     _ => panic!("Unsupported format for saving: {}", self.format),
@@ -669,7 +675,19 @@ impl Network {
             }
         }
 
+        writeln!(file, "[End]")?;
+
         Ok(())
+    }
+}
+
+fn full_matrix_data_order(n: usize) -> Vec<(usize, usize)> {
+    if n == 2 {
+        vec![(1, 1), (2, 1), (1, 2), (2, 2)]
+    } else {
+        (1..=n)
+            .flat_map(|row| (1..=n).map(move |col| (row, col)))
+            .collect()
     }
 }
 
@@ -912,6 +930,69 @@ mod tests {
     }
 
     #[test]
+    fn test_save_writes_touchstone_2_1_two_port_21_12_order() {
+        let temp_dir = std::env::temp_dir()
+            .join("touchstone_tests")
+            .join("two_port_order");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let input_path = temp_dir.join(format!("asymmetric_input_{}.s2p", nanos));
+        let output_path = temp_dir.join(format!("asymmetric_output_{}.s2p", nanos));
+
+        std::fs::write(
+            &input_path,
+            "# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n",
+        )
+        .unwrap();
+
+        let network = Network::new(input_path.to_str().unwrap().to_string());
+        assert_eq!(
+            network.s_ri(2, 1)[0].s_ri,
+            data_pairs::RealImaginary(4.0, 0.0)
+        );
+        assert_eq!(
+            network.s_ri(1, 2)[0].s_ri,
+            data_pairs::RealImaginary(0.01, 0.0)
+        );
+
+        network.save(output_path.to_str().unwrap()).unwrap();
+        let saved = std::fs::read_to_string(&output_path).unwrap();
+
+        assert!(saved.contains("[Version] 2.1"));
+        assert!(saved.contains("[Number of Ports] 2"));
+        assert!(saved.contains("[Two-Port Data Order] 21_12"));
+        assert!(saved.contains("[Number of Frequencies] 1"));
+        assert!(saved.contains("[Network Data]"));
+        assert!(saved.contains("[End]"));
+
+        let data_line = saved
+            .lines()
+            .find(|line| line.starts_with('1'))
+            .expect("saved output should contain a data line");
+        let values = data_line
+            .split_whitespace()
+            .map(|part| part.parse::<f64>().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(values, vec![1.0, 0.1, 0.0, 4.0, 0.0, 0.01, 0.0, 0.2, 0.0]);
+
+        let reloaded = Network::new(output_path.to_str().unwrap().to_string());
+        assert_eq!(
+            reloaded.s_ri(2, 1)[0].s_ri,
+            data_pairs::RealImaginary(4.0, 0.0)
+        );
+        assert_eq!(
+            reloaded.s_ri(1, 2)[0].s_ri,
+            data_pairs::RealImaginary(0.01, 0.0)
+        );
+
+        std::fs::remove_file(input_path).unwrap();
+        std::fs::remove_file(output_path).unwrap();
+    }
+
+    #[test]
     fn test_save_load_roundtrip_3port() {
         let network1 = Network::new("files/hfss_18.2.s3p".to_string());
 
@@ -1114,12 +1195,16 @@ mod tests {
                     assert!(
                         (s1.get(row, col).0 - s2.get(row, col).0).abs() < epsilon,
                         "S{}{} mag mismatch at index {}",
-                        row, col, i
+                        row,
+                        col,
+                        i
                     );
                     assert!(
                         (s1.get(row, col).1 - s2.get(row, col).1).abs() < epsilon,
                         "S{}{} angle mismatch at index {}",
-                        row, col, i
+                        row,
+                        col,
+                        i
                     );
                 }
             }
@@ -1156,12 +1241,16 @@ mod tests {
                     assert!(
                         (s1.get(row, col).0 - s2.get(row, col).0).abs() < epsilon,
                         "S{}{} dB mismatch at index {}",
-                        row, col, i
+                        row,
+                        col,
+                        i
                     );
                     assert!(
                         (s1.get(row, col).1 - s2.get(row, col).1).abs() < epsilon,
                         "S{}{} angle mismatch at index {}",
-                        row, col, i
+                        row,
+                        col,
+                        i
                     );
                 }
             }

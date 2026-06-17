@@ -23,7 +23,10 @@ fn version_flag_prints_version_and_exits_success() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("touchstone"), "stdout: {stdout}");
-    assert!(stdout.contains(env!("CARGO_PKG_VERSION")), "stdout: {stdout}");
+    assert!(
+        stdout.contains(env!("CARGO_PKG_VERSION")),
+        "stdout: {stdout}"
+    );
 }
 
 #[test]
@@ -34,6 +37,9 @@ fn no_args_exits_nonzero_and_prints_help() {
 
     assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Problem parsing arguments"), "stdout: {stdout}");
+    assert!(
+        stdout.contains("Problem parsing arguments"),
+        "stdout: {stdout}"
+    );
     assert!(stdout.contains("USAGE:"), "stdout: {stdout}");
 }
