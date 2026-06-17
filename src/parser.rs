@@ -4,8 +4,7 @@ use crate::data_line;
 use crate::file_extension;
 use crate::option_line;
 use crate::utils;
-use crate::Network;
-use crate::TouchstoneError;
+use crate::{Network, TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 
 #[derive(Debug)]
 struct ParserState {
@@ -52,11 +51,13 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
     let mut comments_after_option_line: Vec<String> = Vec::new();
     let mut s: Vec<data_line::ParsedDataLine> = Vec::new();
     let mut f: Vec<f64> = Vec::new();
+    let mut warnings: Vec<TouchstoneWarning> = Vec::new();
     let mut frequency_unit = String::new();
     let mut parameter = String::new();
     let mut format = String::new();
     let mut resistance_string = String::new();
     let mut reference_resistance = String::new();
+    let mut option_line_location: Option<(usize, String)> = None;
 
     // Helper function to count numeric values on a line (excluding inline comments)
     let count_values_on_line = |line: &str| -> usize {
@@ -72,8 +73,10 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
 
     let mut current_data_segment: Vec<String> = Vec::new();
     let mut current_value_count: usize = 0;
+    let mut current_data_segment_start_line: Option<usize> = None;
 
-    for line in contents.lines() {
+    for (line_index, line) in contents.lines().enumerate() {
+        let line_number = line_index + 1;
         // println!("\nWith line: ");
 
         let trimmed_line = line.trim();
@@ -94,11 +97,25 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
                 reference_resistance = parsed_options.reference_resistance.clone();
 
                 parser_state.option_line_parsed = true;
+                option_line_location = Some((line_number, line.to_string()));
             } else {
-                return Err(TouchstoneError::MultipleOptionLines);
+                warnings.push(TouchstoneWarning::AdditionalOptionLineIgnored {
+                    source_name: source_name.to_string(),
+                    line_number,
+                    line: line.to_string(),
+                });
             }
         } else if is_keyword {
-            if handle_keyword_line(trimmed_line, n_ports, &mut parser_state)? {
+            if handle_keyword_line(
+                trimmed_line,
+                n_ports,
+                &mut parser_state,
+                source_name,
+                line_number,
+                &mut warnings,
+            )
+            .map_err(|error| with_line_context(error, source_name, line_number, line))?
+            {
                 break;
             }
         } else if is_comment {
@@ -112,6 +129,7 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
             // is_data is true (not a variable, just communicating in terms of the pattern)
 
             // Add line to current segment
+            current_data_segment_start_line.get_or_insert(line_number);
             current_data_segment.push(line.to_string());
             current_value_count += count_values_on_line(line);
 
@@ -124,7 +142,15 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
                     &n_ports,
                     &parsed_options.frequency_unit,
                     parser_state.two_port_data_order,
-                )?;
+                )
+                .map_err(|error| {
+                    with_line_context(
+                        error,
+                        source_name,
+                        current_data_segment_start_line.unwrap_or(line_number),
+                        &current_data_segment.join("\n"),
+                    )
+                })?;
 
                 f.push(line_matrix_data.frequency);
                 s.push(line_matrix_data);
@@ -134,6 +160,7 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
                 // Reset for next segment
                 current_data_segment.clear();
                 current_value_count = 0;
+                current_data_segment_start_line = None;
             }
         }
     }
@@ -146,7 +173,15 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
             &n_ports,
             &parsed_options.frequency_unit,
             parser_state.two_port_data_order,
-        )?;
+        )
+        .map_err(|error| {
+            with_line_context(
+                error,
+                source_name,
+                current_data_segment_start_line.unwrap_or(1),
+                &current_data_segment.join("\n"),
+            )
+        })?;
 
         f.push(line_matrix_data.frequency);
         s.push(line_matrix_data);
@@ -159,8 +194,24 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
             return Err(TouchstoneError::NumberOfFrequenciesMismatch {
                 expected: expected_number_of_frequencies,
                 actual: f.len(),
-            });
+            }
+            .with_context(TouchstoneErrorContext {
+                source_name: source_name.to_string(),
+                line_number: None,
+                line: None,
+            }));
         }
+    }
+
+    if !parser_state.option_line_parsed {
+        warnings.push(TouchstoneWarning::MissingOptionLine {
+            source_name: source_name.to_string(),
+        });
+        frequency_unit = parsed_options.frequency_unit.clone();
+        parameter = parsed_options.parameter.clone();
+        format = parsed_options.format.clone();
+        resistance_string = parsed_options.resistance_string.clone();
+        reference_resistance = parsed_options.reference_resistance.clone();
     }
 
     tracing::debug!(
@@ -178,11 +229,35 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
         parameter,
         format,
         resistance_string,
-        z0: utils::try_str_to_f64(reference_resistance.as_str())?,
+        z0: utils::try_str_to_f64(reference_resistance.as_str()).map_err(|error| {
+            if let Some((line_number, line)) = &option_line_location {
+                with_line_context(error, source_name, *line_number, line)
+            } else {
+                error.with_context(TouchstoneErrorContext {
+                    source_name: source_name.to_string(),
+                    line_number: None,
+                    line: None,
+                })
+            }
+        })?,
         comments: comment_lines,
         comments_after_option_line,
+        warnings,
         f,
         s,
+    })
+}
+
+fn with_line_context(
+    error: TouchstoneError,
+    source_name: &str,
+    line_number: usize,
+    line: &str,
+) -> TouchstoneError {
+    error.with_context(TouchstoneErrorContext {
+        source_name: source_name.to_string(),
+        line_number: Some(line_number),
+        line: Some(line.to_string()),
     })
 }
 
@@ -190,6 +265,9 @@ fn handle_keyword_line(
     line: &str,
     n_ports: i32,
     parser_state: &mut ParserState,
+    source_name: &str,
+    line_number: usize,
+    warnings: &mut Vec<TouchstoneWarning>,
 ) -> Result<bool, TouchstoneError> {
     let line_without_comment = line.split('!').next().unwrap_or("").trim();
     let closing_bracket_index =
@@ -248,7 +326,11 @@ fn handle_keyword_line(
             }
         }
         "end" => return Ok(true),
-        _ => {}
+        _ => warnings.push(TouchstoneWarning::UnknownKeywordIgnored {
+            source_name: source_name.to_string(),
+            line_number,
+            keyword,
+        }),
     }
 
     Ok(false)

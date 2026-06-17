@@ -1,6 +1,6 @@
 use std::fs;
 
-use touchstone::{Network, TouchstoneError};
+use touchstone::{Network, TouchstoneError, TouchstoneWarning};
 
 const TWO_PORT_RI: &str = "# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n";
 
@@ -68,11 +68,68 @@ fn from_str_returns_malformed_data_errors() {
     let error = Network::from_str("uploaded.s1p", "# GHz S RI R 50\n1.0 0.1\n").unwrap_err();
 
     assert!(matches!(
-        error,
+        error.root_cause(),
         TouchstoneError::InvalidDataLineParts {
             expected: 3,
             actual: 2
         }
+    ));
+
+    let context = error.context().unwrap();
+    assert_eq!(context.source_name, "uploaded.s1p");
+    assert_eq!(context.line_number, Some(2));
+    assert_eq!(context.line.as_deref(), Some("1.0 0.1"));
+    assert!(error.to_string().contains("uploaded.s1p:2"));
+}
+
+#[test]
+fn from_str_records_missing_option_line_warning() {
+    let network = Network::from_str("uploaded.s1p", "1.0 0.1 0.0\n").unwrap();
+
+    assert_eq!(network.frequency_unit, "GHz");
+    assert_eq!(network.format, "MA");
+    assert_eq!(network.z0, 50.0);
+    assert!(matches!(
+        network.warnings.as_slice(),
+        [TouchstoneWarning::MissingOptionLine { source_name }] if source_name == "uploaded.s1p"
+    ));
+}
+
+#[test]
+fn from_str_records_ignored_extra_option_line_warning() {
+    let network = Network::from_str(
+        "uploaded.s1p",
+        "# GHz S RI R 50\n# MHz S RI R 75\n1.0 0.1 0.0\n",
+    )
+    .unwrap();
+
+    assert_eq!(network.frequency_unit, "GHz");
+    assert_eq!(network.z0, 50.0);
+    assert!(matches!(
+        network.warnings.as_slice(),
+        [TouchstoneWarning::AdditionalOptionLineIgnored {
+            source_name,
+            line_number: 2,
+            line,
+        }] if source_name == "uploaded.s1p" && line == "# MHz S RI R 75"
+    ));
+}
+
+#[test]
+fn from_str_records_unknown_keyword_warning() {
+    let network = Network::from_str(
+        "uploaded.s1p",
+        "[Version] 2.1\n[Unsupported Keyword] ignored\n# GHz S RI R 50\n[Network Data]\n1.0 0.1 0.0\n[End]\n",
+    )
+    .unwrap();
+
+    assert!(matches!(
+        network.warnings.as_slice(),
+        [TouchstoneWarning::UnknownKeywordIgnored {
+            source_name,
+            line_number: 2,
+            keyword,
+        }] if source_name == "uploaded.s1p" && keyword == "unsupported keyword"
     ));
 }
 
@@ -101,6 +158,7 @@ fn assert_same_network_shape(path: &str, left: &Network, right: &Network) {
         left.comments_after_option_line, right.comments_after_option_line,
         "{path}"
     );
+    assert_eq!(left.warnings, right.warnings, "{path}");
     assert_eq!(left.f, right.f, "{path}");
     assert_eq!(left.s.len(), right.s.len(), "{path}");
 

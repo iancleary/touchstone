@@ -61,6 +61,26 @@ fn main() -> Result<(), touchstone::TouchstoneError> {
 `Network::new` auto-detects the port count, data format, and frequency unit from the file, and
 returns I/O or parse errors instead of panicking.
 
+Non-fatal parser diagnostics are stored in `network.warnings`:
+
+```rust
+use touchstone::{Network, TouchstoneWarning};
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let ntwk = Network::from_str("uploaded.s1p", "1.0 0.5 0.0\n")?;
+
+    for warning in &ntwk.warnings {
+        println!("{warning}");
+    }
+
+    assert!(matches!(
+        ntwk.warnings.as_slice(),
+        [TouchstoneWarning::MissingOptionLine { .. }]
+    ));
+    Ok(())
+}
+```
+
 For uploaded data or API endpoints, parse Touchstone content directly from memory. The
 `source_name` argument is used as the network name and for `.sNp` extension inference:
 
@@ -305,6 +325,7 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `network.frequency_unit`      | Frequency unit string                        |
 | `network.format`              | Data format (`RI`, `MA`, or `DB`)            |
 | `network.z0`                  | Reference impedance (Ω)                      |
+| `network.warnings`            | Non-fatal parser diagnostics                 |
 | `network.f`                   | Frequency vector (`Vec<f64>`)                |
 | `network.f()`                 | Clone of frequency vector                    |
 | `network.s_db(j, k)`         | S_jk in dB+angle — `Vec<FrequencyDB>`       |

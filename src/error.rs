@@ -1,8 +1,98 @@
 use std::fmt;
 
+/// Source location attached to a Touchstone parse error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TouchstoneErrorContext {
+    /// Source name or path that was being parsed.
+    pub source_name: String,
+    /// 1-based line number where the parser detected the error, when known.
+    pub line_number: Option<usize>,
+    /// Source line or logical data-line segment where the parser detected the error.
+    pub line: Option<String>,
+}
+
+impl fmt::Display for TouchstoneErrorContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self.line_number, self.line.as_deref()) {
+            (Some(line_number), Some(line)) => {
+                write!(f, "{}:{line_number}: {}", self.source_name, line)
+            }
+            (Some(line_number), None) => write!(f, "{}:{line_number}", self.source_name),
+            (None, Some(line)) => write!(f, "{}: {}", self.source_name, line),
+            (None, None) => write!(f, "{}", self.source_name),
+        }
+    }
+}
+
+/// Non-fatal condition reported while parsing Touchstone data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TouchstoneWarning {
+    /// No option line was found, so Touchstone default options were used.
+    MissingOptionLine {
+        /// Source name or path that was parsed.
+        source_name: String,
+    },
+    /// A second or later option line was ignored after the first option line was parsed.
+    AdditionalOptionLineIgnored {
+        /// Source name or path that was parsed.
+        source_name: String,
+        /// 1-based line number of the ignored option line.
+        line_number: usize,
+        /// Ignored option line text.
+        line: String,
+    },
+    /// An unsupported keyword was ignored.
+    UnknownKeywordIgnored {
+        /// Source name or path that was parsed.
+        source_name: String,
+        /// 1-based line number of the ignored keyword line.
+        line_number: usize,
+        /// Normalized keyword name.
+        keyword: String,
+    },
+}
+
+impl fmt::Display for TouchstoneWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingOptionLine { source_name } => {
+                write!(
+                    f,
+                    "{source_name}: no option line found; using Touchstone defaults"
+                )
+            }
+            Self::AdditionalOptionLineIgnored {
+                source_name,
+                line_number,
+                line,
+            } => write!(
+                f,
+                "{source_name}:{line_number}: additional option line ignored: {line}"
+            ),
+            Self::UnknownKeywordIgnored {
+                source_name,
+                line_number,
+                keyword,
+            } => write!(
+                f,
+                "{source_name}:{line_number}: unsupported keyword ignored: [{keyword}]"
+            ),
+        }
+    }
+}
+
 /// Error returned when Touchstone data cannot be read or parsed.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum TouchstoneError {
+    /// A parse error with source-location context.
+    Parse {
+        /// Source location where the parser detected the error.
+        context: TouchstoneErrorContext,
+        /// Structured root error.
+        source: Box<TouchstoneError>,
+    },
     /// The source file could not be read.
     Io(std::io::Error),
     /// In-memory bytes were not valid UTF-8 Touchstone text.
@@ -94,9 +184,41 @@ pub enum TouchstoneError {
     },
 }
 
+impl TouchstoneError {
+    pub(crate) fn with_context(self, context: TouchstoneErrorContext) -> Self {
+        match self {
+            Self::Parse { .. } => self,
+            _ => Self::Parse {
+                context,
+                source: Box::new(self),
+            },
+        }
+    }
+
+    /// Return parser source-location context when this error has it.
+    #[must_use]
+    pub fn context(&self) -> Option<&TouchstoneErrorContext> {
+        match self {
+            Self::Parse { context, .. } => Some(context),
+            _ => None,
+        }
+    }
+
+    /// Return the deepest structured error wrapped by parser context.
+    #[must_use]
+    pub fn root_cause(&self) -> &TouchstoneError {
+        let mut current = self;
+        while let Self::Parse { source, .. } = current {
+            current = source;
+        }
+        current
+    }
+}
+
 impl fmt::Display for TouchstoneError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Parse { context, source } => write!(f, "{source} at {context}"),
             Self::Io(err) => write!(f, "failed to read Touchstone file: {err}"),
             Self::InvalidUtf8(err) => write!(f, "Touchstone data is not valid UTF-8: {err}"),
             Self::MissingFileType { source_name } => {
@@ -155,6 +277,7 @@ impl fmt::Display for TouchstoneError {
 impl std::error::Error for TouchstoneError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::Parse { source, .. } => Some(source),
             Self::Io(err) => Some(err),
             Self::InvalidUtf8(err) => Some(err),
             _ => None,
