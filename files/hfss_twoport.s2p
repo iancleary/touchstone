@@ -1,3 +1,5 @@
+! Source: https://github.com/scikit-rf/scikit-rf/blob/950534a5928d5c99e3fea2beaec7d82519800b0c/skrf/tests/hfss_twoport.s2p
+! License: BSD-3-Clause
 ! Touchstone file from project gndCpw
 ! Exported from HFSS 14.0.0
 ! Variables:

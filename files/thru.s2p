@@ -1,0 +1,13 @@
+! Source: https://github.com/scikit-rf/scikit-rf/blob/950534a5928d5c99e3fea2beaec7d82519800b0c/skrf/tests/thru.s2p
+! License: BSD-3-Clause
+# GHz S RI R 50
+1       0 0 1 0 1 0 0 0
+75      0 0 1 0 1 0 0 0
+75.05   0 0 1 0 1 0 0 0
+100     0 0 1 0 1 0 0 0
+
+! NOISE PARAMETERS
+70      2.5 0.5 45  10
+75      2.7 0.5 45  10
+75.05   2.6 0.7 90  20
+85      2.5 0.5 45  10

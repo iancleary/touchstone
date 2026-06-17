@@ -1,4 +1,4 @@
-! Source: https://github.com/scikit-rf/scikit-rf/blob/950534a5928d5c99e3fea2beaec7d82519800b0c/skrf/tests/ntwk3.s2p
+! Source: https://github.com/scikit-rf/scikit-rf/blob/950534a5928d5c99e3fea2beaec7d82519800b0c/skrf/tests/ntwks/ntwk3.s2p
 ! License: BSD-3-Clause
 ! Created Thu Nov 11 11:19:04 2010
 # ghz S ri R 50

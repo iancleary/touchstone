@@ -453,7 +453,7 @@ mod tests {
         assert_eq!(network.resistance_string, "R");
         assert_eq!(network.z0, 50.0);
 
-        assert_eq!(network.comments.len(), 1);
+        assert_eq!(network.comments.len(), 3);
         assert_eq!(network.comments_after_option_line.len(), 3);
         assert_eq!(network.f.len(), 91);
         assert_eq!(network.s.len(), 91);
@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(network.resistance_string, "R");
         assert_eq!(network.z0, 50.0);
 
-        assert_eq!(network.comments.len(), 1);
+        assert_eq!(network.comments.len(), 3);
         assert_eq!(network.comments_after_option_line.len(), 3);
         assert_eq!(network.f.len(), 91);
         assert_eq!(network.s.len(), 91);
@@ -492,7 +492,7 @@ mod tests {
         assert_eq!(network.resistance_string, "R");
         assert_eq!(network.z0, 50.0);
 
-        assert_eq!(network.comments.len(), 1);
+        assert_eq!(network.comments.len(), 3);
         assert_eq!(network.comments_after_option_line.len(), 3);
         assert_eq!(network.f.len(), 91);
         assert_eq!(network.s.len(), 91);
