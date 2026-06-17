@@ -1,3 +1,13 @@
+use crate::TouchstoneError;
+
+pub(crate) fn try_str_to_f64(x: &str) -> Result<f64, TouchstoneError> {
+    x.parse::<f64>()
+        .map_err(|_| TouchstoneError::InvalidNumber {
+            token: x.to_string(),
+        })
+}
+
+#[cfg(test)]
 pub(crate) fn str_to_f64(x: &str) -> f64 {
     x.parse::<f64>().expect("Failed to parse {x} into f64")
 }

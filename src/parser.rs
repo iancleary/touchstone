@@ -1,10 +1,11 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use crate::data_line;
 use crate::file_extension;
 use crate::option_line;
 use crate::utils;
 use crate::Network;
+use crate::TouchstoneError;
 
 #[derive(Debug)]
 struct ParserState {
@@ -14,28 +15,28 @@ struct ParserState {
     expected_number_of_frequencies: Option<usize>,
 }
 
+#[cfg(test)]
 pub fn read_file(file_path: String) -> Network {
-    tracing::debug!("Parsing touchstone file: {}", file_path);
-    let contents = fs::read_to_string(&file_path).expect("Should have been able to read the file");
+    try_read_file(file_path).expect("failed to parse Touchstone file")
+}
 
-    let file_type = file_path
-        .split(".")
-        .last()
-        .expect("Failed to get file type from file path");
+pub fn try_read_file<P: AsRef<Path>>(file_path: P) -> Result<Network, TouchstoneError> {
+    let file_path = file_path.as_ref();
+    tracing::debug!("Parsing touchstone file: {}", file_path.display());
+    let contents = fs::read_to_string(file_path)?;
+    parse_str(file_path.to_string_lossy().as_ref(), &contents)
+}
 
-    let file_type_is_valid = file_extension::is_valid_file_extension(file_type);
+pub fn parse_bytes(source_name: &str, bytes: &[u8]) -> Result<Network, TouchstoneError> {
+    let contents = std::str::from_utf8(bytes)?;
+    parse_str(source_name, contents)
+}
 
-    if !file_type_is_valid {
-        panic!(
-            "File type not supported: {}, only sNp supported, where n is an integer without leading zeros.",
-            file_type
-        );
-    }
+pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, TouchstoneError> {
+    tracing::debug!("Parsing touchstone source: {}", source_name);
 
-    let n_ports_str = &file_type[1..file_type.len() - 1];
-    let n_ports = n_ports_str
-        .parse::<i32>()
-        .expect("Failed to parse number of ports from file type");
+    let file_type = infer_file_type(source_name)?;
+    let n_ports = parse_number_of_ports(file_type)?;
 
     let mut parsed_options = option_line::Options::default();
     // println!("default options:\n{:?}", parsed_options);
@@ -94,10 +95,10 @@ pub fn read_file(file_path: String) -> Network {
 
                 parser_state.option_line_parsed = true;
             } else {
-                panic!("Multiple option lines found in file. Only one option line is allowed.");
+                return Err(TouchstoneError::MultipleOptionLines);
             }
         } else if is_keyword {
-            if handle_keyword_line(trimmed_line, n_ports, &mut parser_state) {
+            if handle_keyword_line(trimmed_line, n_ports, &mut parser_state)? {
                 break;
             }
         } else if is_comment {
@@ -117,13 +118,13 @@ pub fn read_file(file_path: String) -> Network {
             // Check if we have collected enough values for a complete entry
             if current_value_count >= expected_values {
                 // Process this complete segment
-                let line_matrix_data = data_line::parse_data_line_with_order(
+                let line_matrix_data = data_line::try_parse_data_line_with_order(
                     current_data_segment.clone(),
                     &parsed_options.format,
                     &n_ports,
                     &parsed_options.frequency_unit,
                     parser_state.two_port_data_order,
-                );
+                )?;
 
                 f.push(line_matrix_data.frequency);
                 s.push(line_matrix_data);
@@ -139,13 +140,13 @@ pub fn read_file(file_path: String) -> Network {
 
     // Process the last data segment
     if !current_data_segment.is_empty() {
-        let line_matrix_data = data_line::parse_data_line_with_order(
+        let line_matrix_data = data_line::try_parse_data_line_with_order(
             current_data_segment.clone(),
             &parsed_options.format,
             &n_ports,
             &parsed_options.frequency_unit,
             parser_state.two_port_data_order,
-        );
+        )?;
 
         f.push(line_matrix_data.frequency);
         s.push(line_matrix_data);
@@ -155,11 +156,10 @@ pub fn read_file(file_path: String) -> Network {
 
     if let Some(expected_number_of_frequencies) = parser_state.expected_number_of_frequencies {
         if expected_number_of_frequencies != f.len() {
-            panic!(
-                "[Number of Frequencies] expected {} points, parsed {}",
-                expected_number_of_frequencies,
-                f.len()
-            );
+            return Err(TouchstoneError::NumberOfFrequenciesMismatch {
+                expected: expected_number_of_frequencies,
+                actual: f.len(),
+            });
         }
     }
 
@@ -171,70 +171,87 @@ pub fn read_file(file_path: String) -> Network {
         "Parsing complete"
     );
 
-    Network {
-        name: file_path,
+    Ok(Network {
+        name: source_name.to_string(),
         rank: n_ports,
         frequency_unit,
         parameter,
         format,
         resistance_string,
-        z0: utils::str_to_f64(reference_resistance.as_str()),
+        z0: utils::try_str_to_f64(reference_resistance.as_str())?,
         comments: comment_lines,
         comments_after_option_line,
         f,
         s,
-    }
+    })
 }
 
-fn handle_keyword_line(line: &str, n_ports: i32, parser_state: &mut ParserState) -> bool {
+fn handle_keyword_line(
+    line: &str,
+    n_ports: i32,
+    parser_state: &mut ParserState,
+) -> Result<bool, TouchstoneError> {
     let line_without_comment = line.split('!').next().unwrap_or("").trim();
-    let closing_bracket_index = line_without_comment
-        .find(']')
-        .unwrap_or_else(|| panic!("Invalid Touchstone keyword line: {}", line));
+    let closing_bracket_index =
+        line_without_comment
+            .find(']')
+            .ok_or_else(|| TouchstoneError::InvalidKeywordLine {
+                line: line.to_string(),
+            })?;
     let keyword = normalize_keyword(&line_without_comment[1..closing_bracket_index]);
     let argument = line_without_comment[closing_bracket_index + 1..].trim();
 
     match keyword.as_str() {
         "version" => match argument {
             "2.0" | "2.1" => {}
-            _ => panic!("Unsupported [Version]: {}", argument),
+            _ => {
+                return Err(TouchstoneError::UnsupportedVersion {
+                    version: argument.to_string(),
+                });
+            }
         },
         "number of ports" => {
-            let keyword_ports = argument
-                .parse::<i32>()
-                .unwrap_or_else(|_| panic!("Invalid [Number of Ports]: {}", argument));
+            let keyword_ports =
+                argument
+                    .parse::<i32>()
+                    .map_err(|_| TouchstoneError::InvalidNumberOfPorts {
+                        value: argument.to_string(),
+                    })?;
             if keyword_ports != n_ports {
-                panic!(
-                    "[Number of Ports] {} does not match file extension port count {}",
-                    keyword_ports, n_ports
-                );
+                return Err(TouchstoneError::NumberOfPortsMismatch {
+                    keyword_ports,
+                    extension_ports: n_ports,
+                });
             }
         }
         "two port data order" => {
             if n_ports != 2 {
-                panic!("[Two-Port Data Order] is only valid for 2-port files");
+                return Err(TouchstoneError::TwoPortDataOrderForNonTwoPort);
             }
             parser_state.two_port_data_order =
-                data_line::TwoPortDataOrder::from_keyword_argument(argument);
+                data_line::TwoPortDataOrder::try_from_keyword_argument(argument)?;
         }
         "number of frequencies" => {
-            parser_state.expected_number_of_frequencies = Some(
-                argument
-                    .parse::<usize>()
-                    .unwrap_or_else(|_| panic!("Invalid [Number of Frequencies]: {}", argument)),
-            );
+            parser_state.expected_number_of_frequencies =
+                Some(argument.parse::<usize>().map_err(|_| {
+                    TouchstoneError::InvalidNumberOfFrequencies {
+                        value: argument.to_string(),
+                    }
+                })?);
         }
         "network data" => {}
         "matrix format" => {
             if !argument.eq_ignore_ascii_case("Full") {
-                panic!("Only [Matrix Format] Full is currently supported");
+                return Err(TouchstoneError::UnsupportedMatrixFormat {
+                    format: argument.to_string(),
+                });
             }
         }
-        "end" => return true,
+        "end" => return Ok(true),
         _ => {}
     }
 
-    false
+    Ok(false)
 }
 
 fn normalize_keyword(keyword: &str) -> String {
@@ -244,6 +261,32 @@ fn normalize_keyword(keyword: &str) -> String {
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn infer_file_type(source_name: &str) -> Result<&str, TouchstoneError> {
+    let file_type = source_name
+        .rsplit_once('.')
+        .map(|(_, file_type)| file_type)
+        .ok_or_else(|| TouchstoneError::MissingFileType {
+            source_name: source_name.to_string(),
+        })?;
+
+    if file_extension::is_valid_file_extension(file_type) {
+        Ok(file_type)
+    } else {
+        Err(TouchstoneError::UnsupportedFileType {
+            file_type: file_type.to_string(),
+        })
+    }
+}
+
+fn parse_number_of_ports(file_type: &str) -> Result<i32, TouchstoneError> {
+    let n_ports_str = &file_type[1..file_type.len() - 1];
+    n_ports_str
+        .parse::<i32>()
+        .map_err(|_| TouchstoneError::InvalidPortCount {
+            file_type: file_type.to_string(),
+        })
 }
 
 #[cfg(test)]

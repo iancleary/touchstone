@@ -57,6 +57,33 @@ println!("Data points: {}", ntwk.f.len());
 
 `Network::new` auto-detects the port count, data format, and frequency unit from the file.
 
+Use `Network::try_new` when you want I/O and parse errors instead of panics:
+
+```rust
+use touchstone::Network;
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let ntwk = Network::try_new("files/ntwk1.s2p")?;
+    println!("Ports: {}", ntwk.rank);
+    Ok(())
+}
+```
+
+For uploaded data or API endpoints, parse Touchstone content directly from memory. The
+`source_name` argument is used as the network name and for `.sNp` extension inference:
+
+```rust
+use touchstone::Network;
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let body = b"# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n";
+    let ntwk = Network::from_bytes("uploaded.s2p", body)?;
+
+    assert_eq!(ntwk.rank, 2);
+    Ok(())
+}
+```
+
 ---
 
 ## 3. Accessing S-Parameters
@@ -280,6 +307,9 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | Item                          | Description                                  |
 |-------------------------------|----------------------------------------------|
 | `Network::new(path)`          | Parse a Touchstone file into a `Network`     |
+| `Network::try_new(path)`      | Parse a Touchstone file and return errors    |
+| `Network::from_bytes(name, bytes)` | Parse in-memory UTF-8 Touchstone bytes  |
+| `Network::from_str(name, contents)` | Parse an in-memory Touchstone string    |
 | `network.rank`                | Number of ports                              |
 | `network.frequency_unit`      | Frequency unit string                        |
 | `network.format`              | Data format (`RI`, `MA`, or `DB`)            |

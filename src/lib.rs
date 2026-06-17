@@ -18,6 +18,7 @@ use std::ops;
 pub mod cli;
 mod data_line;
 mod data_pairs;
+mod error;
 mod file_extension;
 mod file_operations;
 mod open;
@@ -25,6 +26,8 @@ mod option_line;
 mod parser;
 mod plot;
 mod utils;
+
+pub use error::TouchstoneError;
 
 /// A network parsed from a Touchstone (`.sNp`) file.
 ///
@@ -145,7 +148,61 @@ impl Network {
     /// ```
     #[must_use]
     pub fn new(file_path: String) -> Self {
-        parser::read_file(file_path)
+        Self::try_new(file_path).expect("failed to parse Touchstone file")
+    }
+
+    /// Creates a Network from a file path, returning parse and I/O errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let network = touchstone::Network::try_new("files/ntwk1.s2p")?;
+    /// assert_eq!(network.rank, 2);
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    pub fn try_new<P: AsRef<std::path::Path>>(file_path: P) -> Result<Self, TouchstoneError> {
+        parser::try_read_file(file_path)
+    }
+
+    /// Creates a Network from in-memory UTF-8 bytes.
+    ///
+    /// The `source_name` is used as the network name and for Touchstone extension inference,
+    /// such as `uploaded.s2p`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let data = b"# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n";
+    /// let network = touchstone::Network::from_bytes("uploaded.s2p", data)?;
+    /// assert_eq!(network.rank, 2);
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    pub fn from_bytes<S: AsRef<str>>(
+        source_name: S,
+        bytes: &[u8],
+    ) -> Result<Self, TouchstoneError> {
+        parser::parse_bytes(source_name.as_ref(), bytes)
+    }
+
+    /// Creates a Network from an in-memory Touchstone string.
+    ///
+    /// The `source_name` is used as the network name and for Touchstone extension inference,
+    /// such as `uploaded.s2p`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let data = "# GHz S RI R 50\n1.0 0.1 0.0 4.0 0.0 0.01 0.0 0.2 0.0\n";
+    /// let network = touchstone::Network::from_str("uploaded.s2p", data)?;
+    /// assert_eq!(network.rank, 2);
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str<S: AsRef<str>>(
+        source_name: S,
+        contents: &str,
+    ) -> Result<Self, TouchstoneError> {
+        parser::parse_str(source_name.as_ref(), contents)
     }
 
     /// Print a human-readable summary of the network to stdout.
