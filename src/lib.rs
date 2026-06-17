@@ -27,7 +27,7 @@ mod parser;
 mod plot;
 mod utils;
 
-pub use error::TouchstoneError;
+pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 
 /// A network parsed from a Touchstone (`.sNp`) file.
 ///
@@ -67,6 +67,8 @@ pub struct Network {
     pub comments: Vec<String>,
     /// Comment lines appearing after the option line.
     pub comments_after_option_line: Vec<String>,
+    /// Non-fatal parser warnings recorded while reading the network.
+    pub warnings: Vec<TouchstoneWarning>,
 
     /// Frequency vector in Hz.
     pub f: Vec<f64>,
@@ -458,6 +460,7 @@ impl Network {
             z0: self.z0,
             comments,
             comments_after_option_line,
+            warnings: [self.warnings.clone(), other.warnings.clone()].concat(),
             f: self.f.clone(), // Note: this might be longer than s_new if other is shorter
             s: s_new,
         }

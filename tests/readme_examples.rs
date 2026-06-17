@@ -1,6 +1,6 @@
 //! Integration tests matching every code example in README.md
 
-use touchstone::Network;
+use touchstone::{Network, TouchstoneWarning};
 
 // --- Section 2: Loading a Network ---
 
@@ -13,6 +13,16 @@ fn loading_a_network() {
     assert!(!ntwk.format.is_empty());
     assert!(ntwk.z0 > 0.0);
     assert!(!ntwk.f.is_empty());
+}
+
+#[test]
+fn parser_warnings() {
+    let ntwk = Network::from_str("uploaded.s1p", "1.0 0.5 0.0\n").unwrap();
+
+    assert!(matches!(
+        ntwk.warnings.as_slice(),
+        [TouchstoneWarning::MissingOptionLine { .. }]
+    ));
 }
 
 // --- Section 3: Accessing S-Parameters ---
