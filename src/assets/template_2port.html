@@ -148,73 +148,6 @@
         </div>
 
         <!-- Item 2 -->
-        <div id="card-s12"
-            class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
-            <div class="flex justify-between items-start mb-2">
-                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S12 (Reverse
-                    Isolation)</h2>
-                <div class="flex items-center space-x-1 z-20 flex-shrink-0">
-                    <button onclick="resetZoom('plot-s12')" class="action-btn p-2 rounded-full"
-                        data-tooltip="Reset Zoom">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                            </path>
-                        </svg>
-                    </button>
-                    <button onclick="zoomIn('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Zoom In">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
-                        </svg>
-                    </button>
-                    <button onclick="zoomOut('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Zoom Out">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
-                        </svg>
-                    </button>
-                    <button id="hover-toggle-plot-s12" onclick="toggleHoverMode('plot-s12')"
-                        class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
-                        <svg id="hover-icon-plot-s12" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 12h16M12 4v16" />
-                        </svg>
-                    </button>
-                    <button onclick="downloadCSV('plot-s12', 's12_data')" class="action-btn p-2 rounded-full"
-                        data-tooltip="Download CSV">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                            </path>
-                        </svg>
-                    </button>
-                    <button onclick="downloadImage('plot-s12', 's12_plot')" class="action-btn p-2 rounded-full"
-                        data-tooltip="Download Image (PNG)">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
-                            </path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                    </button>
-                    <button onclick="toggleExpand('card-s12')" class="action-btn p-2 rounded-full"
-                        data-tooltip="Expand View">
-                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
-                            </path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div id="plot-s12" class="chart-container"></div>
-        </div>
-
-        <!-- Item 3 -->
         <div id="card-s21"
             class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
             <div class="flex justify-between items-start mb-2">
@@ -279,6 +212,73 @@
                 </div>
             </div>
             <div id="plot-s21" class="chart-container"></div>
+        </div>
+
+        <!-- Item 3 -->
+        <div id="card-s12"
+            class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S12 (Reverse
+                    Isolation)</h2>
+                <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <button onclick="resetZoom('plot-s12')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                    </button>
+                    <button onclick="zoomIn('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                        </svg>
+                    </button>
+                    <button onclick="zoomOut('plot-s12')" class="action-btn p-2 rounded-full" data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+                        </svg>
+                    </button>
+                    <button id="hover-toggle-plot-s12" onclick="toggleHoverMode('plot-s12')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-s12" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <button onclick="downloadCSV('plot-s12', 's12_data')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </button>
+                    <button onclick="downloadImage('plot-s12', 's12_plot')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="toggleExpand('card-s12')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-s12" class="chart-container"></div>
         </div>
 
         <!-- Item 4 -->
@@ -348,6 +348,142 @@
             <div id="plot-s22" class="chart-container"></div>
         </div>
 
+        <!-- Item 5 -->
+        <div id="card-smith-s11"
+            class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S11 Smith Chart</h2>
+                <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <button onclick="resetZoom('plot-smith-s11')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                    </button>
+                    <button onclick="zoomIn('plot-smith-s11')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                        </svg>
+                    </button>
+                    <button onclick="zoomOut('plot-smith-s11')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+                        </svg>
+                    </button>
+                    <button id="hover-toggle-plot-smith-s11" onclick="toggleHoverMode('plot-smith-s11')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-smith-s11" class="w-5 h-5 text-gray-700" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <button onclick="downloadCSV('plot-smith-s11', 'smith_s11_data')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </button>
+                    <button onclick="downloadImage('plot-smith-s11', 'smith_s11_plot')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="toggleExpand('card-smith-s11')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-smith-s11" class="chart-container"></div>
+        </div>
+
+        <!-- Item 6 -->
+        <div id="card-smith-s22"
+            class="grid-item relative bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 p-4 col-span-1">
+            <div class="flex justify-between items-start mb-2">
+                <h2 class="text-lg font-bold text-gray-800 z-10 pointer-events-none truncate mr-2">S22 Smith Chart</h2>
+                <div class="flex items-center space-x-1 z-20 flex-shrink-0">
+                    <button onclick="resetZoom('plot-smith-s22')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Reset Zoom">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                    </button>
+                    <button onclick="zoomIn('plot-smith-s22')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Zoom In">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                        </svg>
+                    </button>
+                    <button onclick="zoomOut('plot-smith-s22')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Zoom Out">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+                        </svg>
+                    </button>
+                    <button id="hover-toggle-plot-smith-s22" onclick="toggleHoverMode('plot-smith-s22')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Toggle Hover Mode: Nearest Point">
+                        <svg id="hover-icon-plot-smith-s22" class="w-5 h-5 text-gray-700" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 12h16M12 4v16" />
+                        </svg>
+                    </button>
+                    <button onclick="downloadCSV('plot-smith-s22', 'smith_s22_data')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Download CSV">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </button>
+                    <button onclick="downloadImage('plot-smith-s22', 'smith_s22_plot')"
+                        class="action-btn p-2 rounded-full" data-tooltip="Download Image (PNG)">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="toggleExpand('card-smith-s22')" class="action-btn p-2 rounded-full"
+                        data-tooltip="Expand View">
+                        <svg class="toggle-icon w-5 h-5 text-gray-700" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="plot-smith-s22" class="chart-container"></div>
+        </div>
+
     </div>
 
     <script>
@@ -359,6 +495,8 @@
         const s21Data = {{ s21_data }};
         const s12Data = {{ s12_data }};
         const s22Data = {{ s22_data }};
+        const s11ComplexData = {{ s11_complex_data }};
+        const s22ComplexData = {{ s22_complex_data }};
 
         // --- Tooltip Logic (Custom) ---
         const tooltip = document.createElement('div');
@@ -400,9 +538,11 @@
         // --- Hover Mode Management ---
         const hoverModeMap = {
             'plot-s11': 'closest',
-            'plot-s12': 'closest',
             'plot-s21': 'closest',
-            'plot-s22': 'closest'
+            'plot-s12': 'closest',
+            'plot-s22': 'closest',
+            'plot-smith-s11': 'closest',
+            'plot-smith-s22': 'closest'
         };
 
         const HOVER_CYCLES = ['closest', 'x', 'y', false]; // false means disabled hover
@@ -497,28 +637,119 @@
         };
         const plotlyConfig = { responsive: true, displayModeBar: false };
 
+        const returnLossPlotIds = new Set(['plot-s11', 'plot-s22']);
+        const zeroIncludedPlotIds = new Set(['plot-s21', 'plot-s12']);
+        const yAxisPaddingRatio = 0.08;
+        const minYAxisSpanDb = 1;
+        const smithDefaultRangeLimit = 1.08;
+        const smithResistanceValues = [0, 0.2, 0.5, 1, 2, 5];
+        const smithReactanceValues = [0.2, 0.5, 1, 2, 5];
+        const smithGridSteps = 96;
+
         const plotTitles = {
             'plot-s11': 'S11 (dB) vs. Frequency (GHz)',
-            'plot-s12': 'S12 (dB) vs. Frequency (GHz)',
             'plot-s21': 'S21 (dB) vs. Frequency (GHz)',
+            'plot-s12': 'S12 (dB) vs. Frequency (GHz)',
             'plot-s22': 'S22 (dB) vs. Frequency (GHz)'
         };
 
+        const dbPlotData = {
+            'plot-s11': s11Data,
+            'plot-s21': s21Data,
+            'plot-s12': s12Data,
+            'plot-s22': s22Data
+        };
+
+        const smithPlotMeta = {
+            'plot-smith-s11': {
+                data: s11ComplexData,
+                title: 'S11 Smith Chart',
+                parameter: 'S11'
+            },
+            'plot-smith-s22': {
+                data: s22ComplexData,
+                title: 'S22 Smith Chart',
+                parameter: 'S22'
+            }
+        };
+
+        function plotValueBounds(plotId) {
+            const data = dbPlotData[plotId];
+            if (!data) return null;
+
+            let min = Infinity;
+            let max = -Infinity;
+            data.forEach(series => {
+                series.forEach(value => {
+                    if (!Number.isFinite(value)) return;
+                    min = Math.min(min, value);
+                    max = Math.max(max, value);
+                });
+            });
+
+            if (min === Infinity || max === -Infinity) return null;
+            return { min, max };
+        }
+
+        function constrainYAxisRange(plotId, range) {
+            if (!range) return null;
+
+            let [min, max] = range;
+            if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+            if (min > max) [min, max] = [max, min];
+
+            if (returnLossPlotIds.has(plotId)) {
+                min = Math.min(min, 0);
+                max = Math.max(max, 0);
+                if (max - min < minYAxisSpanDb) min = max - minYAxisSpanDb;
+                return [min, max];
+            }
+
+            if (zeroIncludedPlotIds.has(plotId)) {
+                if (min > 0) min = 0;
+                if (max < 0) max = 0;
+                if (max - min < minYAxisSpanDb) {
+                    const center = (min + max) / 2;
+                    min = center - minYAxisSpanDb / 2;
+                    max = center + minYAxisSpanDb / 2;
+                }
+            }
+
+            return [min, max];
+        }
+
+        function yAxisRange(plotId) {
+            const bounds = plotValueBounds(plotId);
+            if (!bounds) return null;
+
+            const span = Math.max(bounds.max - bounds.min, minYAxisSpanDb);
+            const padding = span * yAxisPaddingRatio;
+            return constrainYAxisRange(plotId, [bounds.min - padding, bounds.max + padding]);
+        }
+
+        function createDbLayout(plotId) {
+            const yRange = yAxisRange(plotId);
+            const yaxis = { ...commonLayout.yaxis };
+
+            if (yRange) {
+                yaxis.range = yRange;
+                yaxis.autorange = false;
+            } else {
+                yaxis.autorange = true;
+            }
+
+            return {
+                ...commonLayout,
+                title: { text: plotTitles[plotId] },
+                yaxis
+            };
+        }
+
         const plotLayouts = {
-            'plot-s11': {
-                ...commonLayout,
-                title: { text: plotTitles['plot-s11'] },
-                // Fixed range from -40 dB to 0 dB
-                yaxis: { ...commonLayout.yaxis, range: [-40, 0] }
-            },
-            'plot-s12': { ...commonLayout, title: { text: plotTitles['plot-s12'] } },
-            'plot-s21': { ...commonLayout, title: { text: plotTitles['plot-s21'] } },
-            'plot-s22': {
-                ...commonLayout,
-                title: { text: plotTitles['plot-s22'] },
-                // Fixed range from -40 dB to 0 dB
-                yaxis: { ...commonLayout.yaxis, range: [-40, 0] }
-            },
+            'plot-s11': createDbLayout('plot-s11'),
+            'plot-s21': createDbLayout('plot-s21'),
+            'plot-s12': createDbLayout('plot-s12'),
+            'plot-s22': createDbLayout('plot-s22'),
         };
 
         const fileTraceColors = [
@@ -551,20 +782,206 @@
             });
         }
 
+        function createSmithTraces(complexDataArray, names, parameter) {
+            return names.map((name, i) => {
+                const points = complexDataArray[i];
+                return {
+                    x: points.map(point => point.real),
+                    y: points.map(point => point.imaginary),
+                    customdata: freqData[i],
+                    mode: 'lines+markers',
+                    name: name,
+                    line: { color: fileTraceColors[i % fileTraceColors.length], width: 2 },
+                    marker: { color: fileTraceColors[i % fileTraceColors.length], size: 5 },
+                    text: points.map((point, pointIndex) => smithHoverText(parameter, point, freqData[i][pointIndex])),
+                    hovertemplate: '%{text}<extra>%{fullData.name}</extra>'
+                };
+            });
+        }
+
+        function isSmithPlot(plotId) {
+            return Boolean(smithPlotMeta[plotId]);
+        }
+
+        function smithLayout(plotId) {
+            const rangeLimit = smithRangeLimit(plotId);
+            return {
+                ...commonLayout,
+                title: { text: smithPlotMeta[plotId].title },
+                margin: { t: 40, r: 24, b: 48, l: 48 },
+                xaxis: smithAxis('Real Gamma', rangeLimit),
+                yaxis: smithAxis('Imaginary Gamma', rangeLimit, true),
+                shapes: smithGridShapes(),
+                annotations: smithGridAnnotations(),
+                hovermode: hoverModeMap[plotId] === false ? false : hoverModeMap[plotId]
+            };
+        }
+
+        function smithAxis(title, rangeLimit, anchorToX = false) {
+            return {
+                title: { text: title },
+                gridcolor: '#e5e7eb',
+                zerolinecolor: '#d1d5db',
+                range: [-rangeLimit, rangeLimit],
+                scaleanchor: anchorToX ? 'x' : undefined,
+                scaleratio: 1,
+                fixedrange: false
+            };
+        }
+
+        function smithRangeLimit(plotId) {
+            const meta = smithPlotMeta[plotId];
+            if (!meta) return smithDefaultRangeLimit;
+
+            let rangeLimit = smithDefaultRangeLimit;
+            meta.data.forEach(series => {
+                series.forEach(point => {
+                    if (!Number.isFinite(point.real) || !Number.isFinite(point.imaginary)) return;
+                    rangeLimit = Math.max(
+                        rangeLimit,
+                        Math.abs(point.real) * 1.08,
+                        Math.abs(point.imaginary) * 1.08
+                    );
+                });
+            });
+
+            return rangeLimit;
+        }
+
+        function smithGridShapes() {
+            const gridColor = '#d1d5db';
+            const majorColor = '#6b7280';
+            const shapes = [
+                pathShape(circlePath(0, 0, 1), majorColor, 1.6),
+                pathShape(linePath(-1, 0, 1, 0), majorColor, 1)
+            ];
+
+            smithResistanceValues.forEach(resistance => {
+                const center = resistance / (resistance + 1);
+                const radius = 1 / (resistance + 1);
+                shapes.push(pathShape(circlePath(center, 0, radius), gridColor, resistance === 1 ? 1.2 : 0.8));
+            });
+
+            smithReactanceValues.forEach(reactance => {
+                [1, -1].forEach(sign => {
+                    const centerY = sign / reactance;
+                    const radius = Math.abs(1 / reactance);
+                    shapes.push(pathShape(arcPath(1, centerY, radius, sign), gridColor, reactance === 1 ? 1.2 : 0.8));
+                });
+            });
+
+            return shapes;
+        }
+
+        function smithGridAnnotations() {
+            return smithResistanceValues.map(value => ({
+                x: (value - 1) / (value + 1),
+                y: -0.045,
+                text: `${value}`,
+                showarrow: false,
+                font: { color: '#4b5563', size: 10 },
+                opacity: 0.72
+            }));
+        }
+
+        function circlePath(centerX, centerY, radius) {
+            return parametricPath(step => {
+                const angle = (2 * Math.PI * step) / smithGridSteps;
+                return [centerX + radius * Math.cos(angle), centerY + radius * Math.sin(angle)];
+            });
+        }
+
+        function arcPath(centerX, centerY, radius, sign) {
+            const points = [];
+            for (let step = 0; step <= smithGridSteps; step += 1) {
+                const angle = sign > 0
+                    ? Math.PI + (Math.PI * step) / smithGridSteps
+                    : Math.PI - (Math.PI * step) / smithGridSteps;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                if ((x ** 2) + (y ** 2) <= 1.0001) points.push([x, y]);
+            }
+            return pointsToPath(points);
+        }
+
+        function linePath(x1, y1, x2, y2) {
+            return `M ${x1},${y1} L ${x2},${y2}`;
+        }
+
+        function parametricPath(pointAtStep) {
+            const points = [];
+            for (let step = 0; step <= smithGridSteps; step += 1) points.push(pointAtStep(step));
+            return pointsToPath(points);
+        }
+
+        function pointsToPath(points) {
+            return points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x},${y}`).join(' ');
+        }
+
+        function pathShape(path, color, width) {
+            return {
+                type: 'path',
+                path,
+                xref: 'x',
+                yref: 'y',
+                line: { color, width },
+                layer: 'below'
+            };
+        }
+
+        function smithHoverText(parameter, point, frequencyHz) {
+            return `${parameter}: ${formatGamma(point.real)} ${formatSignedGammaImaginary(point.imaginary)}<br>Frequency: ${formatFrequency(frequencyHz)}`;
+        }
+
+        function formatGamma(value) {
+            return Number.isFinite(value) ? value.toFixed(4) : 'N/A';
+        }
+
+        function formatSignedGammaImaginary(value) {
+            if (!Number.isFinite(value)) return '+ jN/A';
+            return `${value < 0 ? '-' : '+'} j${Math.abs(value).toFixed(4)}`;
+        }
+
+        function formatFrequency(value) {
+            return Number.isFinite(value) ? `${value.toPrecision(4)} Hz` : 'N/A';
+        }
+
         // Plots should be in global scope, but functions can facilitate traces
         // use a loop for more iteration
         Plotly.newPlot('plot-s11', createTraces(freqData, s11Data, networkNames), plotLayouts['plot-s11'], plotlyConfig);
-        Plotly.newPlot('plot-s12', createTraces(freqData, s12Data, networkNames), plotLayouts['plot-s12'], plotlyConfig);
         Plotly.newPlot('plot-s21', createTraces(freqData, s21Data, networkNames), plotLayouts['plot-s21'], plotlyConfig);
+        Plotly.newPlot('plot-s12', createTraces(freqData, s12Data, networkNames), plotLayouts['plot-s12'], plotlyConfig);
         Plotly.newPlot('plot-s22', createTraces(freqData, s22Data, networkNames), plotLayouts['plot-s22'], plotlyConfig);
+        Plotly.newPlot('plot-smith-s11', createSmithTraces(s11ComplexData, networkNames, 'S11'), smithLayout('plot-smith-s11'), plotlyConfig);
+        Plotly.newPlot('plot-smith-s22', createSmithTraces(s22ComplexData, networkNames, 'S22'), smithLayout('plot-smith-s22'), plotlyConfig);
 
         // --- Action Functions ---
 
         function resetZoom(divId) {
-            Plotly.relayout(divId, {
-                'xaxis.autorange': true,
-                'yaxis.autorange': true
-            });
+            if (isSmithPlot(divId)) {
+                const rangeLimit = smithRangeLimit(divId);
+                Plotly.relayout(divId, {
+                    'xaxis.range': [-rangeLimit, rangeLimit],
+                    'yaxis.range': [-rangeLimit, rangeLimit],
+                    'xaxis.autorange': false,
+                    'yaxis.autorange': false
+                });
+                return;
+            }
+
+            const yRange = yAxisRange(divId);
+            const relayout = {
+                'xaxis.autorange': true
+            };
+
+            if (yRange) {
+                relayout['yaxis.range'] = yRange;
+                relayout['yaxis.autorange'] = false;
+            } else {
+                relayout['yaxis.autorange'] = true;
+            }
+
+            Plotly.relayout(divId, relayout);
         }
 
         function zoomPlot(divId, factor) {
@@ -587,7 +1004,8 @@
             };
 
             const newX = getNewRange(xaxis.range, xaxis.type === 'log');
-            const newY = getNewRange(yaxis.range, yaxis.type === 'log');
+            const zoomedY = getNewRange(yaxis.range, yaxis.type === 'log');
+            const newY = isSmithPlot(divId) ? zoomedY : constrainYAxisRange(divId, zoomedY);
 
             Plotly.relayout(divId, {
                 'xaxis.range': newX,
@@ -614,18 +1032,40 @@
         function downloadCSV(divId, filename) {
             const plot = document.getElementById(divId);
             const data = plot.data;
+            if (!data || data.length === 0) return;
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            if (isSmithPlot(divId)) {
+                const headers = ["Network", "Frequency (Hz)", "Real Gamma", "Imaginary Gamma"];
+                csvContent += headers.map(csvValue).join(",") + "\r\n";
+
+                data.forEach(trace => {
+                    const rowCount = Math.max(trace.x.length, trace.y.length, trace.customdata?.length || 0);
+                    for (let i = 0; i < rowCount; i++) {
+                        const row = [
+                            trace.name,
+                            trace.customdata?.[i] ?? "",
+                            trace.x[i] ?? "",
+                            trace.y[i] ?? ""
+                        ];
+                        csvContent += row.map(csvValue).join(",") + "\r\n";
+                    }
+                });
+
+                triggerCSVDownload(csvContent, filename);
+                return;
+            }
 
             // We assume all traces share the same X axis (Frequency) for simplicity
             // We will construct a CSV with: Frequency, Trace1_Y, Trace2_Y...
-
-            let csvContent = "data:text/csv;charset=utf-8,";
 
             // 1. Create Headers
             let headers = ["Frequency (Hz)"];
             data.forEach(trace => {
                 headers.push(`Magnitude (dB) - ${trace.name}`);
             });
-            csvContent += headers.join(",") + "\r\n";
+            csvContent += headers.map(csvValue).join(",") + "\r\n";
 
             // 2. Add Rows
             // We use the first trace to define the X rows
@@ -637,10 +1077,13 @@
                     // Guard against traces having different lengths
                     row.push(trace.y[i] !== undefined ? trace.y[i] : "");
                 });
-                csvContent += row.join(",") + "\r\n";
+                csvContent += row.map(csvValue).join(",") + "\r\n";
             }
 
-            // 3. Trigger Download
+            triggerCSVDownload(csvContent, filename);
+        }
+
+        function triggerCSVDownload(csvContent, filename) {
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -650,6 +1093,10 @@
             document.body.removeChild(link);
         }
 
+        function csvValue(value) {
+            const text = String(value);
+            return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
 
         // --- Expansion Logic ---
         function toggleExpand(cardId) {
