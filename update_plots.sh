@@ -9,11 +9,23 @@ echo "Updating plots for Touchstone..."
 echo "Plotting 1-port file..."
 cargo run -- files/hfss_oneport.s1p
 
-# Update plots for 2-port example files
+# Update plots for root-level 2-port example files.
+# The cascade output is regenerated below, and noise-parameter fixtures are
+# parser coverage inputs rather than currently plot-capable examples.
 echo "Plotting 2-port files..."
-cargo run -- files/ntwk1.s2p
-cargo run -- files/ntwk2.s2p
-cargo run -- files/ntwk3.s2p
+while IFS= read -r s2p_file; do
+    case "$(basename "$s2p_file")" in
+        cascade_ntwk1_ntwk2.s2p)
+            continue
+            ;;
+        ntwk4_n.s2p|ntwk_noise.s2p|ntwk_noise_interp.s2p|thru.s2p)
+            echo "Skipping unsupported noise-parameter fixture: $s2p_file"
+            continue
+            ;;
+    esac
+
+    cargo run -- "$s2p_file"
+done < <(find files -maxdepth 1 -type f -name "*.s2p" | sort)
 
 ## Plotting currently doesn't support >2 ports
 # # Update plots for 3-port example
@@ -38,4 +50,4 @@ echo "Generating combined directory plot..."
 cargo run -- files/test_plot_dir/
 
 echo "All plots updated successfully!"
-echo "Generated plots for: 1-port, 2-port, 3-port, 4-port, 8-port, cascade, and combined directory."
+echo "Generated plots for: 1-port, all root-level 2-port files, cascade, and combined directory."

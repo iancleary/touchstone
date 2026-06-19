@@ -32,14 +32,20 @@ pub(crate) fn write_plot_html(file_path: &str, html_content: &str) -> std::io::R
     Ok(())
 }
 
-pub fn generate_two_port_plot_html(
+struct TwoPortPlotHtmlData<'a> {
+    network_names: &'a [String],
+    frequency_data: &'a [String],
+    s11_data: &'a [String],
+    s21_data: &'a [String],
+    s12_data: &'a [String],
+    s22_data: &'a [String],
+    s11_complex_data: &'a [String],
+    s22_complex_data: &'a [String],
+}
+
+fn generate_two_port_plot_html(
     output_path: &str,
-    network_names: &[String],
-    frequency_data: &[String],
-    s11_data: &[String],
-    s21_data: &[String],
-    s12_data: &[String],
-    s22_data: &[String],
+    data: TwoPortPlotHtmlData<'_>,
 ) -> std::io::Result<()> {
     // this only works if a relative path or full path is given.
     // the unwrap fails if "ntwk1.s2p" is given instead of "./ntwk1.s2p"
@@ -69,16 +75,24 @@ pub fn generate_two_port_plot_html(
 
     html_content = html_content.replace(
         "{{ network_names }}",
-        &format_js_string_array(network_names),
+        &format_js_string_array(data.network_names),
     );
     html_content = html_content.replace(
         "{{ frequency_data }}",
-        &format_js_data_array(frequency_data),
+        &format_js_data_array(data.frequency_data),
     );
-    html_content = html_content.replace("{{ s11_data }}", &format_js_data_array(s11_data));
-    html_content = html_content.replace("{{ s21_data }}", &format_js_data_array(s21_data));
-    html_content = html_content.replace("{{ s12_data }}", &format_js_data_array(s12_data));
-    html_content = html_content.replace("{{ s22_data }}", &format_js_data_array(s22_data));
+    html_content = html_content.replace("{{ s11_data }}", &format_js_data_array(data.s11_data));
+    html_content = html_content.replace("{{ s21_data }}", &format_js_data_array(data.s21_data));
+    html_content = html_content.replace("{{ s12_data }}", &format_js_data_array(data.s12_data));
+    html_content = html_content.replace("{{ s22_data }}", &format_js_data_array(data.s22_data));
+    html_content = html_content.replace(
+        "{{ s11_complex_data }}",
+        &format_js_data_array(data.s11_complex_data),
+    );
+    html_content = html_content.replace(
+        "{{ s22_complex_data }}",
+        &format_js_data_array(data.s22_complex_data),
+    );
 
     write_plot_html(output_path, &html_content)?;
 
@@ -230,6 +244,8 @@ pub fn generate_plot_from_networks(
             let mut s21_data_list = Vec::new();
             let mut s12_data_list = Vec::new();
             let mut s22_data_list = Vec::new();
+            let mut s11_complex_data_list = Vec::new();
+            let mut s22_complex_data_list = Vec::new();
 
             for network in networks {
                 network_names.push(network.name.clone());
@@ -249,6 +265,14 @@ pub fn generate_plot_from_networks(
                     .collect::<Vec<String>>()
                     .join(", ");
                 s11_data_list.push(format!("[{}]", s11));
+
+                let s11_complex = network
+                    .s_ri(1, 1)
+                    .iter()
+                    .map(|s| format!("{{ real: {}, imaginary: {} }}", s.s_ri.0, s.s_ri.1))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s11_complex_data_list.push(format!("[{}]", s11_complex));
 
                 let s21 = network
                     .s_db(2, 1)
@@ -273,16 +297,28 @@ pub fn generate_plot_from_networks(
                     .collect::<Vec<String>>()
                     .join(", ");
                 s22_data_list.push(format!("[{}]", s22));
+
+                let s22_complex = network
+                    .s_ri(2, 2)
+                    .iter()
+                    .map(|s| format!("{{ real: {}, imaginary: {} }}", s.s_ri.0, s.s_ri.1))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s22_complex_data_list.push(format!("[{}]", s22_complex));
             }
 
             generate_two_port_plot_html(
                 output_path,
-                &network_names,
-                &frequency_data_list,
-                &s11_data_list,
-                &s21_data_list,
-                &s12_data_list,
-                &s22_data_list,
+                TwoPortPlotHtmlData {
+                    network_names: &network_names,
+                    frequency_data: &frequency_data_list,
+                    s11_data: &s11_data_list,
+                    s21_data: &s21_data_list,
+                    s12_data: &s12_data_list,
+                    s22_data: &s22_data_list,
+                    s11_complex_data: &s11_complex_data_list,
+                    s22_complex_data: &s22_complex_data_list,
+                },
             )
         }
         _ => {
@@ -438,6 +474,53 @@ mod tests {
         let html = fs::read_to_string(&output_path).unwrap();
         assert!(html.contains("ntwk1"));
         assert!(html.contains("ntwk2"));
+
+        let card_s11 = html.find("id=\"card-s11\"").unwrap();
+        let card_s21 = html.find("id=\"card-s21\"").unwrap();
+        let card_s12 = html.find("id=\"card-s12\"").unwrap();
+        let card_s22 = html.find("id=\"card-s22\"").unwrap();
+        let card_smith_s11 = html.find("id=\"card-smith-s11\"").unwrap();
+        let card_smith_s22 = html.find("id=\"card-smith-s22\"").unwrap();
+
+        assert!(card_s11 < card_s21);
+        assert!(card_s21 < card_s12);
+        assert!(card_s12 < card_s22);
+        assert!(card_s22 < card_smith_s11);
+        assert!(card_smith_s11 < card_smith_s22);
+
+        let top_right_card = &html[card_s21..card_s12];
+        assert!(top_right_card.contains("S21 (Insertion Loss)"));
+        assert!(top_right_card.contains("downloadCSV('plot-s21', 's21_data')"));
+        assert!(top_right_card.contains("downloadImage('plot-s21', 's21_plot')"));
+        assert!(!top_right_card.contains("S12"));
+
+        let bottom_left_card = &html[card_s12..card_s22];
+        assert!(bottom_left_card.contains("S12 (Reverse"));
+        assert!(bottom_left_card.contains("downloadCSV('plot-s12', 's12_data')"));
+        assert!(bottom_left_card.contains("downloadImage('plot-s12', 's12_plot')"));
+
+        let s21_plot_call = html
+            .find("Plotly.newPlot('plot-s21', createTraces(freqData, s21Data")
+            .unwrap();
+        let s12_plot_call = html
+            .find("Plotly.newPlot('plot-s12', createTraces(freqData, s12Data")
+            .unwrap();
+        assert!(s21_plot_call < s12_plot_call);
+
+        let smith_s11_card = &html[card_smith_s11..card_smith_s22];
+        assert!(smith_s11_card.contains("S11 Smith Chart"));
+        assert!(smith_s11_card.contains("downloadCSV('plot-smith-s11', 'smith_s11_data')"));
+        assert!(smith_s11_card.contains("downloadImage('plot-smith-s11', 'smith_s11_plot')"));
+
+        assert!(html.contains("const s11ComplexData = [[{ real:"));
+        assert!(html.contains("const s22ComplexData = [[{ real:"));
+        assert!(!html.contains("{{ s11_complex_data }}"));
+        assert!(!html.contains("{{ s22_complex_data }}"));
+        assert!(html.contains("Plotly.newPlot('plot-smith-s11', createSmithTraces(s11ComplexData"));
+        assert!(html.contains("Plotly.newPlot('plot-smith-s22', createSmithTraces(s22ComplexData"));
+        assert!(html.contains("function constrainYAxisRange(plotId, range)"));
+        assert!(html.contains("min = Math.min(min, 0);"));
+        assert!(html.contains("if (min > 0) min = 0;"));
     }
 
     #[test]
