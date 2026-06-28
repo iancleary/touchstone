@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a reproducible problem with touchstone.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please include enough detail for the issue to be reproduced.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+      placeholder: Describe the observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest command, code sample, or Touchstone input that reproduces the issue.
+      placeholder: |
+        1. Run `...`
+        2. Open `...`
+        3. See `...`
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected area
+      description: Which part of touchstone appears to be affected?
+      options:
+        - Parser
+        - Writer / serialization
+        - CLI plotting
+        - Cascade
+        - S-parameter accessors
+        - Documentation
+        - Other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: touchstone-shape
+    attributes:
+      label: Touchstone input shape
+      description: Describe the input file or generated network data, if applicable.
+      placeholder: |
+        - File extension / port count:
+        - Option line:
+        - Data format: RI / MA / DB
+        - Touchstone version or keywords:
+        - Smallest redacted sample:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include versions and platform details.
+      placeholder: |
+        - touchstone version:
+        - Rust version:
+        - OS:
+        - Command or API used:
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add logs, warnings, sample file notes, or related links.
