@@ -182,6 +182,22 @@ pub enum TouchstoneError {
         /// Matrix format token from the keyword.
         format: String,
     },
+    /// A requested 0-based frequency point index was outside the parsed data range.
+    InvalidPointIndex {
+        /// Requested 0-based frequency point index.
+        point_index: usize,
+        /// Number of parsed frequency points.
+        point_count: usize,
+    },
+    /// A requested 1-based S-parameter port index was outside the network port range.
+    InvalidPortIndex {
+        /// Requested destination/output port, using 1-based RF indexing.
+        to_port: usize,
+        /// Requested source/input port, using 1-based RF indexing.
+        from_port: usize,
+        /// Number of ports in the network or matrix.
+        rank: usize,
+    },
 }
 
 impl TouchstoneError {
@@ -299,6 +315,21 @@ impl fmt::Display for TouchstoneError {
             Self::UnsupportedMatrixFormat { format } => {
                 write!(f, "unsupported [Matrix Format] value: {format}")
             }
+            Self::InvalidPointIndex {
+                point_index,
+                point_count,
+            } => write!(
+                f,
+                "frequency point index {point_index} out of range for {point_count} points"
+            ),
+            Self::InvalidPortIndex {
+                to_port,
+                from_port,
+                rank,
+            } => write!(
+                f,
+                "S-parameter port index S{to_port}{from_port} out of range for {rank}-port network"
+            ),
         }
     }
 }
