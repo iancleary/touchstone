@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an improvement or new capability for touchstone.
+title: "Feature: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the use case and the expected behavior.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case
+      description: What workflow, limitation, or problem would this feature address?
+      placeholder: Describe the engineering workflow this would improve.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should touchstone do?
+      placeholder: Describe the API, CLI behavior, parser support, or output you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there existing workarounds or different designs worth considering?
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add links, examples, sample Touchstone files, or standards references if helpful.
