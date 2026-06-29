@@ -31,6 +31,25 @@ mod utils;
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 pub use network_builder::NetworkBuilder;
 
+/// Reference impedance metadata for a Touchstone network.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum ReferenceImpedance {
+    /// One common real reference impedance in ohms for every port.
+    Common(f64),
+    /// One real reference impedance in ohms per port, ordered by port number.
+    PerPort(Vec<f64>),
+}
+
+impl ReferenceImpedance {
+    pub(crate) fn scalar_compatibility_value(&self) -> f64 {
+        match self {
+            Self::Common(z0) => *z0,
+            Self::PerPort(values) => values[0],
+        }
+    }
+}
+
 /// A network parsed from a Touchstone (`.sNp`) file.
 ///
 /// Represents an N-port network with S-parameter data at multiple frequencies.
@@ -64,7 +83,12 @@ pub struct Network {
     /// Resistance keyword from the option line (typically `"R"`).
     pub resistance_string: String,
     /// Reference impedance in ohms (default 50 Ω).
+    ///
+    /// For per-port reference impedance metadata, this is the first port's impedance as a scalar
+    /// compatibility value. Use [`Network::reference_impedance`] for the complete model.
     pub z0: f64,
+    /// Complete reference impedance metadata for the network.
+    pub reference_impedance: ReferenceImpedance,
     /// Comment lines appearing before the option line.
     pub comments: Vec<String>,
     /// Comment lines appearing after the option line.
@@ -286,6 +310,18 @@ impl Network {
         }
     }
 
+    /// Return complete reference impedance metadata for this network.
+    ///
+    /// Existing scalar callers can continue to use [`Network::z0`]. When the network has a common
+    /// reference impedance, this method reflects the current `z0` value.
+    #[must_use]
+    pub fn reference_impedance(&self) -> ReferenceImpedance {
+        match &self.reference_impedance {
+            ReferenceImpedance::Common(_) => ReferenceImpedance::Common(self.z0),
+            ReferenceImpedance::PerPort(values) => ReferenceImpedance::PerPort(values.clone()),
+        }
+    }
+
     /// Return the frequency vector in Hz.
     ///
     /// # Examples
@@ -501,10 +537,13 @@ impl Network {
             panic!("Cascading is only implemented for 2-port networks. Use cascade_ports() for explicit port specification.");
         }
 
-        if self.z0 != other.z0 {
+        let self_z0 = common_reference_impedance_or_panic(self);
+        let other_z0 = common_reference_impedance_or_panic(other);
+
+        if self_z0 != other_z0 {
             panic!(
                 "Cannot cascade networks with different reference impedances: {} and {}",
-                self.z0, other.z0
+                self_z0, other_z0
             );
         }
 
@@ -567,16 +606,16 @@ impl Network {
             let s1 = &self.s[i].s_ri;
             let s2 = &other.s[i].s_ri;
 
-            let abcd1 = s1.to_abcd(self.z0);
-            let abcd2 = s2.to_abcd(other.z0);
+            let abcd1 = s1.to_abcd(self_z0);
+            let abcd2 = s2.to_abcd(other_z0);
 
             let abcd_new = abcd1 * abcd2;
 
             // Resulting Z0? Usually the Z0 of the output port of the second network,
             // but for S-parameters of the cascaded block, we usually reference the input port of the first
             // and output port of the second.
-            // If Z0 is the same for both (checked at start of function), then it's just self.z0.
-            let s_new_ri = abcd_new.to_s(self.z0);
+            // If Z0 is the same for both (checked at start of function), then it's just self_z0.
+            let s_new_ri = abcd_new.to_s(self_z0);
 
             let s_new_ma = crate::data_pairs::MagnitudeAngleMatrix::from_vec(vec![
                 vec![
@@ -607,7 +646,8 @@ impl Network {
             parameter: self.parameter.clone(),
             format: self.format.clone(),
             resistance_string: self.resistance_string.clone(),
-            z0: self.z0,
+            z0: self_z0,
+            reference_impedance: ReferenceImpedance::Common(self_z0),
             comments,
             comments_after_option_line,
             warnings: [self.warnings.clone(), other.warnings.clone()].concat(),
@@ -731,6 +771,9 @@ impl Network {
         writeln!(writer, "[Number of Ports] {}", self.rank)?;
         if n == 2 {
             writeln!(writer, "[Two-Port Data Order] 21_12")?;
+        }
+        if let ReferenceImpedance::PerPort(values) = self.reference_impedance() {
+            writeln!(writer, "[Reference] {}", format_real_values(&values))?;
         }
         writeln!(writer, "[Number of Frequencies] {}", self.f.len())?;
         writeln!(writer, "[Matrix Format] Full")?;
@@ -905,6 +948,14 @@ fn full_matrix_data_order(n: usize) -> Vec<(usize, usize)> {
     }
 }
 
+fn format_real_values(values: &[f64]) -> String {
+    values
+        .iter()
+        .map(f64::to_string)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn complex_from_real_imaginary(value: data_pairs::RealImaginary) -> Complex {
     Complex {
         re: value.0,
@@ -926,6 +977,17 @@ fn validate_port_indexes(
     }
 
     Ok(())
+}
+
+fn common_reference_impedance_or_panic(network: &Network) -> f64 {
+    match network.reference_impedance() {
+        ReferenceImpedance::Common(z0) => z0,
+        ReferenceImpedance::PerPort(_) => {
+            panic!(
+                "Cannot cascade networks with per-port reference impedances; common scalar reference impedance is required"
+            );
+        }
+    }
 }
 
 // The `std::ops::Mul` trait is used to specify the functionality of `+`.

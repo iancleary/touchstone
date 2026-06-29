@@ -3,7 +3,7 @@ use crate::data_pairs::{
     DecibelAngle, DecibelAngleMatrix, MagnitudeAngle, MagnitudeAngleMatrix, RealImaginary,
     RealImaginaryMatrix,
 };
-use crate::{Network, NetworkPoint, SMatrix, TouchstoneError};
+use crate::{Network, NetworkPoint, ReferenceImpedance, SMatrix, TouchstoneError};
 
 /// Builder for generated S-parameter networks.
 ///
@@ -158,6 +158,7 @@ impl NetworkBuilder {
             format: "RI".to_string(),
             resistance_string: "R".to_string(),
             z0: self.z0,
+            reference_impedance: ReferenceImpedance::Common(self.z0),
             comments: self.comments,
             comments_after_option_line: self.comments_after_option_line,
             warnings: Vec::new(),

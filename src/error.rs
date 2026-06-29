@@ -182,6 +182,13 @@ pub enum TouchstoneError {
         /// Matrix format token from the keyword.
         format: String,
     },
+    /// `[Reference]` did not contain either one common value or one value per port.
+    InvalidReferenceImpedanceCount {
+        /// Number of ports in the network.
+        ports: usize,
+        /// Number of reference impedance values found.
+        actual: usize,
+    },
     /// A requested 0-based frequency point index was outside the parsed data range.
     InvalidPointIndex {
         /// Requested 0-based frequency point index.
@@ -254,7 +261,7 @@ pub enum TouchstoneError {
         /// Imaginary component.
         im: f64,
     },
-    /// A generated network reference impedance was not finite and positive.
+    /// A reference impedance was not finite and positive.
     InvalidReferenceImpedance {
         /// Invalid reference impedance in ohms.
         z0: f64,
@@ -376,6 +383,10 @@ impl fmt::Display for TouchstoneError {
             Self::UnsupportedMatrixFormat { format } => {
                 write!(f, "unsupported [Matrix Format] value: {format}")
             }
+            Self::InvalidReferenceImpedanceCount { ports, actual } => write!(
+                f,
+                "invalid [Reference] value count: expected 1 common value or {ports} per-port values, found {actual}"
+            ),
             Self::InvalidPointIndex {
                 point_index,
                 point_count,
@@ -447,7 +458,7 @@ impl fmt::Display for TouchstoneError {
                 "generated S{to_port}{from_port} at point {point_index} is not finite: ({re}, {im})"
             ),
             Self::InvalidReferenceImpedance { z0 } => {
-                write!(f, "generated reference impedance must be finite and positive: {z0}")
+                write!(f, "reference impedance must be finite and positive: {z0}")
             }
         }
     }
