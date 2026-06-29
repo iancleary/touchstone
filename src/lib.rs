@@ -136,6 +136,71 @@ pub struct FrequencyMA {
     pub s_ma: data_pairs::MagnitudeAngle,
 }
 
+/// Stable complex number representation used by public matrix accessors.
+///
+/// This type intentionally does not expose the crate's internal parser matrix types.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Complex {
+    /// Real component.
+    pub re: f64,
+    /// Imaginary component.
+    pub im: f64,
+}
+
+/// Stable S-parameter matrix for one frequency point.
+///
+/// `data` is arranged as rows of destination/output ports and columns of source/input ports.
+/// Use [`SMatrix::get`] for non-panicking 1-based RF port indexing.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SMatrix {
+    /// Number of ports in this square S-parameter matrix.
+    pub rank: usize,
+    /// Matrix values in row-major order.
+    pub data: Vec<Vec<Complex>>,
+}
+
+impl SMatrix {
+    /// Return S(to_port, from_port) using 1-based RF port indexes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::{Complex, SMatrix};
+    ///
+    /// let matrix = SMatrix {
+    ///     rank: 1,
+    ///     data: vec![vec![Complex { re: 0.5, im: -0.1 }]],
+    /// };
+    ///
+    /// assert_eq!(matrix.get(1, 1)?.re, 0.5);
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    pub fn get(&self, to_port: usize, from_port: usize) -> Result<Complex, TouchstoneError> {
+        validate_port_indexes(to_port, from_port, self.rank)?;
+        self.data
+            .get(to_port - 1)
+            .and_then(|row| row.get(from_port - 1))
+            .copied()
+            .ok_or(TouchstoneError::InvalidPortIndex {
+                to_port,
+                from_port,
+                rank: self.rank,
+            })
+    }
+}
+
+/// Stable network data for one frequency point.
+///
+/// Frequency point indexes on [`Network`] are 0-based. RF port indexes within [`SMatrix`] are
+/// 1-based.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NetworkPoint {
+    /// Frequency in Hz.
+    pub frequency: f64,
+    /// S-parameter matrix at this frequency.
+    pub s: SMatrix,
+}
+
 impl Network {
     /// Parse a Touchstone file and return a [`Network`].
     ///
@@ -326,6 +391,89 @@ impl Network {
             s_ma_vector.push(frequency_ma);
         }
         s_ma_vector
+    }
+
+    /// Return S(to_port, from_port) in real/imaginary form at one frequency point.
+    ///
+    /// `point_index` is 0-based. `to_port` and `from_port` use 1-based RF port indexes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::{Complex, Network};
+    ///
+    /// let net = Network::from_str(
+    ///     "uploaded.s1p",
+    ///     "# GHz S RI R 50\n1.0 0.5 -0.1\n",
+    /// )?;
+    ///
+    /// assert_eq!(net.try_s_ri_at(0, 1, 1)?, Complex { re: 0.5, im: -0.1 });
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    pub fn try_s_ri_at(
+        &self,
+        point_index: usize,
+        to_port: usize,
+        from_port: usize,
+    ) -> Result<Complex, TouchstoneError> {
+        let data_line = self.data_line_at(point_index)?;
+        let rank = data_line.s_ri.size();
+        validate_port_indexes(to_port, from_port, rank)?;
+        Ok(complex_from_real_imaginary(
+            data_line.s_ri.get(to_port, from_port),
+        ))
+    }
+
+    /// Return the full S-parameter matrix at one frequency point.
+    ///
+    /// `point_index` is 0-based. Values in the returned [`SMatrix`] can be accessed with
+    /// 1-based RF port indexes using [`SMatrix::get`].
+    pub fn s_matrix_at(&self, point_index: usize) -> Result<SMatrix, TouchstoneError> {
+        let data_line = self.data_line_at(point_index)?;
+        let rank = data_line.s_ri.size();
+        let mut data = Vec::with_capacity(rank);
+
+        for to_port in 1..=rank {
+            let mut row = Vec::with_capacity(rank);
+            for from_port in 1..=rank {
+                row.push(complex_from_real_imaginary(
+                    data_line.s_ri.get(to_port, from_port),
+                ));
+            }
+            data.push(row);
+        }
+
+        Ok(SMatrix { rank, data })
+    }
+
+    /// Return all stable data for one frequency point.
+    ///
+    /// `point_index` is 0-based.
+    pub fn point_at(&self, point_index: usize) -> Result<NetworkPoint, TouchstoneError> {
+        let data_line = self.data_line_at(point_index)?;
+        Ok(NetworkPoint {
+            frequency: data_line.frequency,
+            s: self.s_matrix_at(point_index)?,
+        })
+    }
+
+    /// Return stable data for every parsed frequency point.
+    pub fn points(&self) -> Result<Vec<NetworkPoint>, TouchstoneError> {
+        (0..self.s.len())
+            .map(|point_index| self.point_at(point_index))
+            .collect()
+    }
+
+    fn data_line_at(
+        &self,
+        point_index: usize,
+    ) -> Result<&data_line::ParsedDataLine, TouchstoneError> {
+        self.s
+            .get(point_index)
+            .ok_or(TouchstoneError::InvalidPointIndex {
+                point_index,
+                point_count: self.s.len(),
+            })
     }
 
     /// Cascade two 2-port networks (standard connection: port 2 → port 1).
@@ -736,6 +884,29 @@ fn full_matrix_data_order(n: usize) -> Vec<(usize, usize)> {
             .flat_map(|row| (1..=n).map(move |col| (row, col)))
             .collect()
     }
+}
+
+fn complex_from_real_imaginary(value: data_pairs::RealImaginary) -> Complex {
+    Complex {
+        re: value.0,
+        im: value.1,
+    }
+}
+
+fn validate_port_indexes(
+    to_port: usize,
+    from_port: usize,
+    rank: usize,
+) -> Result<(), TouchstoneError> {
+    if to_port == 0 || from_port == 0 || to_port > rank || from_port > rank {
+        return Err(TouchstoneError::InvalidPortIndex {
+            to_port,
+            from_port,
+            rank,
+        });
+    }
+
+    Ok(())
 }
 
 // The `std::ops::Mul` trait is used to specify the functionality of `+`.
