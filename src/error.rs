@@ -198,6 +198,67 @@ pub enum TouchstoneError {
         /// Number of ports in the network or matrix.
         rank: usize,
     },
+    /// A generated network rank was outside the supported range.
+    InvalidNetworkRank {
+        /// Requested network rank.
+        rank: usize,
+    },
+    /// The generated network rank did not match an inferable `.sNp` extension.
+    NetworkRankExtensionMismatch {
+        /// Requested network rank.
+        rank: usize,
+        /// Port count inferred from the source name extension.
+        extension_rank: usize,
+    },
+    /// A generated network did not contain any frequency points.
+    EmptyNetworkData,
+    /// A generated S-parameter matrix declared a different rank than the network.
+    InvalidMatrixRank {
+        /// 0-based frequency point index.
+        point_index: usize,
+        /// Rank declared by the matrix.
+        matrix_rank: usize,
+        /// Rank required by the network.
+        expected_rank: usize,
+    },
+    /// A generated S-parameter matrix was not shaped as a square rank-by-rank matrix.
+    InvalidMatrixShape {
+        /// 0-based frequency point index.
+        point_index: usize,
+        /// Number of rows in the matrix data.
+        rows: usize,
+        /// 0-based row index with the wrong column count, when known.
+        row_index: Option<usize>,
+        /// Number of columns in the row, or 0 when the row was missing.
+        columns: usize,
+        /// Expected row and column count.
+        expected_rank: usize,
+    },
+    /// A generated frequency was not finite.
+    InvalidFrequency {
+        /// 0-based frequency point index.
+        point_index: usize,
+        /// Invalid frequency value in Hz.
+        frequency: f64,
+    },
+    /// A generated S-parameter value had a non-finite real or imaginary component.
+    InvalidSParameterValue {
+        /// 0-based frequency point index.
+        point_index: usize,
+        /// Destination/output port, using 1-based RF indexing.
+        to_port: usize,
+        /// Source/input port, using 1-based RF indexing.
+        from_port: usize,
+        /// Real component.
+        re: f64,
+        /// Imaginary component.
+        im: f64,
+    },
+    /// A generated network reference impedance was not finite and positive.
+    InvalidReferenceImpedance {
+        /// Invalid reference impedance in ohms.
+        z0: f64,
+    },
 }
 
 impl TouchstoneError {
@@ -330,6 +391,64 @@ impl fmt::Display for TouchstoneError {
                 f,
                 "S-parameter port index S{to_port}{from_port} out of range for {rank}-port network"
             ),
+            Self::InvalidNetworkRank { rank } => {
+                write!(f, "invalid generated network rank: {rank}")
+            }
+            Self::NetworkRankExtensionMismatch {
+                rank,
+                extension_rank,
+            } => write!(
+                f,
+                "generated network rank {rank} does not match extension port count {extension_rank}"
+            ),
+            Self::EmptyNetworkData => write!(f, "generated network has no frequency points"),
+            Self::InvalidMatrixRank {
+                point_index,
+                matrix_rank,
+                expected_rank,
+            } => write!(
+                f,
+                "generated matrix at point {point_index} has rank {matrix_rank}, expected {expected_rank}"
+            ),
+            Self::InvalidMatrixShape {
+                point_index,
+                rows,
+                row_index,
+                columns,
+                expected_rank,
+            } => {
+                if let Some(row_index) = row_index {
+                    write!(
+                        f,
+                        "generated matrix at point {point_index} row {row_index} has {columns} columns, expected {expected_rank}"
+                    )
+                } else {
+                    write!(
+                        f,
+                        "generated matrix at point {point_index} has {rows} rows, expected {expected_rank}"
+                    )
+                }
+            }
+            Self::InvalidFrequency {
+                point_index,
+                frequency,
+            } => write!(
+                f,
+                "generated frequency at point {point_index} is not finite: {frequency}"
+            ),
+            Self::InvalidSParameterValue {
+                point_index,
+                to_port,
+                from_port,
+                re,
+                im,
+            } => write!(
+                f,
+                "generated S{to_port}{from_port} at point {point_index} is not finite: ({re}, {im})"
+            ),
+            Self::InvalidReferenceImpedance { z0 } => {
+                write!(f, "generated reference impedance must be finite and positive: {z0}")
+            }
         }
     }
 }

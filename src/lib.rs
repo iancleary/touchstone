@@ -13,7 +13,7 @@
 //! assert_eq!(net.rank, 2);
 //! ```
 
-use std::ops;
+use std::{io::Write, ops};
 /// Command-line interface helpers for the touchstone binary.
 pub mod cli;
 mod data_line;
@@ -21,6 +21,7 @@ mod data_pairs;
 mod error;
 mod file_extension;
 mod file_operations;
+mod network_builder;
 mod open;
 mod option_line;
 mod parser;
@@ -28,6 +29,7 @@ mod plot;
 mod utils;
 
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
+pub use network_builder::NetworkBuilder;
 
 /// A network parsed from a Touchstone (`.sNp`) file.
 ///
@@ -690,30 +692,30 @@ impl Network {
         );
     }
 
-    /// Save the network to a Touchstone file.
+    /// Serialize the network to an in-memory Touchstone string.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use touchstone::Network;
-    ///
-    /// let net = Network::new("files/ntwk1.s2p").unwrap();
-    /// let tmp = std::env::temp_dir().join("example_output.s2p");
-    /// net.save(tmp.to_str().unwrap()).unwrap();
-    /// std::fs::remove_file(tmp).unwrap();
-    /// ```
-    pub fn save(&self, file_path: &str) -> std::io::Result<()> {
-        use std::io::Write;
-        let mut file = std::fs::File::create(file_path)?;
+    /// The output matches [`save`](Self::save), including Touchstone 2.1 keywords and N-port
+    /// line wrapping.
+    pub fn to_touchstone_string(&self) -> std::io::Result<String> {
+        let mut bytes = Vec::new();
+        self.write_touchstone(&mut bytes)?;
+        String::from_utf8(bytes)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))
+    }
 
+    /// Write the network as Touchstone text to any [`std::io::Write`] destination.
+    ///
+    /// The writer auto-selects single-line format for 1-port and 2-port networks and multi-line
+    /// full-matrix format for 3-port and larger networks.
+    pub fn write_touchstone<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
         // Write comments
         for comment in &self.comments {
-            writeln!(file, "{}", comment)?;
+            writeln!(writer, "{}", comment)?;
         }
 
         let n = self.rank as usize;
 
-        writeln!(file, "[Version] 2.1")?;
+        writeln!(writer, "[Version] 2.1")?;
 
         // Write option line
         // # <frequency unit> <parameter> <format> R <n>
@@ -724,19 +726,19 @@ impl Network {
             self.resistance_string.clone(),
             self.z0.to_string().clone(),
         );
-        writeln!(file, "{}", option_line)?;
+        writeln!(writer, "{}", option_line)?;
 
-        writeln!(file, "[Number of Ports] {}", self.rank)?;
+        writeln!(writer, "[Number of Ports] {}", self.rank)?;
         if n == 2 {
-            writeln!(file, "[Two-Port Data Order] 21_12")?;
+            writeln!(writer, "[Two-Port Data Order] 21_12")?;
         }
-        writeln!(file, "[Number of Frequencies] {}", self.f.len())?;
-        writeln!(file, "[Matrix Format] Full")?;
-        writeln!(file, "[Network Data]")?;
+        writeln!(writer, "[Number of Frequencies] {}", self.f.len())?;
+        writeln!(writer, "[Matrix Format] Full")?;
+        writeln!(writer, "[Network Data]")?;
 
         // Keep existing post-option comments with the network data they describe.
         for comment in &self.comments_after_option_line {
-            writeln!(file, "{}", comment)?;
+            writeln!(writer, "{}", comment)?;
         }
 
         // Write data lines
@@ -795,7 +797,7 @@ impl Network {
                     _ => panic!("Unsupported format for saving: {}", self.format),
                 }
 
-                writeln!(file, "{}", line)?;
+                writeln!(writer, "{}", line)?;
             } else {
                 // Multi-line format for 3+ port
                 // First line: frequency and first row of S-parameters
@@ -808,7 +810,7 @@ impl Network {
                         for col in 1..=n {
                             line.push_str(&format!(" {} {}", s.get(1, col).0, s.get(1, col).1));
                         }
-                        writeln!(file, "{}", line)?;
+                        writeln!(writer, "{}", line)?;
 
                         // Subsequent rows on their own lines
                         for row in 2..=n {
@@ -820,7 +822,7 @@ impl Network {
                                     s.get(row, col).1
                                 ));
                             }
-                            writeln!(file, "{}", row_line)?;
+                            writeln!(writer, "{}", row_line)?;
                         }
                     }
                     "MA" => {
@@ -829,7 +831,7 @@ impl Network {
                         for col in 1..=n {
                             line.push_str(&format!(" {} {}", s.get(1, col).0, s.get(1, col).1));
                         }
-                        writeln!(file, "{}", line)?;
+                        writeln!(writer, "{}", line)?;
 
                         // Subsequent rows on their own lines
                         for row in 2..=n {
@@ -841,7 +843,7 @@ impl Network {
                                     s.get(row, col).1
                                 ));
                             }
-                            writeln!(file, "{}", row_line)?;
+                            writeln!(writer, "{}", row_line)?;
                         }
                     }
                     "DB" => {
@@ -850,7 +852,7 @@ impl Network {
                         for col in 1..=n {
                             line.push_str(&format!(" {} {}", s.get(1, col).0, s.get(1, col).1));
                         }
-                        writeln!(file, "{}", line)?;
+                        writeln!(writer, "{}", line)?;
 
                         // Subsequent rows on their own lines
                         for row in 2..=n {
@@ -862,7 +864,7 @@ impl Network {
                                     s.get(row, col).1
                                 ));
                             }
-                            writeln!(file, "{}", row_line)?;
+                            writeln!(writer, "{}", row_line)?;
                         }
                     }
                     _ => panic!("Unsupported format for saving: {}", self.format),
@@ -870,9 +872,26 @@ impl Network {
             }
         }
 
-        writeln!(file, "[End]")?;
+        writeln!(writer, "[End]")?;
 
         Ok(())
+    }
+
+    /// Save the network to a Touchstone file.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::Network;
+    ///
+    /// let net = Network::new("files/ntwk1.s2p").unwrap();
+    /// let tmp = std::env::temp_dir().join("example_output.s2p");
+    /// net.save(tmp.to_str().unwrap()).unwrap();
+    /// std::fs::remove_file(tmp).unwrap();
+    /// ```
+    pub fn save(&self, file_path: &str) -> std::io::Result<()> {
+        let file = std::fs::File::create(file_path)?;
+        self.write_touchstone(file)
     }
 }
 

@@ -163,6 +163,24 @@ let ntwk = Network::new("files/ntwk1.s2p")?;
 ntwk.save("output.s2p").unwrap();
 ```
 
+For generated data, build a network from in-memory matrices and serialize without writing a file:
+
+```rust
+use touchstone::{Complex, NetworkBuilder, SMatrix};
+
+let ntwk = NetworkBuilder::new("generated.s1p", 1)
+    .point(
+        1.0e9,
+        SMatrix {
+            rank: 1,
+            data: vec![vec![Complex { re: 0.5, im: -0.1 }]],
+        },
+    )
+    .build()?;
+
+let touchstone = ntwk.to_touchstone_string()?;
+```
+
 ---
 
 ## 5. Cascading 2-Port Networks
@@ -317,6 +335,7 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `Network::new(path)`          | Parse a Touchstone file and return errors    |
 | `Network::from_bytes(name, bytes)` | Parse in-memory UTF-8 Touchstone bytes  |
 | `Network::from_str(name, contents)` | Parse an in-memory Touchstone string    |
+| `NetworkBuilder::new(name, rank)` | Build generated S-parameter networks     |
 | `network.rank`                | Number of ports                              |
 | `network.frequency_unit`      | Frequency unit string                        |
 | `network.format`              | Data format (`RI`, `MA`, or `DB`)            |
@@ -327,6 +346,8 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `network.s_db(j, k)`         | S_jk in dB+angle — `Vec<FrequencyDB>`       |
 | `network.s_ri(j, k)`         | S_jk in real+imag — `Vec<FrequencyRI>`       |
 | `network.s_ma(j, k)`         | S_jk in mag+angle — `Vec<FrequencyMA>`       |
+| `network.to_touchstone_string()` | Serialize Touchstone text in memory       |
+| `network.write_touchstone(writer)` | Write Touchstone text to any writer      |
 | `network.save(path)`         | Write network to file                        |
 | `network.cascade(&other)`    | Cascade two 2-port networks                  |
 | `network.cascade_ports(&other, from, to)` | Cascade with explicit port mapping |
