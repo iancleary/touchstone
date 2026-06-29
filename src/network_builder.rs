@@ -1,8 +1,5 @@
 use crate::data_line;
-use crate::data_pairs::{
-    DecibelAngle, DecibelAngleMatrix, MagnitudeAngle, MagnitudeAngleMatrix, RealImaginary,
-    RealImaginaryMatrix,
-};
+use crate::data_pairs::{RealImaginary, RealImaginaryMatrix};
 use crate::{Network, NetworkPoint, ReferenceImpedance, SMatrix, TouchstoneError};
 
 /// Builder for generated S-parameter networks.
@@ -260,38 +257,9 @@ fn parsed_data_line_from_matrix(frequency: f64, matrix: &SMatrix) -> data_line::
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
-    let s_ri = RealImaginaryMatrix::from_vec(s_ri_data.clone());
+    let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
 
-    let s_db = DecibelAngleMatrix::from_vec(
-        s_ri_data
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .copied()
-                    .map(DecibelAngle::from_real_imaginary)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>(),
-    );
-
-    let s_ma = MagnitudeAngleMatrix::from_vec(
-        s_ri_data
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .copied()
-                    .map(MagnitudeAngle::from_real_imaginary)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>(),
-    );
-
-    data_line::ParsedDataLine {
-        frequency,
-        s_ri,
-        s_db,
-        s_ma,
-    }
+    data_line::parsed_data_line_from_ri_matrix(frequency, s_ri)
 }
 
 fn infer_touchstone_extension_rank(name: &str) -> Option<usize> {

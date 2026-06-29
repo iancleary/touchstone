@@ -50,6 +50,30 @@ impl ReferenceImpedance {
     }
 }
 
+/// Interpolation algorithm used when sampling S-parameter data between parsed frequencies.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Interpolation {
+    /// Use the nearest parsed frequency point.
+    ///
+    /// Ties are resolved toward the lower frequency point.
+    Nearest,
+    /// Linearly interpolate each real and imaginary S-parameter component.
+    #[default]
+    Linear,
+}
+
+/// Policy used when sampling outside the parsed frequency range.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Extrapolation {
+    /// Return an error when a requested frequency is below or above the parsed range.
+    #[default]
+    Error,
+    /// Hold the nearest boundary S-parameter values at the requested frequency.
+    Clamp,
+}
+
 /// A network parsed from a Touchstone (`.sNp`) file.
 ///
 /// Represents an N-port network with S-parameter data at multiple frequencies.
@@ -502,6 +526,107 @@ impl Network {
             .collect()
     }
 
+    /// Sample the full S-parameter matrix at one frequency in Hz.
+    ///
+    /// Interpolation is performed in real/imaginary space. The returned point uses the requested
+    /// frequency, even when [`Extrapolation::Clamp`] supplies boundary S-parameter values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::{Extrapolation, Interpolation, Network};
+    ///
+    /// let network = Network::from_str(
+    ///     "linear.s1p",
+    ///     "# GHz S RI R 50\n1.0 0.0 0.0\n2.0 2.0 4.0\n",
+    /// )?;
+    /// let point = network.sample_at(1.5e9, Interpolation::Linear, Extrapolation::Error)?;
+    ///
+    /// assert_eq!(point.s.get(1, 1)?.re, 1.0);
+    /// assert_eq!(point.s.get(1, 1)?.im, 2.0);
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    #[doc(alias = "interpolate")]
+    #[doc(alias = "S-parameters")]
+    pub fn sample_at(
+        &self,
+        frequency_hz: f64,
+        interpolation: Interpolation,
+        extrapolation: Extrapolation,
+    ) -> Result<NetworkPoint, TouchstoneError> {
+        validate_sample_frequency(0, frequency_hz)?;
+        self.validate_frequency_data()?;
+
+        let data_line =
+            self.sample_data_line_at_validated(frequency_hz, interpolation, extrapolation)?;
+        Ok(network_point_from_data_line(&data_line))
+    }
+
+    /// Resample the network onto a new strictly increasing frequency grid in Hz.
+    ///
+    /// The returned network preserves rank, name, comments, option-line metadata, reference
+    /// impedance metadata, warnings, and the original data format intent. New S-parameters are
+    /// interpolated in real/imaginary space, then derived magnitude/angle and dB/angle matrices are
+    /// rebuilt from those interpolated values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use touchstone::{Extrapolation, Interpolation, Network};
+    ///
+    /// let network = Network::from_str(
+    ///     "linear.s1p",
+    ///     "# GHz S RI R 50\n1.0 0.0 0.0\n2.0 2.0 4.0\n",
+    /// )?;
+    /// let resampled = network.resample(
+    ///     [1.0e9, 1.5e9, 2.0e9],
+    ///     Interpolation::Linear,
+    ///     Extrapolation::Error,
+    /// )?;
+    ///
+    /// assert_eq!(resampled.f, vec![1.0e9, 1.5e9, 2.0e9]);
+    /// assert_eq!(resampled.try_s_ri_at(1, 1, 1)?.re, 1.0);
+    /// # Ok::<(), touchstone::TouchstoneError>(())
+    /// ```
+    #[doc(alias = "interpolate")]
+    #[doc(alias = "resampling")]
+    pub fn resample<I>(
+        &self,
+        frequencies_hz: I,
+        interpolation: Interpolation,
+        extrapolation: Extrapolation,
+    ) -> Result<Network, TouchstoneError>
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        let frequencies = frequencies_hz.into_iter().collect::<Vec<_>>();
+        validate_frequency_slice(&frequencies)?;
+        self.validate_frequency_data()?;
+
+        let s = frequencies
+            .iter()
+            .map(|frequency| {
+                self.sample_data_line_at_validated(*frequency, interpolation, extrapolation)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Network {
+            name: self.name.clone(),
+            rank: self.rank,
+            frequency_unit: self.frequency_unit.clone(),
+            parameter: self.parameter.clone(),
+            format: self.format.clone(),
+            resistance_string: self.resistance_string.clone(),
+            z0: self.z0,
+            reference_impedance: self.reference_impedance(),
+            comments: self.comments.clone(),
+            comments_after_option_line: self.comments_after_option_line.clone(),
+            warnings: self.warnings.clone(),
+            f: frequencies,
+            s,
+        })
+    }
+
     fn data_line_at(
         &self,
         point_index: usize,
@@ -512,6 +637,95 @@ impl Network {
                 point_index,
                 point_count: self.s.len(),
             })
+    }
+
+    fn validate_frequency_data(&self) -> Result<(), TouchstoneError> {
+        if self.f.len() != self.s.len() {
+            return Err(TouchstoneError::FrequencyDataLengthMismatch {
+                frequency_count: self.f.len(),
+                data_count: self.s.len(),
+            });
+        }
+
+        validate_frequency_slice(&self.f)
+    }
+
+    fn sample_data_line_at_validated(
+        &self,
+        frequency_hz: f64,
+        interpolation: Interpolation,
+        extrapolation: Extrapolation,
+    ) -> Result<data_line::ParsedDataLine, TouchstoneError> {
+        let min = self.f[0];
+        let max = self.f[self.f.len() - 1];
+
+        let lookup_frequency = if frequency_hz < min {
+            match extrapolation {
+                Extrapolation::Error => {
+                    return Err(TouchstoneError::FrequencyOutOfRange {
+                        frequency: frequency_hz,
+                        min,
+                        max,
+                    });
+                }
+                Extrapolation::Clamp => min,
+            }
+        } else if frequency_hz > max {
+            match extrapolation {
+                Extrapolation::Error => {
+                    return Err(TouchstoneError::FrequencyOutOfRange {
+                        frequency: frequency_hz,
+                        min,
+                        max,
+                    });
+                }
+                Extrapolation::Clamp => max,
+            }
+        } else {
+            frequency_hz
+        };
+
+        if let Ok(index) = self
+            .f
+            .binary_search_by(|frequency| frequency.partial_cmp(&lookup_frequency).unwrap())
+        {
+            return Ok(parsed_data_line_with_frequency(
+                &self.s[index],
+                frequency_hz,
+            ));
+        }
+
+        let upper_index = self
+            .f
+            .partition_point(|frequency| *frequency < lookup_frequency);
+        let lower_index = upper_index - 1;
+
+        let selected_index = match interpolation {
+            Interpolation::Nearest => {
+                let lower_frequency = self.f[lower_index];
+                let upper_frequency = self.f[upper_index];
+                if lookup_frequency - lower_frequency <= upper_frequency - lookup_frequency {
+                    lower_index
+                } else {
+                    upper_index
+                }
+            }
+            Interpolation::Linear => {
+                return Ok(interpolate_data_lines(
+                    frequency_hz,
+                    lookup_frequency,
+                    self.f[lower_index],
+                    self.f[upper_index],
+                    &self.s[lower_index],
+                    &self.s[upper_index],
+                ));
+            }
+        };
+
+        Ok(parsed_data_line_with_frequency(
+            &self.s[selected_index],
+            frequency_hz,
+        ))
     }
 
     /// Cascade two 2-port networks (standard connection: port 2 → port 1).
@@ -1005,10 +1219,135 @@ impl ops::Mul<Network> for Network {
     }
 }
 
+fn validate_frequency_slice(frequencies: &[f64]) -> Result<(), TouchstoneError> {
+    if frequencies.is_empty() {
+        return Err(TouchstoneError::EmptyNetworkData);
+    }
+
+    for (point_index, frequency) in frequencies.iter().copied().enumerate() {
+        validate_sample_frequency(point_index, frequency)?;
+
+        if point_index == 0 {
+            continue;
+        }
+
+        let previous_index = point_index - 1;
+        let previous_frequency = frequencies[previous_index];
+
+        if frequency == previous_frequency {
+            return Err(TouchstoneError::DuplicateFrequency {
+                first_index: previous_index,
+                duplicate_index: point_index,
+                frequency,
+            });
+        }
+
+        if frequency < previous_frequency {
+            return Err(TouchstoneError::UnsortedFrequencies {
+                previous_index,
+                previous_frequency,
+                next_index: point_index,
+                next_frequency: frequency,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_sample_frequency(point_index: usize, frequency: f64) -> Result<(), TouchstoneError> {
+    if frequency.is_finite() {
+        Ok(())
+    } else {
+        Err(TouchstoneError::InvalidFrequency {
+            point_index,
+            frequency,
+        })
+    }
+}
+
+fn parsed_data_line_with_frequency(
+    data_line: &data_line::ParsedDataLine,
+    frequency: f64,
+) -> data_line::ParsedDataLine {
+    data_line::parsed_data_line_from_ri_matrix(frequency, data_line.s_ri.clone())
+}
+
+fn interpolate_data_lines(
+    output_frequency: f64,
+    lookup_frequency: f64,
+    lower_frequency: f64,
+    upper_frequency: f64,
+    lower: &data_line::ParsedDataLine,
+    upper: &data_line::ParsedDataLine,
+) -> data_line::ParsedDataLine {
+    let n = lower.s_ri.size();
+    let t = (lookup_frequency - lower_frequency) / (upper_frequency - lower_frequency);
+    let mut data = Vec::with_capacity(n);
+
+    for row in 1..=n {
+        let mut row_data = Vec::with_capacity(n);
+
+        for col in 1..=n {
+            let lower_value = lower.s_ri.get(row, col);
+            let upper_value = upper.s_ri.get(row, col);
+            row_data.push(data_pairs::RealImaginary(
+                lower_value.0 + (upper_value.0 - lower_value.0) * t,
+                lower_value.1 + (upper_value.1 - lower_value.1) * t,
+            ));
+        }
+
+        data.push(row_data);
+    }
+
+    data_line::parsed_data_line_from_ri_matrix(
+        output_frequency,
+        data_pairs::RealImaginaryMatrix::from_vec(data),
+    )
+}
+
+fn network_point_from_data_line(data_line: &data_line::ParsedDataLine) -> NetworkPoint {
+    let rank = data_line.s_ri.size();
+    let mut data = Vec::with_capacity(rank);
+
+    for to_port in 1..=rank {
+        let mut row = Vec::with_capacity(rank);
+        for from_port in 1..=rank {
+            row.push(complex_from_real_imaginary(
+                data_line.s_ri.get(to_port, from_port),
+            ));
+        }
+        data.push(row);
+    }
+
+    NetworkPoint {
+        frequency: data_line.frequency,
+        s: SMatrix { rank, data },
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
+
+    fn assert_approx_eq(actual: f64, expected: f64) {
+        let tolerance = 1e-10;
+        assert!(
+            (actual - expected).abs() <= tolerance,
+            "expected {actual} to be within {tolerance} of {expected}"
+        );
+    }
+
+    fn interpolation_1port_network() -> Network {
+        Network::from_str("linear.s1p", "# GHz S RI R 50\n1.0 0.0 0.0\n2.0 2.0 4.0\n").unwrap()
+    }
+
+    fn assert_s11(point: &NetworkPoint, expected_re: f64, expected_im: f64) {
+        let s11 = point.s.get(1, 1).unwrap();
+        assert_approx_eq(s11.re, expected_re);
+        assert_approx_eq(s11.im, expected_im);
+    }
 
     #[test]
     fn f() {
@@ -1634,5 +1973,257 @@ mod tests {
         let net = Network::new("files/ntwk1.s2p").unwrap();
         let debug_str = format!("{:?}", net);
         assert!(debug_str.contains("Network"));
+    }
+
+    #[test]
+    fn sample_at_exact_match_returns_existing_point() {
+        let network = interpolation_1port_network();
+
+        let point = network
+            .sample_at(1.0e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap();
+
+        assert_eq!(point.frequency, 1.0e9);
+        assert_s11(&point, 0.0, 0.0);
+    }
+
+    #[test]
+    fn sample_at_midpoint_linearly_interpolates_real_imaginary_space() {
+        let network = interpolation_1port_network();
+
+        let point = network
+            .sample_at(1.5e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap();
+
+        assert_eq!(point.frequency, 1.5e9);
+        assert_s11(&point, 1.0, 2.0);
+    }
+
+    #[test]
+    fn resample_derives_ma_and_db_from_interpolated_real_imaginary_values() {
+        let network = interpolation_1port_network();
+
+        let resampled = network
+            .resample([1.5e9], Interpolation::Linear, Extrapolation::Error)
+            .unwrap();
+
+        assert_eq!(resampled.f, vec![1.5e9]);
+        assert_eq!(resampled.s.len(), 1);
+        let s_ri = resampled.s[0].s_ri.get(1, 1);
+        let s_ma = resampled.s[0].s_ma.get(1, 1);
+        let s_db = resampled.s[0].s_db.get(1, 1);
+        let magnitude = f64::sqrt(5.0);
+
+        assert_approx_eq(s_ri.0, 1.0);
+        assert_approx_eq(s_ri.1, 2.0);
+        assert_approx_eq(s_ma.0, magnitude);
+        assert_approx_eq(s_ma.1, f64::atan2(2.0, 1.0) * 180.0 / std::f64::consts::PI);
+        assert_approx_eq(s_db.0, 20.0 * magnitude.log10());
+        assert_approx_eq(s_db.1, s_ma.1);
+    }
+
+    #[test]
+    fn sample_at_nearest_uses_closest_point() {
+        let network = interpolation_1port_network();
+
+        let lower = network
+            .sample_at(1.4e9, Interpolation::Nearest, Extrapolation::Error)
+            .unwrap();
+        let upper = network
+            .sample_at(1.6e9, Interpolation::Nearest, Extrapolation::Error)
+            .unwrap();
+        let tie = network
+            .sample_at(1.5e9, Interpolation::Nearest, Extrapolation::Error)
+            .unwrap();
+
+        assert_s11(&lower, 0.0, 0.0);
+        assert_s11(&upper, 2.0, 4.0);
+        assert_s11(&tie, 0.0, 0.0);
+    }
+
+    #[test]
+    fn sample_at_lower_and_upper_bounds_return_boundary_points() {
+        let network = interpolation_1port_network();
+
+        let lower = network
+            .sample_at(1.0e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap();
+        let upper = network
+            .sample_at(2.0e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap();
+
+        assert_s11(&lower, 0.0, 0.0);
+        assert_s11(&upper, 2.0, 4.0);
+    }
+
+    #[test]
+    fn sample_at_out_of_range_returns_structured_error() {
+        let network = interpolation_1port_network();
+
+        let error = network
+            .sample_at(0.5e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::FrequencyOutOfRange {
+                frequency,
+                min,
+                max
+            } if frequency == 0.5e9 && min == 1.0e9 && max == 2.0e9
+        ));
+    }
+
+    #[test]
+    fn sample_at_clamp_holds_boundary_values_at_requested_frequency() {
+        let network = interpolation_1port_network();
+
+        let lower = network
+            .sample_at(0.5e9, Interpolation::Linear, Extrapolation::Clamp)
+            .unwrap();
+        let upper = network
+            .sample_at(3.0e9, Interpolation::Linear, Extrapolation::Clamp)
+            .unwrap();
+
+        assert_eq!(lower.frequency, 0.5e9);
+        assert_eq!(upper.frequency, 3.0e9);
+        assert_s11(&lower, 0.0, 0.0);
+        assert_s11(&upper, 2.0, 4.0);
+    }
+
+    #[test]
+    fn sample_at_interpolates_n_port_matrix_values() {
+        let network = Network::from_str(
+            "matrix.s3p",
+            "# GHz S RI R 50\n\
+             1.0 1 -1 2 -2 3 -3 4 -4 5 -5 6 -6 7 -7 8 -8 9 -9\n\
+             2.0 11 -11 12 -12 13 -13 14 -14 15 -15 16 -16 17 -17 18 -18 19 -19\n",
+        )
+        .unwrap();
+
+        let point = network
+            .sample_at(1.5e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap();
+        let s32 = point.s.get(3, 2).unwrap();
+
+        assert_eq!(point.s.rank, 3);
+        assert_approx_eq(s32.re, 13.0);
+        assert_approx_eq(s32.im, -13.0);
+    }
+
+    #[test]
+    fn resample_preserves_network_metadata() {
+        let network = Network::from_str(
+            "metadata.s2p",
+            "! before option\n\
+             [Version] 2.1\n\
+             # GHz S DB R 75\n\
+             [Number of Ports] 2\n\
+             [Reference] 45 55\n\
+             [Network Data]\n\
+             ! after option\n\
+             1.0 0 0 0 0 0 0 0 0\n\
+             2.0 6 0 6 0 6 0 6 0\n\
+             [End]\n",
+        )
+        .unwrap();
+
+        let resampled = network
+            .resample(
+                [1.0e9, 1.5e9, 2.0e9],
+                Interpolation::Linear,
+                Extrapolation::Error,
+            )
+            .unwrap();
+
+        assert_eq!(resampled.name, network.name);
+        assert_eq!(resampled.rank, network.rank);
+        assert_eq!(resampled.frequency_unit, network.frequency_unit);
+        assert_eq!(resampled.parameter, network.parameter);
+        assert_eq!(resampled.format, network.format);
+        assert_eq!(resampled.resistance_string, network.resistance_string);
+        assert_eq!(resampled.z0, network.z0);
+        assert_eq!(
+            resampled.reference_impedance(),
+            network.reference_impedance()
+        );
+        assert_eq!(resampled.comments, network.comments);
+        assert_eq!(
+            resampled.comments_after_option_line,
+            network.comments_after_option_line
+        );
+        assert_eq!(resampled.warnings, network.warnings);
+        assert_eq!(resampled.f, vec![1.0e9, 1.5e9, 2.0e9]);
+        assert_eq!(resampled.s.len(), 3);
+    }
+
+    #[test]
+    fn sample_at_rejects_empty_network_data() {
+        let mut network = interpolation_1port_network();
+        network.f.clear();
+        network.s.clear();
+
+        let error = network
+            .sample_at(1.0e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap_err();
+
+        assert!(matches!(error, TouchstoneError::EmptyNetworkData));
+    }
+
+    #[test]
+    fn sample_at_rejects_duplicate_frequencies() {
+        let mut network = interpolation_1port_network();
+        network.f = vec![1.0e9, 1.0e9];
+
+        let error = network
+            .sample_at(1.0e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::DuplicateFrequency {
+                first_index: 0,
+                duplicate_index: 1,
+                frequency
+            } if frequency == 1.0e9
+        ));
+    }
+
+    #[test]
+    fn sample_at_rejects_non_finite_frequencies() {
+        let mut network = interpolation_1port_network();
+        network.f = vec![1.0e9, f64::INFINITY];
+
+        let error = network
+            .sample_at(1.0e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::InvalidFrequency {
+                point_index: 1,
+                frequency
+            } if frequency.is_infinite()
+        ));
+    }
+
+    #[test]
+    fn sample_at_rejects_unsorted_frequencies() {
+        let mut network = interpolation_1port_network();
+        network.f = vec![2.0e9, 1.0e9];
+
+        let error = network
+            .sample_at(1.5e9, Interpolation::Linear, Extrapolation::Error)
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::UnsortedFrequencies {
+                previous_index: 0,
+                previous_frequency,
+                next_index: 1,
+                next_frequency
+            } if previous_frequency == 2.0e9 && next_frequency == 1.0e9
+        ));
     }
 }

@@ -16,6 +16,37 @@ pub struct ParsedDataLine {
     pub s_ma: MagnitudeAngleMatrix,
 }
 
+pub(crate) fn parsed_data_line_from_ri_matrix(
+    frequency: f64,
+    s_ri: RealImaginaryMatrix,
+) -> ParsedDataLine {
+    let n = s_ri.size();
+
+    let mut s_db_data = Vec::with_capacity(n);
+    let mut s_ma_data = Vec::with_capacity(n);
+
+    for row in 1..=n {
+        let mut s_db_row = Vec::with_capacity(n);
+        let mut s_ma_row = Vec::with_capacity(n);
+
+        for col in 1..=n {
+            let value = s_ri.get(row, col);
+            s_db_row.push(DecibelAngle::from_real_imaginary(value));
+            s_ma_row.push(MagnitudeAngle::from_real_imaginary(value));
+        }
+
+        s_db_data.push(s_db_row);
+        s_ma_data.push(s_ma_row);
+    }
+
+    ParsedDataLine {
+        frequency,
+        s_ri,
+        s_db: DecibelAngleMatrix::from_vec(s_db_data),
+        s_ma: MagnitudeAngleMatrix::from_vec(s_ma_data),
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum TwoPortDataOrder {
     #[default]
