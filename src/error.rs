@@ -297,6 +297,62 @@ pub enum TouchstoneError {
         /// Imaginary component.
         im: f64,
     },
+    /// Network parameter conversion was requested for non-S-parameter source data.
+    UnsupportedNetworkParameter {
+        /// Network parameter token from the option line.
+        parameter: String,
+    },
+    /// Network parameter conversion was requested with per-port reference impedances.
+    UnsupportedReferenceImpedance {
+        /// Per-port reference impedance values in ohms.
+        values: Vec<f64>,
+    },
+    /// Network parameter conversion was requested for an unsupported matrix rank.
+    UnsupportedConversionRank {
+        /// Conversion that was requested.
+        conversion: String,
+        /// Actual matrix rank.
+        rank: usize,
+        /// Required matrix rank.
+        expected_rank: usize,
+    },
+    /// A public parameter matrix was not shaped as a square rank-by-rank matrix.
+    InvalidParameterMatrixShape {
+        /// Matrix name used in the failed operation.
+        matrix: String,
+        /// Rank declared by the matrix.
+        rank: usize,
+        /// Number of rows found in the matrix data.
+        rows: usize,
+        /// 0-based row index with the wrong column count, when known.
+        row_index: Option<usize>,
+        /// Number of columns in the row, or 0 when the row was missing.
+        columns: usize,
+    },
+    /// A public parameter matrix value had a non-finite real or imaginary component.
+    InvalidParameterMatrixValue {
+        /// Matrix name used in the failed operation.
+        matrix: String,
+        /// 1-based row index.
+        row: usize,
+        /// 1-based column index.
+        column: usize,
+        /// Real component.
+        re: f64,
+        /// Imaginary component.
+        im: f64,
+    },
+    /// A matrix or conversion denominator was singular within the configured tolerance.
+    SingularMatrix {
+        /// Operation that required a non-singular matrix or denominator.
+        operation: String,
+        /// 0-based pivot or denominator index.
+        pivot_index: usize,
+        /// Magnitude of the pivot or denominator.
+        pivot_magnitude: f64,
+        /// Singularity tolerance used for the operation.
+        tolerance: f64,
+    },
     /// A reference impedance was not finite and positive.
     InvalidReferenceImpedance {
         /// Invalid reference impedance in ohms.
@@ -521,6 +577,60 @@ impl fmt::Display for TouchstoneError {
             } => write!(
                 f,
                 "generated S{to_port}{from_port} at point {point_index} is not finite: ({re}, {im})"
+            ),
+            Self::UnsupportedNetworkParameter { parameter } => write!(
+                f,
+                "network parameter conversions require S-parameter source data, found {parameter}"
+            ),
+            Self::UnsupportedReferenceImpedance { values } => write!(
+                f,
+                "per-port reference impedances are not supported for this conversion: {values:?}"
+            ),
+            Self::UnsupportedConversionRank {
+                conversion,
+                rank,
+                expected_rank,
+            } => write!(
+                f,
+                "{conversion} conversion requires rank {expected_rank}, found rank {rank}"
+            ),
+            Self::InvalidParameterMatrixShape {
+                matrix,
+                rank,
+                rows,
+                row_index,
+                columns,
+            } => {
+                if let Some(row_index) = row_index {
+                    write!(
+                        f,
+                        "{matrix} matrix row {row_index} has {columns} columns, expected declared rank {rank}"
+                    )
+                } else {
+                    write!(
+                        f,
+                        "{matrix} matrix has {rows} rows, expected declared rank {rank}"
+                    )
+                }
+            }
+            Self::InvalidParameterMatrixValue {
+                matrix,
+                row,
+                column,
+                re,
+                im,
+            } => write!(
+                f,
+                "{matrix} matrix value ({row}, {column}) is not finite: ({re}, {im})"
+            ),
+            Self::SingularMatrix {
+                operation,
+                pivot_index,
+                pivot_magnitude,
+                tolerance,
+            } => write!(
+                f,
+                "{operation} is singular at pivot {pivot_index}: magnitude {pivot_magnitude} <= tolerance {tolerance}"
             ),
             Self::InvalidReferenceImpedance { z0 } => {
                 write!(f, "reference impedance must be finite and positive: {z0}")

@@ -31,6 +31,8 @@ mod utils;
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 pub use network_builder::NetworkBuilder;
 
+const PARAMETER_CONVERSION_TOLERANCE: f64 = 1.0e-12;
+
 /// Reference impedance metadata for a Touchstone network.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -197,6 +199,102 @@ pub struct Complex {
     pub im: f64,
 }
 
+impl Complex {
+    fn zero() -> Self {
+        Self { re: 0.0, im: 0.0 }
+    }
+
+    fn one() -> Self {
+        Self { re: 1.0, im: 0.0 }
+    }
+
+    fn magnitude(self) -> f64 {
+        self.re.hypot(self.im)
+    }
+
+    fn is_finite(self) -> bool {
+        self.re.is_finite() && self.im.is_finite()
+    }
+}
+
+impl ops::Add for Complex {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            re: self.re + rhs.re,
+            im: self.im + rhs.im,
+        }
+    }
+}
+
+impl ops::Sub for Complex {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            re: self.re - rhs.re,
+            im: self.im - rhs.im,
+        }
+    }
+}
+
+impl ops::Neg for Complex {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            re: -self.re,
+            im: -self.im,
+        }
+    }
+}
+
+impl ops::Mul for Complex {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            re: self.re * rhs.re - self.im * rhs.im,
+            im: self.re * rhs.im + self.im * rhs.re,
+        }
+    }
+}
+
+impl ops::Mul<f64> for Complex {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self {
+            re: self.re * rhs,
+            im: self.im * rhs,
+        }
+    }
+}
+
+impl ops::Div for Complex {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let denominator = rhs.re * rhs.re + rhs.im * rhs.im;
+        Self {
+            re: (self.re * rhs.re + self.im * rhs.im) / denominator,
+            im: (self.im * rhs.re - self.re * rhs.im) / denominator,
+        }
+    }
+}
+
+impl ops::Div<f64> for Complex {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Self {
+            re: self.re / rhs,
+            im: self.im / rhs,
+        }
+    }
+}
+
 /// Stable S-parameter matrix for one frequency point.
 ///
 /// `data` is arranged as rows of destination/output ports and columns of source/input ports.
@@ -236,6 +334,275 @@ impl SMatrix {
                 from_port,
                 rank: self.rank,
             })
+    }
+
+    /// Convert this S-parameter matrix to an admittance-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms. Per-port reference impedances are not
+    /// supported by this scalar API.
+    ///
+    /// Uses `Y = (1 / z0) * (I - S) * (I + S)^-1`.
+    pub fn to_y_matrix(&self, z0: f64) -> Result<ParameterMatrix, TouchstoneError> {
+        validate_reference_impedance(z0)?;
+        validate_matrix_data("S", self.rank, &self.data)?;
+
+        let identity = identity_matrix(self.rank);
+        let numerator = matrix_sub(&identity, &self.data);
+        let denominator = matrix_add(&identity, &self.data);
+        let denominator_inverse = invert_matrix(
+            denominator,
+            "S to Y matrix inversion",
+            PARAMETER_CONVERSION_TOLERANCE,
+        )?;
+        let data = matrix_scale(&matrix_mul(&numerator, &denominator_inverse), 1.0 / z0);
+
+        Ok(ParameterMatrix {
+            rank: self.rank,
+            data,
+        })
+    }
+
+    /// Convert this S-parameter matrix to an impedance-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms. Per-port reference impedances are not
+    /// supported by this scalar API.
+    ///
+    /// Uses `Z = z0 * (I + S) * (I - S)^-1`.
+    pub fn to_z_matrix(&self, z0: f64) -> Result<ParameterMatrix, TouchstoneError> {
+        validate_reference_impedance(z0)?;
+        validate_matrix_data("S", self.rank, &self.data)?;
+
+        let identity = identity_matrix(self.rank);
+        let numerator = matrix_add(&identity, &self.data);
+        let denominator = matrix_sub(&identity, &self.data);
+        let denominator_inverse = invert_matrix(
+            denominator,
+            "S to Z matrix inversion",
+            PARAMETER_CONVERSION_TOLERANCE,
+        )?;
+        let data = matrix_scale(&matrix_mul(&numerator, &denominator_inverse), z0);
+
+        Ok(ParameterMatrix {
+            rank: self.rank,
+            data,
+        })
+    }
+
+    /// Convert this two-port S-parameter matrix to ABCD transmission parameters.
+    ///
+    /// `z0` is the common real reference impedance in ohms. The conversion is only defined here for
+    /// rank-2 matrices and returns [`TouchstoneError::UnsupportedConversionRank`] otherwise.
+    pub fn to_abcd(&self, z0: f64) -> Result<ABCDMatrix, TouchstoneError> {
+        validate_reference_impedance(z0)?;
+        validate_matrix_data("S", self.rank, &self.data)?;
+
+        if self.rank != 2 {
+            return Err(TouchstoneError::UnsupportedConversionRank {
+                conversion: "S to ABCD".to_string(),
+                rank: self.rank,
+                expected_rank: 2,
+            });
+        }
+
+        let s11 = self.data[0][0];
+        let s12 = self.data[0][1];
+        let s21 = self.data[1][0];
+        let s22 = self.data[1][1];
+        let one = Complex::one();
+        let two_s21 = s21 * 2.0;
+
+        ensure_non_singular_value(
+            "S to ABCD denominator",
+            0,
+            two_s21,
+            PARAMETER_CONVERSION_TOLERANCE,
+        )?;
+
+        Ok(ABCDMatrix {
+            a: ((one + s11) * (one - s22) + s12 * s21) / two_s21,
+            b: (((one + s11) * (one + s22) - s12 * s21) * z0) / two_s21,
+            c: (((one - s11) * (one - s22) - s12 * s21) / z0) / two_s21,
+            d: ((one - s11) * (one + s22) + s12 * s21) / two_s21,
+        })
+    }
+
+    /// Convert an admittance-parameter matrix to an S-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms. Per-port reference impedances are not
+    /// supported by this scalar API.
+    ///
+    /// Uses `S = (I - z0Y) * (I + z0Y)^-1`.
+    pub fn try_from_y_matrix(matrix: &ParameterMatrix, z0: f64) -> Result<Self, TouchstoneError> {
+        matrix.to_s_matrix_from_y(z0)
+    }
+
+    /// Convert an impedance-parameter matrix to an S-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms. Per-port reference impedances are not
+    /// supported by this scalar API.
+    ///
+    /// Uses `S = (Z - z0I) * (Z + z0I)^-1`.
+    pub fn try_from_z_matrix(matrix: &ParameterMatrix, z0: f64) -> Result<Self, TouchstoneError> {
+        matrix.to_s_matrix_from_z(z0)
+    }
+
+    /// Convert ABCD transmission parameters to a two-port S-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms.
+    pub fn try_from_abcd(matrix: &ABCDMatrix, z0: f64) -> Result<Self, TouchstoneError> {
+        matrix.to_s_matrix(z0)
+    }
+}
+
+/// Stable admittance- or impedance-parameter matrix for one frequency point.
+///
+/// `data` is arranged as rows of destination/output ports and columns of source/input ports. Values
+/// are in siemens for admittance matrices and ohms for impedance matrices.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParameterMatrix {
+    /// Number of ports in this square parameter matrix.
+    pub rank: usize,
+    /// Matrix values in row-major order.
+    pub data: Vec<Vec<Complex>>,
+}
+
+impl ParameterMatrix {
+    /// Return a matrix entry using 1-based RF port indexes.
+    pub fn get(&self, to_port: usize, from_port: usize) -> Result<Complex, TouchstoneError> {
+        validate_port_indexes(to_port, from_port, self.rank)?;
+        self.data
+            .get(to_port - 1)
+            .and_then(|row| row.get(from_port - 1))
+            .copied()
+            .ok_or(TouchstoneError::InvalidPortIndex {
+                to_port,
+                from_port,
+                rank: self.rank,
+            })
+    }
+
+    /// Convert this admittance-parameter matrix to an S-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms. Per-port reference impedances are not
+    /// supported by this scalar API.
+    ///
+    /// Uses `S = (I - z0Y) * (I + z0Y)^-1`.
+    pub fn to_s_matrix_from_y(&self, z0: f64) -> Result<SMatrix, TouchstoneError> {
+        validate_reference_impedance(z0)?;
+        validate_matrix_data("Y", self.rank, &self.data)?;
+
+        let identity = identity_matrix(self.rank);
+        let scaled_y = matrix_scale(&self.data, z0);
+        let numerator = matrix_sub(&identity, &scaled_y);
+        let denominator = matrix_add(&identity, &scaled_y);
+        let denominator_inverse = invert_matrix(
+            denominator,
+            "Y to S matrix inversion",
+            PARAMETER_CONVERSION_TOLERANCE,
+        )?;
+        let data = matrix_mul(&numerator, &denominator_inverse);
+
+        Ok(SMatrix {
+            rank: self.rank,
+            data,
+        })
+    }
+
+    /// Convert this impedance-parameter matrix to an S-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms. Per-port reference impedances are not
+    /// supported by this scalar API.
+    ///
+    /// Uses `S = (Z - z0I) * (Z + z0I)^-1`.
+    pub fn to_s_matrix_from_z(&self, z0: f64) -> Result<SMatrix, TouchstoneError> {
+        validate_reference_impedance(z0)?;
+        validate_matrix_data("Z", self.rank, &self.data)?;
+
+        let z0_identity = matrix_scale(&identity_matrix(self.rank), z0);
+        let numerator = matrix_sub(&self.data, &z0_identity);
+        let denominator = matrix_add(&self.data, &z0_identity);
+        let denominator_inverse = invert_matrix(
+            denominator,
+            "Z to S matrix inversion",
+            PARAMETER_CONVERSION_TOLERANCE,
+        )?;
+        let data = matrix_mul(&numerator, &denominator_inverse);
+
+        Ok(SMatrix {
+            rank: self.rank,
+            data,
+        })
+    }
+}
+
+/// Stable two-port ABCD transmission-parameter matrix.
+///
+/// The matrix layout is `[[A, B], [C, D]]`. `B` is in ohms, `C` is in siemens, and `A` and `D`
+/// are dimensionless.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ABCDMatrix {
+    /// A transmission parameter.
+    pub a: Complex,
+    /// B transmission parameter in ohms.
+    pub b: Complex,
+    /// C transmission parameter in siemens.
+    pub c: Complex,
+    /// D transmission parameter.
+    pub d: Complex,
+}
+
+impl ABCDMatrix {
+    /// Return an ABCD entry using 1-based row and column indexes.
+    pub fn get(&self, row: usize, column: usize) -> Result<Complex, TouchstoneError> {
+        validate_port_indexes(row, column, 2)?;
+        Ok(match (row, column) {
+            (1, 1) => self.a,
+            (1, 2) => self.b,
+            (2, 1) => self.c,
+            (2, 2) => self.d,
+            _ => unreachable!("ABCD indexes were already validated"),
+        })
+    }
+
+    /// Convert this ABCD matrix to a two-port S-parameter matrix.
+    ///
+    /// `z0` is the common real reference impedance in ohms.
+    pub fn to_s_matrix(&self, z0: f64) -> Result<SMatrix, TouchstoneError> {
+        validate_reference_impedance(z0)?;
+
+        for (index, value) in [self.a, self.b, self.c, self.d].into_iter().enumerate() {
+            if !value.is_finite() {
+                return Err(TouchstoneError::InvalidParameterMatrixValue {
+                    matrix: "ABCD".to_string(),
+                    row: index / 2 + 1,
+                    column: index % 2 + 1,
+                    re: value.re,
+                    im: value.im,
+                });
+            }
+        }
+
+        let denominator = self.a + self.b / z0 + self.c * z0 + self.d;
+        ensure_non_singular_value(
+            "ABCD to S denominator",
+            0,
+            denominator,
+            PARAMETER_CONVERSION_TOLERANCE,
+        )?;
+
+        Ok(SMatrix {
+            rank: 2,
+            data: vec![
+                vec![
+                    (self.a + self.b / z0 - self.c * z0 - self.d) / denominator,
+                    ((self.a * self.d - self.b * self.c) * 2.0) / denominator,
+                ],
+                vec![
+                    Complex { re: 2.0, im: 0.0 } / denominator,
+                    (-self.a + self.b / z0 - self.c * z0 + self.d) / denominator,
+                ],
+            ],
+        })
     }
 }
 
@@ -508,6 +875,33 @@ impl Network {
         Ok(SMatrix { rank, data })
     }
 
+    /// Return the admittance-parameter matrix at one frequency point.
+    ///
+    /// `point_index` is 0-based. The network must contain S-parameter source data and use one
+    /// common scalar reference impedance.
+    pub fn y_matrix_at(&self, point_index: usize) -> Result<ParameterMatrix, TouchstoneError> {
+        let z0 = self.scalar_reference_impedance_for_conversions()?;
+        self.s_matrix_at(point_index)?.to_y_matrix(z0)
+    }
+
+    /// Return the impedance-parameter matrix at one frequency point.
+    ///
+    /// `point_index` is 0-based. The network must contain S-parameter source data and use one
+    /// common scalar reference impedance.
+    pub fn z_matrix_at(&self, point_index: usize) -> Result<ParameterMatrix, TouchstoneError> {
+        let z0 = self.scalar_reference_impedance_for_conversions()?;
+        self.s_matrix_at(point_index)?.to_z_matrix(z0)
+    }
+
+    /// Return the ABCD transmission-parameter matrix at one frequency point.
+    ///
+    /// `point_index` is 0-based. The network must be a two-port S-parameter network with one common
+    /// scalar reference impedance.
+    pub fn abcd_at(&self, point_index: usize) -> Result<ABCDMatrix, TouchstoneError> {
+        let z0 = self.scalar_reference_impedance_for_conversions()?;
+        self.s_matrix_at(point_index)?.to_abcd(z0)
+    }
+
     /// Return all stable data for one frequency point.
     ///
     /// `point_index` is 0-based.
@@ -524,6 +918,24 @@ impl Network {
         (0..self.s.len())
             .map(|point_index| self.point_at(point_index))
             .collect()
+    }
+
+    fn scalar_reference_impedance_for_conversions(&self) -> Result<f64, TouchstoneError> {
+        if self.parameter != "S" {
+            return Err(TouchstoneError::UnsupportedNetworkParameter {
+                parameter: self.parameter.clone(),
+            });
+        }
+
+        match self.reference_impedance() {
+            ReferenceImpedance::Common(z0) => {
+                validate_reference_impedance(z0)?;
+                Ok(z0)
+            }
+            ReferenceImpedance::PerPort(values) => {
+                Err(TouchstoneError::UnsupportedReferenceImpedance { values })
+            }
+        }
     }
 
     /// Sample the full S-parameter matrix at one frequency in Hz.
@@ -1191,6 +1603,190 @@ fn validate_port_indexes(
     }
 
     Ok(())
+}
+
+fn validate_reference_impedance(z0: f64) -> Result<(), TouchstoneError> {
+    if z0.is_finite() && z0 > 0.0 {
+        Ok(())
+    } else {
+        Err(TouchstoneError::InvalidReferenceImpedance { z0 })
+    }
+}
+
+fn validate_matrix_data(
+    matrix: &str,
+    rank: usize,
+    data: &[Vec<Complex>],
+) -> Result<(), TouchstoneError> {
+    if rank == 0 || data.len() != rank {
+        return Err(TouchstoneError::InvalidParameterMatrixShape {
+            matrix: matrix.to_string(),
+            rank,
+            rows: data.len(),
+            row_index: None,
+            columns: 0,
+        });
+    }
+
+    for (row_index, row) in data.iter().enumerate() {
+        if row.len() != rank {
+            return Err(TouchstoneError::InvalidParameterMatrixShape {
+                matrix: matrix.to_string(),
+                rank,
+                rows: data.len(),
+                row_index: Some(row_index),
+                columns: row.len(),
+            });
+        }
+
+        for (column_index, value) in row.iter().copied().enumerate() {
+            if !value.is_finite() {
+                return Err(TouchstoneError::InvalidParameterMatrixValue {
+                    matrix: matrix.to_string(),
+                    row: row_index + 1,
+                    column: column_index + 1,
+                    re: value.re,
+                    im: value.im,
+                });
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn identity_matrix(rank: usize) -> Vec<Vec<Complex>> {
+    let mut data = vec![vec![Complex::zero(); rank]; rank];
+    for (index, row) in data.iter_mut().enumerate() {
+        row[index] = Complex::one();
+    }
+    data
+}
+
+fn matrix_add(left: &[Vec<Complex>], right: &[Vec<Complex>]) -> Vec<Vec<Complex>> {
+    left.iter()
+        .zip(right)
+        .map(|(left_row, right_row)| {
+            left_row
+                .iter()
+                .zip(right_row)
+                .map(|(left_value, right_value)| *left_value + *right_value)
+                .collect()
+        })
+        .collect()
+}
+
+fn matrix_sub(left: &[Vec<Complex>], right: &[Vec<Complex>]) -> Vec<Vec<Complex>> {
+    left.iter()
+        .zip(right)
+        .map(|(left_row, right_row)| {
+            left_row
+                .iter()
+                .zip(right_row)
+                .map(|(left_value, right_value)| *left_value - *right_value)
+                .collect()
+        })
+        .collect()
+}
+
+fn matrix_scale(matrix: &[Vec<Complex>], scalar: f64) -> Vec<Vec<Complex>> {
+    matrix
+        .iter()
+        .map(|row| row.iter().map(|value| *value * scalar).collect())
+        .collect()
+}
+
+fn matrix_mul(left: &[Vec<Complex>], right: &[Vec<Complex>]) -> Vec<Vec<Complex>> {
+    let rank = left.len();
+    let mut result = vec![vec![Complex::zero(); rank]; rank];
+
+    for row in 0..rank {
+        for column in 0..rank {
+            let mut sum = Complex::zero();
+            for inner in 0..rank {
+                sum = sum + left[row][inner] * right[inner][column];
+            }
+            result[row][column] = sum;
+        }
+    }
+
+    result
+}
+
+fn invert_matrix(
+    mut matrix: Vec<Vec<Complex>>,
+    operation: &str,
+    tolerance: f64,
+) -> Result<Vec<Vec<Complex>>, TouchstoneError> {
+    let rank = matrix.len();
+    let mut inverse = identity_matrix(rank);
+
+    for pivot_index in 0..rank {
+        let mut pivot_row = pivot_index;
+        let mut pivot_magnitude = matrix[pivot_index][pivot_index].magnitude();
+
+        for (row_index, row) in matrix.iter().enumerate().skip(pivot_index + 1) {
+            let magnitude = row[pivot_index].magnitude();
+            if magnitude > pivot_magnitude {
+                pivot_row = row_index;
+                pivot_magnitude = magnitude;
+            }
+        }
+
+        if pivot_row != pivot_index {
+            matrix.swap(pivot_index, pivot_row);
+            inverse.swap(pivot_index, pivot_row);
+        }
+
+        let pivot = matrix[pivot_index][pivot_index];
+        ensure_non_singular_value(operation, pivot_index, pivot, tolerance)?;
+
+        for column in 0..rank {
+            matrix[pivot_index][column] = matrix[pivot_index][column] / pivot;
+            inverse[pivot_index][column] = inverse[pivot_index][column] / pivot;
+        }
+
+        let normalized_pivot_row = matrix[pivot_index].clone();
+        let normalized_inverse_row = inverse[pivot_index].clone();
+
+        for row in 0..rank {
+            if row == pivot_index {
+                continue;
+            }
+
+            let factor = matrix[row][pivot_index];
+            if factor.magnitude() == 0.0 {
+                continue;
+            }
+
+            for column in 0..rank {
+                matrix[row][column] = matrix[row][column] - factor * normalized_pivot_row[column];
+                inverse[row][column] =
+                    inverse[row][column] - factor * normalized_inverse_row[column];
+            }
+        }
+    }
+
+    Ok(inverse)
+}
+
+fn ensure_non_singular_value(
+    operation: &str,
+    pivot_index: usize,
+    value: Complex,
+    tolerance: f64,
+) -> Result<(), TouchstoneError> {
+    let magnitude = value.magnitude();
+    if magnitude.is_finite() && magnitude > tolerance {
+        Ok(())
+    } else {
+        Err(TouchstoneError::SingularMatrix {
+            operation: operation.to_string(),
+            pivot_index,
+            pivot_magnitude: magnitude,
+            tolerance,
+        })
+    }
 }
 
 fn common_reference_impedance_or_panic(network: &Network) -> f64 {
