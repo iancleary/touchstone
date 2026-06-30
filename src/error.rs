@@ -219,6 +219,13 @@ pub enum TouchstoneError {
     },
     /// A generated network did not contain any frequency points.
     EmptyNetworkData,
+    /// The frequency vector length did not match the number of S-parameter data rows.
+    FrequencyDataLengthMismatch {
+        /// Number of values in the public frequency vector.
+        frequency_count: usize,
+        /// Number of S-parameter data rows.
+        data_count: usize,
+    },
     /// A generated S-parameter matrix declared a different rank than the network.
     InvalidMatrixRank {
         /// 0-based frequency point index.
@@ -241,12 +248,41 @@ pub enum TouchstoneError {
         /// Expected row and column count.
         expected_rank: usize,
     },
-    /// A generated frequency was not finite.
+    /// A generated, parsed, or requested frequency was not finite.
     InvalidFrequency {
         /// 0-based frequency point index.
         point_index: usize,
         /// Invalid frequency value in Hz.
         frequency: f64,
+    },
+    /// The frequency vector contained the same value more than once.
+    DuplicateFrequency {
+        /// 0-based index of the first occurrence.
+        first_index: usize,
+        /// 0-based index of the duplicate occurrence.
+        duplicate_index: usize,
+        /// Duplicate frequency value in Hz.
+        frequency: f64,
+    },
+    /// The frequency vector was not strictly increasing.
+    UnsortedFrequencies {
+        /// 0-based index of the preceding frequency.
+        previous_index: usize,
+        /// Preceding frequency value in Hz.
+        previous_frequency: f64,
+        /// 0-based index of the next frequency.
+        next_index: usize,
+        /// Next frequency value in Hz.
+        next_frequency: f64,
+    },
+    /// A requested sample frequency was outside the network frequency range.
+    FrequencyOutOfRange {
+        /// Requested frequency in Hz.
+        frequency: f64,
+        /// Minimum network frequency in Hz.
+        min: f64,
+        /// Maximum network frequency in Hz.
+        max: f64,
     },
     /// A generated S-parameter value had a non-finite real or imaginary component.
     InvalidSParameterValue {
@@ -412,7 +448,14 @@ impl fmt::Display for TouchstoneError {
                 f,
                 "generated network rank {rank} does not match extension port count {extension_rank}"
             ),
-            Self::EmptyNetworkData => write!(f, "generated network has no frequency points"),
+            Self::EmptyNetworkData => write!(f, "network has no frequency points"),
+            Self::FrequencyDataLengthMismatch {
+                frequency_count,
+                data_count,
+            } => write!(
+                f,
+                "frequency vector has {frequency_count} values but network data has {data_count} rows"
+            ),
             Self::InvalidMatrixRank {
                 point_index,
                 matrix_rank,
@@ -443,9 +486,31 @@ impl fmt::Display for TouchstoneError {
             Self::InvalidFrequency {
                 point_index,
                 frequency,
+            } => write!(f, "frequency at point {point_index} is not finite: {frequency}"),
+            Self::DuplicateFrequency {
+                first_index,
+                duplicate_index,
+                frequency,
             } => write!(
                 f,
-                "generated frequency at point {point_index} is not finite: {frequency}"
+                "duplicate frequency {frequency} Hz at points {first_index} and {duplicate_index}"
+            ),
+            Self::UnsortedFrequencies {
+                previous_index,
+                previous_frequency,
+                next_index,
+                next_frequency,
+            } => write!(
+                f,
+                "frequencies must be strictly increasing: point {previous_index} is {previous_frequency} Hz, point {next_index} is {next_frequency} Hz"
+            ),
+            Self::FrequencyOutOfRange {
+                frequency,
+                min,
+                max,
+            } => write!(
+                f,
+                "frequency {frequency} Hz is outside network range {min} Hz to {max} Hz"
             ),
             Self::InvalidSParameterValue {
                 point_index,
