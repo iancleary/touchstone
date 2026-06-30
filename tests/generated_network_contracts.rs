@@ -19,6 +19,10 @@ fn round_trip_from_string(network: &Network) -> Network {
 fn assert_round_trip_points(network: &Network) {
     let reparsed = round_trip_from_string(network);
 
+    assert_eq!(
+        reparsed.reference_impedance(),
+        network.reference_impedance()
+    );
     assert_eq!(reparsed.points().unwrap(), network.points().unwrap());
 }
 

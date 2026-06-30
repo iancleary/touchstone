@@ -4,7 +4,9 @@ use crate::data_line;
 use crate::file_extension;
 use crate::option_line;
 use crate::utils;
-use crate::{Network, TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
+use crate::{
+    Network, ReferenceImpedance, TouchstoneError, TouchstoneErrorContext, TouchstoneWarning,
+};
 
 #[derive(Debug)]
 struct ParserState {
@@ -12,6 +14,8 @@ struct ParserState {
     option_line_parsed: bool,
     two_port_data_order: data_line::TwoPortDataOrder,
     expected_number_of_frequencies: Option<usize>,
+    reference_impedance: Option<ReferenceImpedance>,
+    pending_reference_line: Option<(usize, String)>,
 }
 
 #[cfg(test)]
@@ -45,6 +49,8 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
         data_lines: Vec::new(),
         two_port_data_order: data_line::TwoPortDataOrder::default(),
         expected_number_of_frequencies: None,
+        reference_impedance: None,
+        pending_reference_line: None,
     };
 
     let mut comment_lines: Vec<String> = Vec::new();
@@ -83,6 +89,31 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
         let is_option_line = trimmed_line.starts_with("#");
         let is_comment = trimmed_line.starts_with("!");
         let is_keyword = trimmed_line.starts_with("[");
+
+        if parser_state.pending_reference_line.is_some() && !is_comment && !trimmed_line.is_empty()
+        {
+            let (reference_line_number, reference_line) =
+                parser_state.pending_reference_line.as_ref().unwrap();
+            if is_keyword || is_option_line {
+                return Err(TouchstoneError::InvalidReferenceImpedanceCount {
+                    ports: n_ports as usize,
+                    actual: 0,
+                }
+                .with_context(TouchstoneErrorContext {
+                    source_name: source_name.to_string(),
+                    line_number: Some(*reference_line_number),
+                    line: Some(reference_line.clone()),
+                }));
+            }
+
+            let line_without_comment = trimmed_line.split('!').next().unwrap_or("").trim();
+            parser_state.reference_impedance = Some(
+                parse_reference_impedance(line_without_comment, n_ports as usize)
+                    .map_err(|error| with_line_context(error, source_name, line_number, line))?,
+            );
+            parser_state.pending_reference_line = None;
+            continue;
+        }
 
         if is_option_line {
             if !parser_state.option_line_parsed {
@@ -214,6 +245,46 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
         reference_resistance = parsed_options.reference_resistance.clone();
     }
 
+    if let Some((line_number, line)) = &parser_state.pending_reference_line {
+        return Err(TouchstoneError::InvalidReferenceImpedanceCount {
+            ports: n_ports as usize,
+            actual: 0,
+        }
+        .with_context(TouchstoneErrorContext {
+            source_name: source_name.to_string(),
+            line_number: Some(*line_number),
+            line: Some(line.clone()),
+        }));
+    }
+
+    let option_line_z0 = utils::try_str_to_f64(reference_resistance.as_str()).map_err(|error| {
+        if let Some((line_number, line)) = &option_line_location {
+            with_line_context(error, source_name, *line_number, line)
+        } else {
+            error.with_context(TouchstoneErrorContext {
+                source_name: source_name.to_string(),
+                line_number: None,
+                line: None,
+            })
+        }
+    })?;
+    validate_reference_impedance_value(option_line_z0).map_err(|error| {
+        if let Some((line_number, line)) = &option_line_location {
+            with_line_context(error, source_name, *line_number, line)
+        } else {
+            error.with_context(TouchstoneErrorContext {
+                source_name: source_name.to_string(),
+                line_number: None,
+                line: None,
+            })
+        }
+    })?;
+
+    let reference_impedance = parser_state
+        .reference_impedance
+        .unwrap_or(ReferenceImpedance::Common(option_line_z0));
+    let z0 = reference_impedance.scalar_compatibility_value();
+
     tracing::debug!(
         num_ports = n_ports,
         num_frequencies = f.len(),
@@ -229,17 +300,8 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
         parameter,
         format,
         resistance_string,
-        z0: utils::try_str_to_f64(reference_resistance.as_str()).map_err(|error| {
-            if let Some((line_number, line)) = &option_line_location {
-                with_line_context(error, source_name, *line_number, line)
-            } else {
-                error.with_context(TouchstoneErrorContext {
-                    source_name: source_name.to_string(),
-                    line_number: None,
-                    line: None,
-                })
-            }
-        })?,
+        z0,
+        reference_impedance,
         comments: comment_lines,
         comments_after_option_line,
         warnings,
@@ -317,6 +379,15 @@ fn handle_keyword_line(
                     }
                 })?);
         }
+        "reference" => {
+            if argument.is_empty() {
+                parser_state.pending_reference_line = Some((line_number, line.to_string()));
+            } else {
+                parser_state.reference_impedance =
+                    Some(parse_reference_impedance(argument, n_ports as usize)?);
+                parser_state.pending_reference_line = None;
+            }
+        }
         "network data" => {}
         "matrix format" => {
             if !argument.eq_ignore_ascii_case("Full") {
@@ -334,6 +405,42 @@ fn handle_keyword_line(
     }
 
     Ok(false)
+}
+
+fn parse_reference_impedance(
+    argument: &str,
+    n_ports: usize,
+) -> Result<ReferenceImpedance, TouchstoneError> {
+    let values = argument
+        .split_whitespace()
+        .map(utils::try_str_to_f64)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    match values.len() {
+        1 => {
+            let z0 = values[0];
+            validate_reference_impedance_value(z0)?;
+            Ok(ReferenceImpedance::Common(z0))
+        }
+        count if count == n_ports => {
+            for value in &values {
+                validate_reference_impedance_value(*value)?;
+            }
+            Ok(ReferenceImpedance::PerPort(values))
+        }
+        actual => Err(TouchstoneError::InvalidReferenceImpedanceCount {
+            ports: n_ports,
+            actual,
+        }),
+    }
+}
+
+fn validate_reference_impedance_value(z0: f64) -> Result<(), TouchstoneError> {
+    if z0.is_finite() && z0 > 0.0 {
+        Ok(())
+    } else {
+        Err(TouchstoneError::InvalidReferenceImpedance { z0 })
+    }
 }
 
 fn normalize_keyword(keyword: &str) -> String {

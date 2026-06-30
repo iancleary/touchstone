@@ -1,4 +1,4 @@
-use touchstone::{Complex, Network, NetworkBuilder, SMatrix, TouchstoneError};
+use touchstone::{Complex, Network, NetworkBuilder, ReferenceImpedance, SMatrix, TouchstoneError};
 
 fn c(re: f64, im: f64) -> Complex {
     Complex { re, im }
@@ -27,6 +27,10 @@ fn builds_one_port_network_with_comments_and_derived_data() {
     assert_eq!(network.frequency_unit, "Hz");
     assert_eq!(network.format, "RI");
     assert_eq!(network.z0, 75.0);
+    assert_eq!(
+        network.reference_impedance(),
+        ReferenceImpedance::Common(75.0)
+    );
     assert_eq!(network.f, vec![1.0e9, 2.0e9]);
     assert!(network.warnings.is_empty());
     assert_eq!(network.try_s_ri_at(1, 1, 1).unwrap(), c(0.6, -0.35));
@@ -35,6 +39,7 @@ fn builds_one_port_network_with_comments_and_derived_data() {
 
     let serialized = network.to_touchstone_string().unwrap();
     assert!(serialized.starts_with("! generated one-port\n[Version] 2.1\n"));
+    assert!(!serialized.contains("[Reference]"));
     assert!(serialized.contains("[Network Data]\n! measured in memory\n"));
 }
 

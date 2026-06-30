@@ -132,6 +132,11 @@ fn assert_same_parse(path: &str, left: &Network, right: &Network) {
     assert_eq!(left.format, right.format, "{path}");
     assert_eq!(left.resistance_string, right.resistance_string, "{path}");
     assert_eq!(left.z0, right.z0, "{path}");
+    assert_eq!(
+        left.reference_impedance(),
+        right.reference_impedance(),
+        "{path}"
+    );
     assert_eq!(left.comments, right.comments, "{path}");
     assert_eq!(
         left.comments_after_option_line, right.comments_after_option_line,
