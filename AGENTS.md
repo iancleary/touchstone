@@ -2,12 +2,12 @@
 
 ## Overview
 
-Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), and 2-port network cascading via ABCD parameters. Published on crates.io (v0.11.4).
+Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading via ABCD parameters. Published on crates.io; current release target is v0.14.0.
 
 ## Commands
 
 ```bash
-cargo test                        # Run all 166 tests
+cargo test                        # Run all tests
 cargo clippy -- -D warnings       # Lint
 cargo fmt -- --check              # Format check
 cargo run -- files/ntwk3.s2p      # CLI: plot a single file (opens HTML)
@@ -25,6 +25,7 @@ cargo doc --open                  # Generate and view API docs
 | `option_line` | `src/option_line.rs` | `#` option line parsing (freq unit, format, Z0) |
 | `data_line` | `src/data_line.rs` | `ParsedDataLine` — per-frequency S-parameter data |
 | `data_pairs` | `src/data_pairs.rs` | `RealImaginary`, `MagnitudeAngle`, `DecibelAngle` + matrix types |
+| `network_builder` | `src/network_builder.rs` | `NetworkBuilder` for generated S-parameter networks |
 | `file_extension` | `src/file_extension.rs` | `.sNp` extension detection and port count extraction |
 | `utils` | `src/utils.rs` | Math utilities (complex conversions, ABCD ↔ S) |
 | `cli` | `src/cli.rs` | CLI entry point (plot, cascade commands) |
@@ -34,7 +35,11 @@ cargo doc --open                  # Generate and view API docs
 
 ## Key Types
 
-- `Network` — main struct; created via `Network::new(path)`, has `s_db()`, `s_ri()`, `s_ma()`, `cascade()`, `save()`
+- `Network` — main struct; created via `Network::new(path)`, `Network::from_str(name, contents)`, or `Network::from_bytes(name, bytes)`; has `s_db()`, `s_ri()`, `s_ma()`, `sample_at()`, `resample()`, `cascade()`, and `save()`
+- `NetworkBuilder` — generated S-parameter network construction from in-memory matrices
+- `ReferenceImpedance` — common or per-port Touchstone v2 reference impedance metadata
+- `SMatrix`, `ParameterMatrix`, `ABCDMatrix`, `Complex` — stable matrix and complex value APIs for simulation-oriented workflows
+- `Interpolation`, `Extrapolation` — sampling and resampling policy enums
 - `FrequencyRI`, `FrequencyDB`, `FrequencyMA` — per-point S-parameter accessors
 - S-parameter port indices are **1-indexed** (S₁₁, S₂₁, etc.)
 - `Network * Network` — `Mul` trait implements cascade via ABCD

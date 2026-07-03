@@ -92,6 +92,11 @@ fn main() -> Result<(), touchstone::TouchstoneError> {
 }
 ```
 
+Touchstone v2 reference impedance metadata is available through
+`network.reference_impedance()`. Networks with one scalar reference impedance return
+`ReferenceImpedance::Common(z0)`, while files with per-port `[Reference]` values return
+`ReferenceImpedance::PerPort(values)`.
+
 ---
 
 ## 3. Accessing S-Parameters
@@ -130,6 +135,41 @@ for point in &s21_ma {
     println!("f={} : mag={}, angle={}", point.frequency, point.s_ma.magnitude(), point.s_ma.angle());
 }
 ```
+
+For matrix-oriented workflows, use `s_matrix_at(point_index)` to get a stable full S-parameter
+matrix for one frequency point. `NetworkPoint` is returned by `sample_at`, and also exposes the
+full `SMatrix` at the requested frequency.
+
+### Interpolation and Resampling
+
+`sample_at(frequency_hz, interpolation, extrapolation)` samples a network at one frequency.
+`resample(frequencies_hz, interpolation, extrapolation)` returns a new `Network` on a requested
+frequency grid. Linear interpolation is performed in real/imaginary space, with magnitude/angle and
+dB/angle values rebuilt from the interpolated complex values.
+
+| Item | Description |
+|------|-------------|
+| `Interpolation::Linear` | Linear interpolation of each real and imaginary component |
+| `Interpolation::Nearest` | Select nearest parsed frequency point; ties choose the lower point |
+| `Extrapolation::Error` | Error outside the parsed frequency range |
+| `Extrapolation::Clamp` | Hold nearest boundary S-parameters at the requested frequency |
+
+### Network Parameter Conversions
+
+For scalar reference impedance networks, stable matrix conversion APIs are available for common RF
+and circuit-simulation workflows:
+
+| Item | Description |
+|------|-------------|
+| `SMatrix::to_y_matrix(z0)` | Convert S-parameters to admittance parameters |
+| `SMatrix::to_z_matrix(z0)` | Convert S-parameters to impedance parameters |
+| `SMatrix::to_abcd(z0)` | Convert a two-port S matrix to ABCD parameters |
+| `SMatrix::try_from_y_matrix(matrix, z0)` | Convert Y parameters back to S-parameters |
+| `SMatrix::try_from_z_matrix(matrix, z0)` | Convert Z parameters back to S-parameters |
+| `SMatrix::try_from_abcd(matrix, z0)` | Convert ABCD parameters back to a two-port S matrix |
+| `network.y_matrix_at(point_index)` | Y matrix for one parsed frequency point |
+| `network.z_matrix_at(point_index)` | Z matrix for one parsed frequency point |
+| `network.abcd_at(point_index)` | ABCD matrix for one two-port frequency point |
 
 ### Field Aliases
 
@@ -336,16 +376,31 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `Network::from_bytes(name, bytes)` | Parse in-memory UTF-8 Touchstone bytes  |
 | `Network::from_str(name, contents)` | Parse an in-memory Touchstone string    |
 | `NetworkBuilder::new(name, rank)` | Build generated S-parameter networks     |
+| `ReferenceImpedance::Common(z0)` | One scalar reference impedance             |
+| `ReferenceImpedance::PerPort(values)` | Per-port Touchstone v2 reference impedances |
+| `Complex { re, im }`         | Stable complex value used by public matrices |
+| `SMatrix`                    | Stable full S-parameter matrix for one frequency |
+| `ParameterMatrix`            | Stable Y- or Z-parameter matrix              |
+| `ABCDMatrix`                 | Stable two-port ABCD transmission matrix     |
+| `Interpolation`              | `Linear` or `Nearest` sampling policy        |
+| `Extrapolation`              | `Error` or `Clamp` out-of-range policy       |
 | `network.rank`                | Number of ports                              |
 | `network.frequency_unit`      | Frequency unit string                        |
 | `network.format`              | Data format (`RI`, `MA`, or `DB`)            |
 | `network.z0`                  | Reference impedance (Ω)                      |
+| `network.reference_impedance()` | Common or per-port reference metadata      |
 | `network.warnings`            | Non-fatal parser diagnostics                 |
 | `network.f`                   | Frequency vector (`Vec<f64>`)                |
 | `network.f()`                 | Clone of frequency vector                    |
 | `network.s_db(j, k)`         | S_jk in dB+angle — `Vec<FrequencyDB>`       |
 | `network.s_ri(j, k)`         | S_jk in real+imag — `Vec<FrequencyRI>`       |
 | `network.s_ma(j, k)`         | S_jk in mag+angle — `Vec<FrequencyMA>`       |
+| `network.s_matrix_at(point_index)` | Full S matrix for one frequency point |
+| `network.sample_at(frequency_hz, interpolation, extrapolation)` | Sample at one frequency |
+| `network.resample(frequencies_hz, interpolation, extrapolation)` | Return a new frequency grid |
+| `network.y_matrix_at(point_index)` | Full Y matrix for one frequency point |
+| `network.z_matrix_at(point_index)` | Full Z matrix for one frequency point |
+| `network.abcd_at(point_index)` | Two-port ABCD matrix for one frequency point |
 | `network.to_touchstone_string()` | Serialize Touchstone text in memory       |
 | `network.write_touchstone(writer)` | Write Touchstone text to any writer      |
 | `network.save(path)`         | Write network to file                        |
