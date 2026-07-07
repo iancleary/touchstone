@@ -14,7 +14,19 @@ cargo run -- files/ntwk3.s2p      # CLI: plot a single file (opens HTML)
 cargo run -- files/               # CLI: plot all files in directory
 cargo run -- cascade f1.s2p f2.s2p  # CLI: cascade two 2-port networks
 cargo doc --open                  # Generate and view API docs
+just cut-release --dry-run --notes-file /tmp/touchstone-release.md  # Preview release
+just cut-release --notes-file /tmp/touchstone-release.md            # Cut release
 ```
+
+## Release Workflow
+
+- Use the `cut-release` skill for ordinary release execution.
+- Use the `create-release-process` skill only when changing the release workflow itself.
+- Release docs live in `docs/release.md`.
+- The checked-in entrypoint is `just cut-release`; it delegates to `scripts/cut-release.sh`.
+- Release notes must be written to a local markdown file and passed with `--notes-file`.
+- Omitted `--version` infers the next patch version from `Cargo.toml`; pass `--version X.Y.Z` for minor releases.
+- The runner updates `Cargo.toml`, `Cargo.lock`, `AGENTS.md`, and `CLAUDE.md`, validates with `just check` and `cargo package`, commits, pushes `main`, and creates the GitHub release. The release event publishes to crates.io.
 
 ## Module Map
 

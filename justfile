@@ -54,3 +54,7 @@ check: fmt-check lint test
 
 # run checks and build
 ci: check build
+
+# cut a GitHub/crates.io release; pass args such as --dry-run or --notes-file
+cut-release *args:
+    scripts/cut-release.sh {{args}}
