@@ -29,6 +29,10 @@ build:
 release:
     cargo build --release
 
+# cut a GitHub release
+cut-release *args:
+    ./scripts/cut-release.sh {{args}}
+
 # run the CLI against a Touchstone file or directory
 dev target="files/ntwk3.s2p":
     cargo run -- "{{target}}"

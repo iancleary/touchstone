@@ -10,11 +10,20 @@ Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the in
 cargo test                        # Run all tests
 cargo clippy -- -D warnings       # Lint
 cargo fmt -- --check              # Format check
+just cut-release --dry-run --version <semver> --notes-file <path>  # Preview release
 cargo run -- files/ntwk3.s2p      # CLI: plot a single file (opens HTML)
 cargo run -- files/               # CLI: plot all files in directory
 cargo run -- cascade f1.s2p f2.s2p  # CLI: cascade two 2-port networks
 cargo doc --open                  # Generate and view API docs
 ```
+
+## Releases
+
+Maintain the deterministic release workflow with `create-release-process`.
+Execute ordinary releases with `cut-release` via `just cut-release`; see
+`docs/release.md` for the repo-local contract. The runner requires an explicit
+SemVer `--version`, supports read-only version queries, and creates the GitHub
+release as the final public step of a real release.
 
 ## Module Map
 
