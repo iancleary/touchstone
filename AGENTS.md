@@ -2,7 +2,7 @@
 
 ## Overview
 
-Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading via ABCD parameters. Published on crates.io; current release target is v0.14.0.
+Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading via ABCD parameters. Published on crates.io; current release target is v0.14.1.
 
 ## Commands
 
