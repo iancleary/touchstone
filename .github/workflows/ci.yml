@@ -18,16 +18,18 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Use Rust stable
         run: |
           rustup update stable
           rustup default stable
           rustup component add rustfmt clippy
-      - name: Install just
-        run: cargo install just --locked
       - name: Run contributor checks
-        run: just ci
+        run: |
+          cargo fmt -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test
+          cargo build
       - name: Publish crate
         if: github.ref_type == 'tag'
         run: cargo publish --verbose

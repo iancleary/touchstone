@@ -52,7 +52,7 @@ doc:
 # format, lint, and test
 check: fmt-check lint test
 
-# run checks and build
+# run checks and build; keep in sync with .github/workflows/ci.yml
 ci: check build
 
 # cut a GitHub/crates.io release; pass args such as --dry-run or --notes-file
