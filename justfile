@@ -49,10 +49,18 @@ cascade first="files/ntwk1.s2p" second="files/ntwk2.s2p":
 doc:
     cargo doc --open
 
-# format, lint, and test
-check: fmt-check lint test
+# check documentation with rustdoc warnings denied
+doc-check:
+    RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 
-# run checks and build; keep in sync with .github/workflows/ci.yml
+# verify package contents without publishing
+package:
+    cargo package
+
+# format, lint, test, document, and package like CI
+check: fmt-check lint test doc-check package
+
+# run the same checks and build mirrored by CI
 ci: check build
 
 # cut a GitHub/crates.io release; pass args such as --dry-run or --notes-file
