@@ -29,10 +29,6 @@ build:
 release:
     cargo build --release
 
-# cut a GitHub release
-cut-release *args:
-    ./scripts/cut-release.sh {{args}}
-
 # run the CLI against a Touchstone file or directory
 dev target="files/ntwk3.s2p":
     cargo run -- "{{target}}"
@@ -58,3 +54,7 @@ check: fmt-check lint test
 
 # run checks and build
 ci: check build
+
+# cut a GitHub/crates.io release; pass args such as --dry-run or --notes-file
+cut-release *args:
+    scripts/cut-release.sh {{args}}
