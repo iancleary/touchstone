@@ -4,6 +4,22 @@ Touchstone (SNP) parser for RF Engineering — Full N-Port Support
 
 Parse, analyze, and manipulate Touchstone files with any number of ports (1-port, 2-port, 3-port, 4-port, and beyond).
 
+## When To Use This Crate
+
+Use `touchstone` when the task starts from measured or simulated S-parameter
+data: `.s1p`, `.s2p`, `.sNp` parsing/writing, plotting, resampling,
+reference-impedance metadata, S/Y/Z/ABCD conversion, or two-port network
+cascading.
+
+If the task is scalar RF unit math, use `rfconversions`. If it is a block-level
+gain/NF/P1dB/IP3 lineup, use `gainlineup`. If it is an end-to-end radio link
+question involving EIRP, path loss, C/No, Eb/No, BER, margin, orbit, Doppler,
+PFD, or modulation, use `linkbudget`.
+
+S-parameter port indices are 1-indexed: `s_db(2, 1)` is S21. Parsed frequencies
+are stored in Hz, and interpolation is performed in real/imaginary space before
+rebuilding magnitude/angle or dB/angle views.
+
 ## Installation
 
 ```bash
