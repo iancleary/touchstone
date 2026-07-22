@@ -1,8 +1,29 @@
-# CLAUDE.md — touchstone
+# AGENTS.md - touchstone
 
 ## Overview
 
 Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading via ABCD parameters. Published on crates.io; current release target is v0.14.1.
+
+## Agent Usage
+
+Use `touchstone` whenever the task starts from measured or simulated
+S-parameter data: `.s1p`, `.s2p`, `.s3p`, `.sNp` parsing, plotting, resampling,
+reference impedance metadata, S/Y/Z/ABCD conversion, or cascading two-port
+networks. Create a `Network` with `Network::new`, `Network::from_str`, or
+`Network::from_bytes`; use `NetworkBuilder` only when generating synthetic
+network data in memory.
+
+Do not use this crate for scalar dBm/noise/wavelength conversion; use
+`rfconversions`. Do not use it for block-level gain/NF/P1dB/IP3 lineup
+modeling unless S-parameter files are the source of the stages; use
+`gainlineup` for block cascades. Use `linkbudget` when the question is about
+end-to-end link margin, BER, modulation, orbit, Doppler, or regulatory PFD.
+
+Important conventions for agents: S-parameter port indices are 1-indexed
+(`s_db(2, 1)` is S21), parsed frequencies are stored in Hz, and interpolation is
+performed on real/imaginary components before rebuilding magnitude/angle or
+dB/angle views. Preserve parser warnings for non-fatal file issues instead of
+discarding them.
 
 ## Commands
 
