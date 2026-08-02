@@ -27,8 +27,10 @@ For a real release, `scripts/cut-release.sh`:
 
 1. Fetches `origin/main` and tags.
 2. Updates `Cargo.toml`, `Cargo.lock`, `AGENTS.md`, and `CLAUDE.md`.
-3. Runs `just check`.
-4. Runs `cargo package`.
+3. Runs the same checks as `just check`, except package verification is deferred
+   until after the version files are updated.
+4. Runs `cargo package --allow-dirty` so the package includes the intended
+   release version before the version bump commit exists.
 5. Commits the version bump.
 6. Pushes `main`.
 7. Creates the GitHub release with `gh release create`.
