@@ -299,16 +299,16 @@ fn parse_plot_open_in_browser(file_path: String) -> Result<(), &'static str> {
         // relative path with separators, just append .hmtl
         // bare_filename, prepend ./ and append .html
         let output_html_path = if file_path_config.absolute_path {
-            let mut file_path_html = format!("{}.html", &file_path);
+            let mut file_path_html = format!("{}.html", file_path);
             // Remove the UNC prefix on Windows if present
             if cfg!(target_os = "windows") && file_path_html.starts_with(r"\\?\") {
                 file_path_html = file_path_html[4..].to_string();
             }
             file_path_html
         } else if file_path_config.relative_path_with_separators {
-            format!("{}.html", &file_path)
+            format!("{}.html", file_path)
         } else if file_path_config.bare_filename {
-            format!("./{}.html", &file_path)
+            format!("./{}.html", file_path)
         } else {
             panic!(
                 "file_path_config must have one true value: {:?}",
