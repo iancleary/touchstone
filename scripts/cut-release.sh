@@ -214,8 +214,11 @@ if [[ "$dry_run" == false ]]; then
     update_version_files "$current" "$version"
 fi
 
-run just check
-run cargo package
+run just fmt-check
+run just lint
+run just test
+run just doc-check
+run cargo package --allow-dirty
 run git add Cargo.toml Cargo.lock AGENTS.md CLAUDE.md
 run git commit -m "chore: prepare $tag release"
 run git push origin main
