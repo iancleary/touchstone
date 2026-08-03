@@ -1,5 +1,8 @@
 # touchstone
 
+[![Crates.io](https://img.shields.io/crates/v/touchstone.svg)](https://crates.io/crates/touchstone)
+[![Docs.rs](https://docs.rs/touchstone/badge.svg)](https://docs.rs/touchstone)
+
 Touchstone (SNP) parser for RF Engineering — Full N-Port Support
 
 Parse, analyze, and manipulate Touchstone files with any number of ports (1-port, 2-port, 3-port, 4-port, and beyond).
