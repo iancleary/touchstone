@@ -4,6 +4,14 @@
 //! A Rust library for parsing, manipulating, and plotting Touchstone (`.sNp`) files
 //! containing S-parameter data for RF and microwave networks.
 //!
+//! Use `touchstone` for measured or simulated S-parameter files, network
+//! resampling, reference impedance metadata, S/Y/Z/ABCD conversion, and two-port
+//! network cascading. Use `rfconversions` for scalar RF math, `gainlineup` for
+//! block-level gain/NF/P1dB/IP3 lineups, and `linkbudget` for end-to-end radio
+//! link performance.
+//!
+//! S-parameter port indices are 1-indexed: `s_db(2, 1)` is S21.
+//!
 //! # Examples
 //!
 //! ```
