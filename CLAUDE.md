@@ -25,6 +25,35 @@ performed on real/imaginary components before rebuilding magnitude/angle or
 dB/angle views. Preserve parser warnings for non-fatal file issues instead of
 discarding them.
 
+## Agent Operating Loop
+
+Start with the file format contract before changing code. Touchstone parsing is
+mostly about preserving RF file semantics across many dialects, so read the
+smallest relevant slice of `docs/touchstone_ver2_1.pdf`, then inspect the
+parser, data-pair conversions, and tests that already cover that behavior.
+
+Make changes accretive:
+
+- When adding parser support, add or update a fixture in `files/` and a focused
+  integration test that names the Touchstone construct being protected.
+- When fixing conversion, interpolation, cascade, or matrix behavior, assert on
+  stable public APIs such as `Network::from_str`, `Network::from_bytes`,
+  `s_matrix_at`, `points`, `sample_at`, or `to_touchstone_string` instead of
+  internal parser storage.
+- When documenting public behavior, keep README examples and
+  `tests/readme_examples.rs` aligned so examples stay executable.
+- When changing CLI behavior, update CLI help expectations and avoid checking in
+  generated plot HTML unless the example artifact is intentionally part of the
+  change.
+- When a malformed file should be tolerated, preserve the issue as a
+  `TouchstoneWarning`; when it would make numeric data ambiguous, return a
+  contextual `TouchstoneError`.
+
+Keep the repo agent-intuitive by leaving the next person a named path through
+the code: document durable workflow changes here, user-facing API behavior in
+README, release mechanics in `docs/release.md`, and executable expectations in
+tests.
+
 ## Commands
 
 ```bash
@@ -66,6 +95,27 @@ just cut-release --notes-file /tmp/touchstone-release.md            # Cut releas
 | `open` | `src/open.rs` | Cross-platform file/URL opening |
 | `plot` | `src/plot.rs` | HTML plot generation |
 
+## Change And Test Map
+
+- Parser grammar, option lines, v2 keywords, warnings, or error context:
+  `src/parser.rs`, `src/option_line.rs`, `src/data_line.rs`,
+  `tests/edge_cases.rs`, `tests/s2p_coverage.rs`, and any new fixture under
+  `files/`.
+- Data representation, magnitude/angle/dB/RI conversion, matrices, or aliases:
+  `src/data_pairs.rs`, `src/utils.rs`, `tests/matrix_api.rs`, and
+  `tests/generated_network_contracts.rs`.
+- Network construction, serialization, or generated fixtures:
+  `src/network_builder.rs`, `src/lib.rs`, and
+  `tests/generated_network_contracts.rs`.
+- Sampling, resampling, extrapolation, parameter conversion, or cascade:
+  `src/lib.rs`, `src/utils.rs`, `tests/network_builder.rs`,
+  `tests/in_memory_network.rs`, and `tests/matrix_api.rs`.
+- CLI plotting, path handling, cascade command, or diagnostics:
+  `src/cli.rs`, `src/file_operations.rs`, `src/plot.rs`, `src/open.rs`, and
+  `tests/cli_integration.rs`.
+- README examples or public quick-start changes: `README.md` and
+  `tests/readme_examples.rs`.
+
 ## Key Types
 
 - `Network` — main struct; created via `Network::new(path)`, `Network::from_str(name, contents)`, or `Network::from_bytes(name, bytes)`; has `s_db()`, `s_ri()`, `s_ma()`, `sample_at()`, `resample()`, `cascade()`, and `save()`
@@ -84,4 +134,5 @@ just cut-release --notes-file /tmp/touchstone-release.md            # Cut releas
 - **src/data_pairs.rs** — Complex number representations and conversions
 - **src/parser.rs** — File parsing logic
 - **files/** — Example .s2p/.s3p/.s4p test files
-- Tests are in `src/lib.rs` and individual module files
+- **tests/** — Integration coverage for fixtures, README examples, CLI behavior,
+  generated networks, in-memory parsing, matrices, and builder contracts
