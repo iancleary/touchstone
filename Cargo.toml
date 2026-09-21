@@ -10,7 +10,7 @@ license = "MIT"
 name = "touchstone"
 readme = "README.md"
 repository = "https://github.com/iancleary/touchstone"
-version = "0.14.4"
+version = "0.14.5"
 exclude = [
     ".vscode/*",
     "docs/*.pdf",
