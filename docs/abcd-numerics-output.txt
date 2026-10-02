@@ -1,0 +1,86 @@
+f64 two-port numerical probe; errors: reflection absolute, S12/S21 relative
+
+matched 0 dB roundtrip, expected |S12|=1.000e0
+public S->ABCD->S     reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e0+0.000e0i
+tracked determinant   reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e0+0.000e0i
+matched 0 dB as two 0 dB stages
+public ABCD pair      reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e0+0.000e0i
+tracked ABCD pair     reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e0+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e0+0.000e0i
+
+matched 20 dB roundtrip, expected |S12|=1.000e-1
+public S->ABCD->S     reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-1+0.000e0i
+tracked determinant   reflection abs=5.551e-17  transmission rel=0.000e0  S12=1.000e-1+0.000e0i
+matched 20 dB as two 10 dB stages
+public ABCD pair      reflection abs=4.441e-17  transmission rel=3.469e-15  S12=1.000e-1+0.000e0i
+tracked ABCD pair     reflection abs=0.000e0  transmission rel=1.388e-16  S12=1.000e-1+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-1+0.000e0i
+
+matched 60 dB roundtrip, expected |S12|=1.000e-3
+public S->ABCD->S     reflection abs=2.842e-17  transmission rel=2.910e-11  S12=1.000e-3+0.000e0i
+tracked determinant   reflection abs=5.551e-17  transmission rel=0.000e0  S12=1.000e-3+0.000e0i
+matched 60 dB as two 30 dB stages
+public ABCD pair      reflection abs=0.000e0  transmission rel=2.910e-11  S12=1.000e-3+0.000e0i
+tracked ABCD pair     reflection abs=5.551e-17  transmission rel=2.168e-16  S12=1.000e-3+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=2.168e-16  S12=1.000e-3+0.000e0i
+
+matched 90 dB roundtrip, expected |S12|=3.162e-5
+public S->ABCD->S     reflection abs=5.752e-17  transmission rel=5.960e-8  S12=3.162e-5+0.000e0i
+tracked determinant   reflection abs=5.551e-17  transmission rel=0.000e0  S12=3.162e-5+0.000e0i
+matched 90 dB as two 45 dB stages
+public ABCD pair      reflection abs=5.752e-17  transmission rel=2.980e-8  S12=3.162e-5+0.000e0i
+tracked ABCD pair     reflection abs=0.000e0  transmission rel=0.000e0  S12=3.162e-5+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=0.000e0  S12=3.162e-5+0.000e0i
+
+matched 120 dB roundtrip, expected |S12|=1.000e-6
+public S->ABCD->S     reflection abs=0.000e0  transmission rel=1.221e-4  S12=1.000e-6+0.000e0i
+tracked determinant   reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-6+0.000e0i
+matched 120 dB as two 60 dB stages
+public ABCD pair      reflection abs=2.910e-17  transmission rel=6.104e-5  S12=9.999e-7+0.000e0i
+tracked ABCD pair     reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-6+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-6+0.000e0i
+
+matched 180 dB roundtrip, expected |S12|=1.000e-9
+public S->ABCD->S     reflection abs=0.000e0  transmission rel=1.000e0  S12=0.000e0+0.000e0i
+tracked determinant   reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-9+0.000e0i
+matched 180 dB as two 90 dB stages
+public ABCD pair      reflection abs=0.000e0  transmission rel=3.100e1  S12=3.200e-8+0.000e0i
+tracked ABCD pair     reflection abs=0.000e0  transmission rel=2.068e-16  S12=1.000e-9+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-9+0.000e0i
+Network::cascade      reflection abs=0.000e0  transmission rel=3.100e1  S12=3.200e-8+0.000e0i
+
+matched 240 dB roundtrip, expected |S12|=1.000e-12
+public S->ABCD->S     reflection abs=3.052e-17  transmission rel=3.355e7  S12=-3.355e-5+0.000e0i
+tracked determinant   reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-12+0.000e0i
+matched 240 dB as two 120 dB stages
+public ABCD pair      reflection abs=0.000e0  transmission rel=1.000e0  S12=0.000e0+0.000e0i
+tracked ABCD pair     reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-12+0.000e0i
+scattering pair       reflection abs=0.000e0  transmission rel=0.000e0  S12=1.000e-12+0.000e0i
+Network::cascade      reflection abs=0.000e0  transmission rel=1.000e0  S12=0.000e0+0.000e0i
+
+260 dB boundary observation (outside the 0..240 dB target)
+public S->ABCD->S     unavailable
+  public error: S to ABCD denominator is singular at pivot 0: magnitude 0.0000000000002 <= tolerance 0.000000000001
+
+12 x 20 dB matched chain (240 dB total)
+public ABCD chain     reflection abs=3.662e-16  transmission rel=3.355e7  S12=-3.355e-5+0.000e0i
+tracked ABCD chain    reflection abs=1.665e-16  transmission rel=8.078e-16  S12=1.000e-12+0.000e0i
+scattering chain      reflection abs=0.000e0  transmission rel=6.058e-16  S12=1.000e-12+0.000e0i
+
+complex case 1: independent internal-wave f64 solve
+public ABCD pair      reflection abs=3.331e-16  transmission rel=2.429e-15  S12=8.428e-2+3.936e-2i
+tracked ABCD pair     reflection abs=1.804e-16  transmission rel=4.220e-16  S12=8.428e-2+3.936e-2i
+scattering pair       reflection abs=0.000e0  transmission rel=1.668e-16  S12=8.428e-2+3.936e-2i
+
+complex case 2: independent internal-wave f64 solve
+public ABCD pair      reflection abs=1.137e-14  transmission rel=8.319e-16  S12=2.000e0+9.000e0i
+tracked ABCD pair     reflection abs=1.528e-14  transmission rel=9.634e-16  S12=2.000e0+9.000e0i
+scattering pair       reflection abs=1.776e-15  transmission rel=1.558e-16  S12=2.000e0+9.000e0i
+
+exact S21=0 in first stage
+public ABCD pair      unavailable
+tracked ABCD pair     unavailable
+scattering pair       reflection abs=1.388e-17  transmission rel=1.576e-16  S12=4.621e-2+7.493e-2i
+Network::cascade      reflection abs=inf  transmission rel=inf  S12=NaNNaNi
+
+Limitations: all references and candidates use f64; no high-precision oracle or performance measurement. Tracked ABCD needs nonzero S21 and finite intermediates. Direct scattering needs a nonsingular internal connection.
