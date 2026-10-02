@@ -1,6 +1,6 @@
 # ABCD numerical investigation
 
-This report records the Rust f64 investigation at commit `3731d5a`, before
+This report records the Rust f64 investigation at commit `84f57bc`, before
 the shared conversion implementation. Its saved output is historical evidence.
 The current example uses `try_cascade`, so invalid inputs now produce errors
 instead of the old NaN cascade results. See [the consistency contract](cascade-consistency.md)
