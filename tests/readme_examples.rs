@@ -141,6 +141,8 @@ fn cascade_networks() {
     let net2 = Network::new("files/ntwk2.s2p").unwrap();
 
     let cascaded = net1.cascade(&net2);
+    let checked = net1.try_cascade(&net2).unwrap();
+    assert_eq!(checked.points().unwrap(), cascaded.points().unwrap());
     assert_eq!(cascaded.rank, 2);
     assert!(!cascaded.f.is_empty());
     println!("Cascaded network has {} data points", cascaded.f.len());

@@ -337,76 +337,65 @@ impl ops::Mul for RealImaginaryMatrix {
     }
 }
 impl RealImaginaryMatrix {
-    // Convert S-parameters to ABCD parameters (2x2 matrices only)
-    // https://en.wikipedia.org/wiki/Scattering_parameters#Scattering_transfer_parameters
-    // But we want ABCD (Transmission Matrix), not T-parameters (Scattering Transfer Matrix)
-    // https://en.wikipedia.org/wiki/ABCD_parameters#S_parameters
-    // A = ((1+S11)(1-S22) + S12S21) / (2S21)
-    // B = Z0 * ((1+S11)(1+S22) - S12S21) / (2S21)
-    // C = (1/Z0) * ((1-S11)(1-S22) - S12S21) / (2S21)
-    // D = ((1-S11)(1+S22) + S12S21) / (2S21)
+    /// Compatibility wrapper for the checked public S-to-ABCD conversion.
+    /// Panics when the input cannot be converted. Use `SMatrix::to_abcd`
+    /// to handle conversion errors explicitly.
     pub fn to_abcd(&self, z0: f64) -> RealImaginaryMatrix {
-        assert_eq!(
-            self.n, 2,
-            "ABCD conversion only supported for 2x2 S-parameter matrices"
-        );
-
-        let s11 = self.data[0][0];
-        let s12 = self.data[0][1];
-        let s21 = self.data[1][0];
-        let s22 = self.data[1][1];
-
-        let one = RealImaginary(1.0, 0.0);
-        let two_s21 = s21 * 2.0;
-
-        // A = ((1+S11)(1-S22) + S12S21) / (2S21)
-        let a = ((one + s11) * (one - s22) + s12 * s21) / two_s21;
-
-        // B = Z0 * ((1+S11)(1+S22) - S12S21) / (2S21)
-        let b = ((one + s11) * (one + s22) - s12 * s21) * z0 / two_s21;
-
-        // C = (1/Z0) * ((1-S11)(1-S22) - S12S21) / (2S21)
-        let c = ((one - s11) * (one - s22) - s12 * s21) / z0 / two_s21;
-
-        // D = ((1-S11)(1+S22) + S12S21) / (2S21)
-        let d = ((one - s11) * (one + s22) + s12 * s21) / two_s21;
-
-        RealImaginaryMatrix::from_vec(vec![vec![a, b], vec![c, d]])
+        let matrix = crate::SMatrix {
+            rank: self.n,
+            data: self
+                .data
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|value| crate::Complex {
+                            re: value.0,
+                            im: value.1,
+                        })
+                        .collect()
+                })
+                .collect(),
+        };
+        let abcd = matrix.to_abcd(z0).unwrap_or_else(|error| panic!("{error}"));
+        let ri = |value: crate::Complex| RealImaginary(value.re, value.im);
+        Self::from_vec(vec![
+            vec![ri(abcd.a), ri(abcd.b)],
+            vec![ri(abcd.c), ri(abcd.d)],
+        ])
     }
 
-    // Convert ABCD parameters to S-parameters (2x2 matrices only)
-    // https://en.wikipedia.org/wiki/ABCD_parameters#S_parameters
-    // Denom = A + B/Z0 + C*Z0 + D
-    // S11 = (A + B/Z0 - C*Z0 - D) / Denom
-    // S12 = 2(AD - BC) / Denom  <-- Note: AD-BC is determinant, usually 1 for reciprocal networks
-    // S21 = 2 / Denom
-    // S22 = (-A + B/Z0 - C*Z0 + D) / Denom
+    /// Compatibility wrapper for the checked public ABCD-to-S conversion.
+    /// Panics when the input cannot be converted. Use `ABCDMatrix::to_s_matrix`
+    /// to handle conversion errors explicitly.
     pub fn to_s(&self, z0: f64) -> RealImaginaryMatrix {
         assert_eq!(
             self.n, 2,
             "S-parameter conversion from ABCD only supported for 2x2 matrices"
         );
-
-        let a = self.data[0][0];
-        let b = self.data[0][1];
-        let c = self.data[1][0];
-        let d = self.data[1][1];
-
-        let denom = a + b / z0 + c * z0 + d;
-
-        // S11 = (A + B/Z0 - C*Z0 - D) / Denom
-        let s11 = (a + b / z0 - c * z0 - d) / denom;
-
-        // S12 = 2(AD - BC) / Denom
-        let s12 = (a * d - b * c) * 2.0 / denom;
-
-        // S21 = 2 / Denom
-        let s21 = RealImaginary(2.0, 0.0) / denom;
-
-        // S22 = (-A + B/Z0 - C*Z0 + D) / Denom
-        let s22 = (RealImaginary(0.0, 0.0) - a + b / z0 - c * z0 + d) / denom;
-
-        RealImaginaryMatrix::from_vec(vec![vec![s11, s12], vec![s21, s22]])
+        let c = |value: RealImaginary| crate::Complex {
+            re: value.0,
+            im: value.1,
+        };
+        let abcd = crate::ABCDMatrix {
+            a: c(self.data[0][0]),
+            b: c(self.data[0][1]),
+            c: c(self.data[1][0]),
+            d: c(self.data[1][1]),
+        };
+        let matrix = abcd
+            .to_s_matrix(z0)
+            .unwrap_or_else(|error| panic!("{error}"));
+        Self::from_vec(
+            matrix
+                .data
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|value| RealImaginary(value.re, value.im))
+                        .collect()
+                })
+                .collect(),
+        )
     }
 }
 

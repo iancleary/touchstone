@@ -118,7 +118,7 @@ just cut-release --notes-file /tmp/touchstone-release.md            # Cut releas
 
 ## Key Types
 
-- `Network` — main struct; created via `Network::new(path)`, `Network::from_str(name, contents)`, or `Network::from_bytes(name, bytes)`; has `s_db()`, `s_ri()`, `s_ma()`, `sample_at()`, `resample()`, `cascade()`, and `save()`
+- `Network` — main struct; created via `Network::new(path)`, `Network::from_str(name, contents)`, or `Network::from_bytes(name, bytes)`; has `s_db()`, `s_ri()`, `s_ma()`, `sample_at()`, `resample()`, `try_cascade()`, `cascade()`, and `save()`
 - `NetworkBuilder` — generated S-parameter network construction from in-memory matrices
 - `ReferenceImpedance` — common or per-port Touchstone v2 reference impedance metadata
 - `SMatrix`, `ParameterMatrix`, `ABCDMatrix`, `Complex` — stable matrix and complex value APIs for simulation-oriented workflows
