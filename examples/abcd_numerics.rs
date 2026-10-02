@@ -54,8 +54,8 @@ fn public_roundtrip(s: &S) -> Result<S, String> {
         .map_err(|e| e.to_string())
 }
 
-// Network::cascade uses the crate's older internal matrix path, which differs
-// from the public SMatrix conversion above.
+// The fallible network API now shares the public matrix conversion path.
+// The saved investigation output records behavior before that consolidation.
 fn network_pair(a: &S, b: &S) -> Result<S, String> {
     let a = NetworkBuilder::new("a.s2p", 2)
         .point(1.0e9, a.clone())
@@ -65,7 +65,9 @@ fn network_pair(a: &S, b: &S) -> Result<S, String> {
         .point(1.0e9, b.clone())
         .build()
         .map_err(|e| e.to_string())?;
-    a.cascade(&b).s_matrix_at(0).map_err(|e| e.to_string())
+    a.try_cascade(&b)
+        .and_then(|network| network.s_matrix_at(0))
+        .map_err(|e| e.to_string())
 }
 
 // ABCD numerators over a shared denominator. This defers division during
@@ -318,7 +320,7 @@ fn run() {
         );
         if db == 180.0 || db == 240.0 {
             report(
-                "Network::cascade",
+                "Network::try_cascade",
                 network_pair(&half, &half).as_ref().ok(),
                 &expected,
             );
@@ -414,7 +416,11 @@ fn run() {
         &reference,
     );
     let legacy_zero = network_pair(&blocked, &b);
-    report("Network::cascade", legacy_zero.as_ref().ok(), &reference);
+    report(
+        "Network::try_cascade",
+        legacy_zero.as_ref().ok(),
+        &reference,
+    );
     if let Err(error) = legacy_zero {
         println!("  Network::cascade readback error: {error}");
     }

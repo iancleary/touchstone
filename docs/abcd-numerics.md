@@ -1,8 +1,11 @@
 # ABCD numerical investigation
 
-This branch evaluates Rust f64 algorithms. It does not change the production
-API, conversion formulas, or cascade implementation. The Bend experiments are
-archived outside this repository. This investigation is self-contained.
+This report records the Rust f64 investigation at commit `3731d5a`, before
+the shared conversion implementation. Its saved output is historical evidence.
+The current example uses `try_cascade`, so invalid inputs now produce errors
+instead of the old NaN cascade results. See [the consistency contract](cascade-consistency.md)
+for the implemented follow-up. The Bend experiments remain archived outside
+this repository; this investigation is self-contained.
 
 ## Reproduce
 
@@ -79,7 +82,7 @@ and final `just fmt-check` pass. The baseline `just lint` fails on three
 pre-existing `useless_borrows_in_formatting` warnings in `src/cli.rs` at lines
 302, 309, and 311. No production source was changed to silence them.
 
-## Code review findings
+## Code review findings at the investigation commit
 
 - `Network::cascade` uses the older `RealImaginaryMatrix` conversion methods.
   Those methods do not have the public matrix API's denominator validation.

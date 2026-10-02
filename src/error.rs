@@ -226,6 +226,52 @@ pub enum TouchstoneError {
         /// Number of S-parameter data rows.
         data_count: usize,
     },
+    /// Two cascaded networks have different numbers of frequency points.
+    CascadePointCountMismatch {
+        /// Number of points in the first network.
+        first: usize,
+        /// Number of points in the second network.
+        second: usize,
+    },
+    /// A data row frequency differs from its network frequency vector.
+    FrequencyRowMismatch {
+        /// Zero-based point index.
+        point_index: usize,
+        /// Frequency in the network frequency vector, in Hz.
+        vector_frequency: f64,
+        /// Frequency stored in the data row, in Hz.
+        row_frequency: f64,
+    },
+    /// Cascaded networks have different frequency values at the same index.
+    CascadeFrequencyMismatch {
+        /// Zero-based point index.
+        point_index: usize,
+        /// First network frequency in Hz.
+        first: f64,
+        /// Second network frequency in Hz.
+        second: f64,
+    },
+    /// Cascaded networks use different frequency units.
+    CascadeFrequencyUnitMismatch {
+        /// First network frequency unit.
+        first: String,
+        /// Second network frequency unit.
+        second: String,
+    },
+    /// Cascaded networks use different common reference impedances.
+    CascadeReferenceImpedanceMismatch {
+        /// First network reference impedance in ohms.
+        first: f64,
+        /// Second network reference impedance in ohms.
+        second: f64,
+    },
+    /// A cascade requires two two-port networks.
+    CascadeRankMismatch {
+        /// Rank of the first network.
+        first: i32,
+        /// Rank of the second network.
+        second: i32,
+    },
     /// A generated S-parameter matrix declared a different rank than the network.
     InvalidMatrixRank {
         /// 0-based frequency point index.
@@ -511,6 +557,30 @@ impl fmt::Display for TouchstoneError {
             } => write!(
                 f,
                 "frequency vector has {frequency_count} values but network data has {data_count} rows"
+            ),
+            Self::CascadePointCountMismatch { first, second } => write!(
+                f,
+                "cannot cascade networks with different point counts: {first} and {second}"
+            ),
+            Self::FrequencyRowMismatch { point_index, vector_frequency, row_frequency } => write!(
+                f,
+                "data row at point {point_index} has frequency {row_frequency} Hz, expected {vector_frequency} Hz"
+            ),
+            Self::CascadeFrequencyMismatch { point_index, first, second } => write!(
+                f,
+                "cannot cascade networks with different frequency grids: point {point_index} is {first} Hz and {second} Hz"
+            ),
+            Self::CascadeFrequencyUnitMismatch { first, second } => write!(
+                f,
+                "Cannot cascade networks with different frequency units: {first} and {second}"
+            ),
+            Self::CascadeReferenceImpedanceMismatch { first, second } => write!(
+                f,
+                "Cannot cascade networks with different reference impedances: {first} and {second}"
+            ),
+            Self::CascadeRankMismatch { first, second } => write!(
+                f,
+                "Cascading is only implemented for 2-port networks. Use cascade_ports() for explicit port specification. Found ranks {first} and {second}"
             ),
             Self::InvalidMatrixRank {
                 point_index,

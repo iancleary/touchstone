@@ -400,6 +400,9 @@ impl SMatrix {
     ///
     /// `z0` is the common real reference impedance in ohms. The conversion is only defined here for
     /// rank-2 matrices and returns [`TouchstoneError::UnsupportedConversionRank`] otherwise.
+    /// The denominator `2*S21` is treated as singular at magnitude `1e-12` or below.
+    /// This cutoff is not an accuracy bound. Input and resulting ABCD values
+    /// must be finite.
     pub fn to_abcd(&self, z0: f64) -> Result<ABCDMatrix, TouchstoneError> {
         validate_reference_impedance(z0)?;
         validate_matrix_data("S", self.rank, &self.data)?;
@@ -426,12 +429,14 @@ impl SMatrix {
             PARAMETER_CONVERSION_TOLERANCE,
         )?;
 
-        Ok(ABCDMatrix {
+        let result = ABCDMatrix {
             a: ((one + s11) * (one - s22) + s12 * s21) / two_s21,
             b: (((one + s11) * (one + s22) - s12 * s21) * z0) / two_s21,
             c: (((one - s11) * (one - s22) - s12 * s21) / z0) / two_s21,
             d: ((one - s11) * (one + s22) + s12 * s21) / two_s21,
-        })
+        };
+        validate_abcd_values(&result)?;
+        Ok(result)
     }
 
     /// Convert an admittance-parameter matrix to an S-parameter matrix.
@@ -575,20 +580,13 @@ impl ABCDMatrix {
     /// Convert this ABCD matrix to a two-port S-parameter matrix.
     ///
     /// `z0` is the common real reference impedance in ohms.
+    /// The denominator `A+B/z0+C*z0+D` is treated as singular at magnitude `1e-12` or below.
+    /// This cutoff is not an accuracy bound. Input and resulting S values
+    /// must be finite.
     pub fn to_s_matrix(&self, z0: f64) -> Result<SMatrix, TouchstoneError> {
         validate_reference_impedance(z0)?;
 
-        for (index, value) in [self.a, self.b, self.c, self.d].into_iter().enumerate() {
-            if !value.is_finite() {
-                return Err(TouchstoneError::InvalidParameterMatrixValue {
-                    matrix: "ABCD".to_string(),
-                    row: index / 2 + 1,
-                    column: index % 2 + 1,
-                    re: value.re,
-                    im: value.im,
-                });
-            }
-        }
+        validate_abcd_values(self)?;
 
         let denominator = self.a + self.b / z0 + self.c * z0 + self.d;
         ensure_non_singular_value(
@@ -598,7 +596,7 @@ impl ABCDMatrix {
             PARAMETER_CONVERSION_TOLERANCE,
         )?;
 
-        Ok(SMatrix {
+        let result = SMatrix {
             rank: 2,
             data: vec![
                 vec![
@@ -610,7 +608,9 @@ impl ABCDMatrix {
                     (-self.a + self.b / z0 - self.c * z0 + self.d) / denominator,
                 ],
             ],
-        })
+        };
+        validate_matrix_data("S", result.rank, &result.data)?;
+        Ok(result)
     }
 }
 
@@ -1152,6 +1152,11 @@ impl Network {
     ///
     /// For more control over port connections, use [`cascade_ports()`](Network::cascade_ports).
     ///
+    /// # Panics
+    ///
+    /// Panics on incompatible inputs, singular conversions, or nonfinite results.
+    /// Use [`try_cascade`](Self::try_cascade) to handle these errors explicitly.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1167,26 +1172,58 @@ impl Network {
     #[doc(alias = "ABCD parameters")]
     #[doc(alias = "chain")]
     pub fn cascade(&self, other: &Network) -> Network {
+        self.try_cascade(other).unwrap_or_else(|error| match error {
+            TouchstoneError::UnsupportedReferenceImpedance { .. } => panic!(
+                "Cannot cascade networks with per-port reference impedances; common scalar reference impedance is required"
+            ),
+            _ => panic!("{error}"),
+        })
+    }
+
+    /// Cascade two two-port S-parameter networks and return a structured error on failure.
+    ///
+    /// Both networks must have a finite positive common reference impedance, the same frequency
+    /// unit and exact frequency grid, and nonempty aligned frequency and data vectors. Each data
+    /// row must be a two-port S matrix with finite values. The conversion uses the shared
+    /// [`SMatrix::to_abcd`] and [`ABCDMatrix::to_s_matrix`] APIs.
+    pub fn try_cascade(&self, other: &Network) -> Result<Network, TouchstoneError> {
         if self.rank != 2 || other.rank != 2 {
-            panic!("Cascading is only implemented for 2-port networks. Use cascade_ports() for explicit port specification.");
+            return Err(TouchstoneError::CascadeRankMismatch {
+                first: self.rank,
+                second: other.rank,
+            });
         }
 
-        let self_z0 = common_reference_impedance_or_panic(self);
-        let other_z0 = common_reference_impedance_or_panic(other);
-
+        let self_z0 = self.scalar_reference_impedance_for_conversions()?;
+        let other_z0 = other.scalar_reference_impedance_for_conversions()?;
         if self_z0 != other_z0 {
-            panic!(
-                "Cannot cascade networks with different reference impedances: {} and {}",
-                self_z0, other_z0
-            );
+            return Err(TouchstoneError::CascadeReferenceImpedanceMismatch {
+                first: self_z0,
+                second: other_z0,
+            });
         }
-
-        // can avoid this by converting other.f to use self.frequency_unit instead of other.frequency_unit
         if self.frequency_unit != other.frequency_unit {
-            panic!(
-                "Cannot cascade networks with different frequency units: {} and {}",
-                self.frequency_unit, other.frequency_unit
-            );
+            return Err(TouchstoneError::CascadeFrequencyUnitMismatch {
+                first: self.frequency_unit.clone(),
+                second: other.frequency_unit.clone(),
+            });
+        }
+        self.validate_cascade_data()?;
+        other.validate_cascade_data()?;
+        if self.f.len() != other.f.len() {
+            return Err(TouchstoneError::CascadePointCountMismatch {
+                first: self.f.len(),
+                second: other.f.len(),
+            });
+        }
+        for (point_index, (&first, &second)) in self.f.iter().zip(&other.f).enumerate() {
+            if first != second {
+                return Err(TouchstoneError::CascadeFrequencyMismatch {
+                    point_index,
+                    first,
+                    second,
+                });
+            }
         }
 
         let mut comments = Vec::<String>::new();
@@ -1232,24 +1269,23 @@ impl Network {
         let new_name = format!("Cascaded({},{})", self.name, other.name);
 
         let mut s_new = Vec::new();
-        // Assuming index-wise alignment as discussed
-        let len = std::cmp::min(self.s.len(), other.s.len());
-
-        for i in 0..len {
-            let freq = self.s[i].frequency;
-            let s1 = &self.s[i].s_ri;
-            let s2 = &other.s[i].s_ri;
-
-            let abcd1 = s1.to_abcd(self_z0);
-            let abcd2 = s2.to_abcd(other_z0);
-
-            let abcd_new = abcd1 * abcd2;
-
-            // Resulting Z0? Usually the Z0 of the output port of the second network,
-            // but for S-parameters of the cascaded block, we usually reference the input port of the first
-            // and output port of the second.
-            // If Z0 is the same for both (checked at start of function), then it's just self_z0.
-            let s_new_ri = abcd_new.to_s(self_z0);
+        for i in 0..self.s.len() {
+            let freq = self.f[i];
+            let abcd1 = self.s_matrix_at(i)?.to_abcd(self_z0)?;
+            let abcd2 = other.s_matrix_at(i)?.to_abcd(other_z0)?;
+            let abcd_new = multiply_abcd(abcd1, abcd2);
+            let s_matrix = abcd_new.to_s_matrix(self_z0)?;
+            let s_new_ri = crate::data_pairs::RealImaginaryMatrix::from_vec(
+                s_matrix
+                    .data
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|value| crate::data_pairs::RealImaginary(value.re, value.im))
+                            .collect()
+                    })
+                    .collect(),
+            );
 
             let s_new_ma = crate::data_pairs::MagnitudeAngleMatrix::from_vec(vec![
                 vec![
@@ -1273,7 +1309,7 @@ impl Network {
             });
         }
 
-        Network {
+        Ok(Network {
             name: new_name,
             rank: self.rank,
             frequency_unit: self.frequency_unit.clone(),
@@ -1285,9 +1321,50 @@ impl Network {
             comments,
             comments_after_option_line,
             warnings: [self.warnings.clone(), other.warnings.clone()].concat(),
-            f: self.f.clone(), // Note: this might be longer than s_new if other is shorter
+            f: self.f.clone(),
             s: s_new,
+        })
+    }
+
+    fn validate_cascade_data(&self) -> Result<(), TouchstoneError> {
+        self.validate_frequency_data()?;
+        for (point_index, row) in self.s.iter().enumerate() {
+            if !row.frequency.is_finite() {
+                return Err(TouchstoneError::InvalidFrequency {
+                    point_index,
+                    frequency: row.frequency,
+                });
+            }
+            if row.frequency != self.f[point_index] {
+                return Err(TouchstoneError::FrequencyRowMismatch {
+                    point_index,
+                    vector_frequency: self.f[point_index],
+                    row_frequency: row.frequency,
+                });
+            }
+            let matrix = self.s_matrix_at(point_index)?;
+            if matrix.rank != 2 {
+                return Err(TouchstoneError::InvalidMatrixRank {
+                    point_index,
+                    matrix_rank: matrix.rank,
+                    expected_rank: 2,
+                });
+            }
+            for (row_index, values) in matrix.data.iter().enumerate() {
+                for (column_index, value) in values.iter().enumerate() {
+                    if !value.is_finite() {
+                        return Err(TouchstoneError::InvalidSParameterValue {
+                            point_index,
+                            to_port: row_index + 1,
+                            from_port: column_index + 1,
+                            re: value.re,
+                            im: value.im,
+                        });
+                    }
+                }
+            }
         }
+        Ok(())
     }
 
     /// Cascade two networks with explicit port specification
@@ -1621,6 +1698,24 @@ fn validate_reference_impedance(z0: f64) -> Result<(), TouchstoneError> {
     }
 }
 
+fn validate_abcd_values(matrix: &ABCDMatrix) -> Result<(), TouchstoneError> {
+    for (index, value) in [matrix.a, matrix.b, matrix.c, matrix.d]
+        .into_iter()
+        .enumerate()
+    {
+        if !value.is_finite() {
+            return Err(TouchstoneError::InvalidParameterMatrixValue {
+                matrix: "ABCD".to_string(),
+                row: index / 2 + 1,
+                column: index % 2 + 1,
+                re: value.re,
+                im: value.im,
+            });
+        }
+    }
+    Ok(())
+}
+
 fn validate_matrix_data(
     matrix: &str,
     rank: usize,
@@ -1797,14 +1892,12 @@ fn ensure_non_singular_value(
     }
 }
 
-fn common_reference_impedance_or_panic(network: &Network) -> f64 {
-    match network.reference_impedance() {
-        ReferenceImpedance::Common(z0) => z0,
-        ReferenceImpedance::PerPort(_) => {
-            panic!(
-                "Cannot cascade networks with per-port reference impedances; common scalar reference impedance is required"
-            );
-        }
+fn multiply_abcd(first: ABCDMatrix, second: ABCDMatrix) -> ABCDMatrix {
+    ABCDMatrix {
+        a: first.a * second.a + first.b * second.c,
+        b: first.a * second.b + first.b * second.d,
+        c: first.c * second.a + first.d * second.c,
+        d: first.c * second.b + first.d * second.d,
     }
 }
 
@@ -2828,6 +2921,140 @@ mod tests {
                 next_index: 1,
                 next_frequency
             } if previous_frequency == 2.0e9 && next_frequency == 1.0e9
+        ));
+    }
+
+    fn cascade_test_network() -> Network {
+        Network::from_str(
+            "cascade.s2p",
+            "# GHz S RI R 50\n1 0 0 1 0 1 0 0 0\n2 0 0 1 0 1 0 0 0\n",
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn try_cascade_rejects_misaligned_public_network_data() {
+        let first = cascade_test_network();
+        let mut second = first.clone();
+        second.f[1] = 3.0e9;
+        second.s[1].frequency = 3.0e9;
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::CascadeFrequencyMismatch { point_index: 1, .. })
+        ));
+
+        second = first.clone();
+        second.s[1].frequency = 3.0e9;
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::FrequencyRowMismatch { point_index: 1, .. })
+        ));
+
+        second = first.clone();
+        second.s.pop();
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::FrequencyDataLengthMismatch { .. })
+        ));
+
+        second = first.clone();
+        second.f.pop();
+        second.s.pop();
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::CascadePointCountMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn try_cascade_rejects_invalid_source_metadata_and_values() {
+        let first = cascade_test_network();
+        let mut second = first.clone();
+        second.rank = 1;
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::CascadeRankMismatch { .. })
+        ));
+
+        second = first.clone();
+        second.frequency_unit = "MHz".to_string();
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::CascadeFrequencyUnitMismatch { .. })
+        ));
+
+        second = first.clone();
+        second.z0 = 75.0;
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::CascadeReferenceImpedanceMismatch { .. })
+        ));
+
+        second = first.clone();
+        second.parameter = "Y".to_string();
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::UnsupportedNetworkParameter { .. })
+        ));
+
+        second = first.clone();
+        second.z0 = f64::INFINITY;
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::InvalidReferenceImpedance { .. })
+        ));
+
+        second = first.clone();
+        second.s[0]
+            .s_ri
+            .set(1, 1, crate::data_pairs::RealImaginary(f64::NAN, 0.0));
+        assert!(matches!(
+            first.try_cascade(&second),
+            Err(TouchstoneError::InvalidSParameterValue { point_index: 0, .. })
+        ));
+    }
+
+    #[test]
+    fn conversions_reject_nonfinite_results() {
+        let s = SMatrix {
+            rank: 2,
+            data: vec![
+                vec![
+                    Complex {
+                        re: 1.0e308,
+                        im: 0.0,
+                    },
+                    Complex::zero(),
+                ],
+                vec![
+                    Complex {
+                        re: 1.0e-12,
+                        im: 0.0,
+                    },
+                    Complex::zero(),
+                ],
+            ],
+        };
+        assert!(matches!(
+            s.to_abcd(50.0),
+            Err(TouchstoneError::InvalidParameterMatrixValue { matrix, .. }) if matrix == "ABCD"
+        ));
+
+        let abcd = ABCDMatrix {
+            a: Complex {
+                re: 1.0e155,
+                im: 0.0,
+            },
+            b: Complex::zero(),
+            c: Complex::zero(),
+            d: Complex {
+                re: 1.0e-155,
+                im: 0.0,
+            },
+        };
+        assert!(matches!(
+            abcd.to_s_matrix(50.0),
+            Err(TouchstoneError::InvalidParameterMatrixValue { matrix, .. }) if matrix == "S"
         ));
     }
 }

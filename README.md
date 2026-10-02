@@ -257,6 +257,17 @@ let cascaded = net1.cascade(&net2);
 println!("Cascaded network has {} data points", cascaded.f.len());
 ```
 
+For error handling, use `net1.try_cascade(&net2)?`. It returns a structured error
+for incompatible inputs, singular ABCD conversions, or nonfinite results.
+`cascade`, multiplication, and `cascade_ports` retain their convenience signatures
+and panic on those errors. Both networks must use the same common reference
+impedance, frequency unit, and aligned frequency grid; unequal grids are rejected
+instead of silently truncating. Resample explicitly when needed.
+
+The matrix and network APIs share one checked f64 ABCD conversion implementation.
+See [cascade consistency](docs/cascade-consistency.md) for practical examples,
+accuracy checks, and numerical limitations.
+
 For explicit port specification, use `cascade_ports`:
 
 ```rust
@@ -423,6 +434,7 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `network.to_touchstone_string()` | Serialize Touchstone text in memory       |
 | `network.write_touchstone(writer)` | Write Touchstone text to any writer      |
 | `network.save(path)`         | Write network to file                        |
+| `network.try_cascade(&other)` | Cascade with structured error handling       |
 | `network.cascade(&other)`    | Cascade two 2-port networks                  |
 | `network.cascade_ports(&other, from, to)` | Cascade with explicit port mapping |
 | `network.print_summary()`    | Print metadata to stdout                     |
