@@ -142,3 +142,14 @@ prerequisites in `fuzz/README.md`. The capability contract is in `docs/support.m
 - **files/** — Example .s2p/.s3p/.s4p test files
 - **tests/** — Integration coverage for fixtures, README examples, CLI behavior,
   generated networks, in-memory parsing, matrices, and builder contracts
+
+## Shared Just Interface
+
+Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`,
+`just test`, and `just doc-check` for focused verification. `just check` also
+verifies packaging and requires a clean checkout; `just ci` adds a release build.
+`just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
+Release arguments are forwarded literally by `just cut-release`; quote paths
+that contain spaces. Project-specific recipes remain optional.
+
+`just fuzz [seconds]` accepts an integer from 1 to 3600 (default: 60).
