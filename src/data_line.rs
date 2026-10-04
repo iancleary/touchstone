@@ -9,11 +9,11 @@ use crate::data_pairs::RealImaginary;
 use crate::data_pairs::RealImaginaryMatrix;
 
 #[derive(Clone, Debug)]
-pub struct ParsedDataLine {
-    pub frequency: f64,
-    pub s_ri: RealImaginaryMatrix,
-    pub s_db: DecibelAngleMatrix,
-    pub s_ma: MagnitudeAngleMatrix,
+pub(crate) struct ParsedDataLine {
+    pub(crate) frequency: f64,
+    pub(crate) s_ri: RealImaginaryMatrix,
+    pub(crate) s_db: DecibelAngleMatrix,
+    pub(crate) s_ma: MagnitudeAngleMatrix,
 }
 
 pub(crate) fn parsed_data_line_from_ri_matrix(

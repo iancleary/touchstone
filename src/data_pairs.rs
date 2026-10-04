@@ -240,7 +240,7 @@ impl DecibelAngle {
 }
 
 #[derive(Clone, Debug)]
-pub struct RealImaginaryMatrix {
+pub(crate) struct RealImaginaryMatrix {
     data: Vec<Vec<RealImaginary>>,
     n: usize,
 }
@@ -294,6 +294,7 @@ impl RealImaginaryMatrix {
 
     /// Set element at position (j, k) using 1-based indexing
     /// j: row (1 to N), k: column (1 to N)
+    #[cfg(test)]
     pub fn set(&mut self, j: usize, k: usize, value: RealImaginary) {
         assert!(
             j >= 1 && j <= self.n,
@@ -336,6 +337,7 @@ impl ops::Mul for RealImaginaryMatrix {
         result
     }
 }
+#[cfg(test)]
 impl RealImaginaryMatrix {
     /// Compatibility wrapper for the checked public S-to-ABCD conversion.
     /// Panics when the input cannot be converted. Use `SMatrix::to_abcd`
@@ -400,7 +402,7 @@ impl RealImaginaryMatrix {
 }
 
 #[derive(Clone, Debug)]
-pub struct MagnitudeAngleMatrix {
+pub(crate) struct MagnitudeAngleMatrix {
     data: Vec<Vec<MagnitudeAngle>>,
     n: usize,
 }
@@ -413,6 +415,7 @@ impl PartialEq for MagnitudeAngleMatrix {
 
 impl MagnitudeAngleMatrix {
     /// Create a new NxN matrix filled with zeros
+    #[cfg(test)]
     pub fn new(n: usize) -> Self {
         assert!(n > 0, "Matrix size must be at least 1");
         let data = vec![vec![MagnitudeAngle(0.0, 0.0); n]; n];
@@ -452,6 +455,7 @@ impl MagnitudeAngleMatrix {
     }
 
     /// Set element at position (j, k) using 1-based indexing
+    #[cfg(test)]
     pub fn set(&mut self, j: usize, k: usize, value: MagnitudeAngle) {
         assert!(
             j >= 1 && j <= self.n,
@@ -470,7 +474,7 @@ impl MagnitudeAngleMatrix {
 }
 
 #[derive(Clone, Debug)]
-pub struct DecibelAngleMatrix {
+pub(crate) struct DecibelAngleMatrix {
     data: Vec<Vec<DecibelAngle>>,
     n: usize,
 }
@@ -500,6 +504,7 @@ impl DecibelAngleMatrix {
     }
 
     /// Get the size of the matrix (N for NxN matrix)
+    #[cfg(test)]
     pub fn size(&self) -> usize {
         self.n
     }
@@ -522,6 +527,7 @@ impl DecibelAngleMatrix {
     }
 
     /// Set element at position (j, k) using 1-based indexing
+    #[cfg(test)]
     pub fn set(&mut self, j: usize, k: usize, value: DecibelAngle) {
         assert!(
             j >= 1 && j <= self.n,

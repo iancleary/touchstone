@@ -73,7 +73,10 @@ impl Config {
                 let mut result = networks[0].clone();
                 // Cascade remaining networks
                 for network in networks.iter().skip(1) {
-                    result = result * network.clone();
+                    result = result.try_cascade(network).map_err(|error| {
+                        tracing::error!("Failed to cascade networks: {}", error);
+                        "Failed to cascade networks"
+                    })?;
                 }
 
                 // Determine output path

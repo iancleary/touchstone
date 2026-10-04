@@ -28,6 +28,52 @@ fn parser_warnings() {
 // --- Section 3: Accessing S-Parameters ---
 
 #[test]
+fn s_parameter_accessors_return_independent_values() {
+    for format in ["RI", "MA", "DB"] {
+        let network = Network::from_str(
+            "example.s1p",
+            format!("# Hz S {format} R 50\n1 0.5 0\n").as_str(),
+        )
+        .unwrap();
+        let serialized = network.to_touchstone_string().unwrap();
+        let expected_points = network.points().unwrap();
+        let expected_ri = network.s_ri(1, 1)[0].s_ri;
+        let expected_ma = network.s_ma(1, 1)[0].s_ma;
+        let expected_db = network.s_db(1, 1)[0].s_db;
+
+        let mut ri = network.s_ri(1, 1);
+        let mut ma = network.s_ma(1, 1);
+        let mut db = network.s_db(1, 1);
+        ri[0].s_ri.0 = 9.0;
+        ma[0].s_ma.0 = 9.0;
+        db[0].s_db.0 = 9.0;
+        assert_eq!(ri[0].s_ri.0, 9.0);
+        assert_eq!(ma[0].s_ma.0, 9.0);
+        assert_eq!(db[0].s_db.0, 9.0);
+
+        let mut matrix = network.s_matrix_at(0).unwrap();
+        matrix.data[0][0].re = 9.0;
+        let mut point = network.point_at(0).unwrap();
+        point.s.data[0][0].re = 9.0;
+        let mut points = network.points().unwrap();
+        points[0].s.data[0][0].re = 9.0;
+        assert_eq!(matrix.data[0][0].re, 9.0);
+        assert_eq!(point.s.data[0][0].re, 9.0);
+        assert_eq!(points[0].s.data[0][0].re, 9.0);
+
+        assert_eq!(network.s_ri(1, 1)[0].s_ri, expected_ri, "{format}");
+        assert_eq!(network.s_ma(1, 1)[0].s_ma, expected_ma, "{format}");
+        assert_eq!(network.s_db(1, 1)[0].s_db, expected_db, "{format}");
+        assert_eq!(network.points().unwrap(), expected_points, "{format}");
+        assert_eq!(
+            network.to_touchstone_string().unwrap(),
+            serialized,
+            "{format}"
+        );
+    }
+}
+
+#[test]
 fn s_parameters_db() {
     let ntwk = Network::new("files/ntwk1.s2p").unwrap();
 

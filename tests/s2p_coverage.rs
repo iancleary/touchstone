@@ -144,5 +144,5 @@ fn assert_same_parse(path: &str, left: &Network, right: &Network) {
     );
     assert_eq!(left.warnings, right.warnings, "{path}");
     assert_eq!(left.f, right.f, "{path}");
-    assert_eq!(left.s.len(), right.s.len(), "{path}");
+    assert_eq!(left.points().unwrap(), right.points().unwrap(), "{path}");
 }
