@@ -131,6 +131,14 @@ Three accessor methods return a `Vec` over all frequencies:
 | `s_ri`  | Real + imaginary parts    | `FrequencyRI { frequency, s_ri }`      |
 | `s_ma`  | Linear magnitude + angle  | `FrequencyMA { frequency, s_ma }`      |
 
+The network's cached RI/MA/DB matrices are private. These accessors return owned
+values. Changes to those values do not change the network or its serialized data.
+Use `NetworkBuilder` to construct a network from generated values.
+
+Migration from direct `network.s` access: use `s_ri`, `s_ma`, or `s_db` for a
+trace, `s_matrix_at` for one matrix, and `point_at` or `points` for frequency/matrix
+pairs. Direct reads and writes through `network.s` no longer compile.
+
 ```rust
 use touchstone::Network;
 

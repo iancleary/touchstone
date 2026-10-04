@@ -88,6 +88,18 @@ pub enum Extrapolation {
 ///
 /// Represents an N-port network with S-parameter data at multiple frequencies.
 ///
+/// The cached RI, MA, and DB data is private. Read values with [`Self::s_ri`],
+/// [`Self::s_ma`], [`Self::s_db`], [`Self::s_matrix_at`], or [`Self::points`].
+/// These methods return owned values; changing them does not change this network.
+/// Use [`NetworkBuilder`] to construct a network from generated data.
+///
+/// Direct access to the internal data is not available:
+///
+/// ```compile_fail,E0616
+/// let mut network = touchstone::Network::from_str("example.s1p", "# Hz S RI R 50\n1 0.5 0\n").unwrap();
+/// network.s.clear();
+/// ```
+///
 /// # Examples
 ///
 /// ```
@@ -133,7 +145,7 @@ pub struct Network {
     /// Frequency vector in Hz.
     pub f: Vec<f64>,
     /// S-parameter data at each frequency point.
-    pub s: Vec<data_line::ParsedDataLine>,
+    s: Vec<data_line::ParsedDataLine>,
 }
 
 /// S-parameter data at a single frequency in Real/Imaginary format.
