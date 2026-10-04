@@ -31,7 +31,7 @@ fn builds_one_port_network_with_comments_and_derived_data() {
         network.reference_impedance(),
         ReferenceImpedance::Common(75.0)
     );
-    assert_eq!(network.f, vec![1.0e9, 2.0e9]);
+    assert_eq!(network.frequencies(), vec![1.0e9, 2.0e9]);
     assert!(network.warnings.is_empty());
     assert_eq!(network.try_s_ri_at(1, 1, 1).unwrap(), c(0.6, -0.35));
     assert!(network.s_ma(1, 1)[0].s_ma.magnitude().is_finite());

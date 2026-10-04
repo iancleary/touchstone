@@ -1,52 +1,15 @@
 pub(crate) fn is_valid_file_extension(file_type: &str) -> bool {
-    // println!("Validating file type: {file_type}");
-    let file_type_length = file_type.len();
-
-    // println!("file type length: {file_type_length}");
-    if file_type_length < 1 {
+    // Strip ASCII delimiters without slicing through a possible UTF-8 code point.
+    let Some(port_digits) = file_type
+        .strip_prefix('s')
+        .and_then(|s| s.strip_suffix('p'))
+    else {
         return false;
-    }
+    };
 
-    let first_char = &file_type[0..1];
-    let first_char_is_s = first_char == "s";
-
-    if !first_char_is_s {
-        return false;
-    }
-
-    let last_char = &file_type[file_type_length - 1..file_type_length];
-    let last_char_is_p = last_char == "p";
-
-    if !last_char_is_p {
-        return false;
-    }
-
-    let middle_chars = &file_type[1..file_type_length - 1];
-
-    // must have at least one character in the middle
-    // these are the number of ports, which must be defined
-    if middle_chars.is_empty() {
-        return false;
-    }
-
-    let middle_chars_are_digits = middle_chars.chars().all(|c| c.is_ascii_digit());
-
-    // must be digits in the middle
-    if !middle_chars_are_digits {
-        return false;
-    }
-
-    // cannot start with 0
-    if middle_chars.starts_with('0') {
-        return false;
-    }
-
-    // println!("middle chars: {middle_chars}");
-    let middle_chars_as_int = middle_chars
-        .parse::<i32>()
-        .expect("Failed to parse middle chars as int {middle_chars}");
-
-    middle_chars_as_int >= 1
+    !port_digits.starts_with('0')
+        && port_digits.bytes().all(|byte| byte.is_ascii_digit())
+        && port_digits.parse::<i32>().is_ok_and(|ports| ports > 0)
 }
 
 #[cfg(test)]

@@ -29,6 +29,7 @@ mod data_pairs;
 mod error;
 mod file_extension;
 mod file_operations;
+mod network_access;
 mod network_builder;
 mod open;
 mod option_line;
@@ -37,6 +38,7 @@ mod plot;
 mod utils;
 
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
+pub use network_access::{NetworkPointRef, SMatrixRef};
 pub use network_builder::NetworkBuilder;
 
 const PARAMETER_CONVERSION_TOLERANCE: f64 = 1.0e-12;
@@ -107,7 +109,7 @@ pub enum Extrapolation {
 ///
 /// let net = Network::new("files/ntwk1.s2p").unwrap();
 /// assert_eq!(net.rank, 2);
-/// println!("Loaded {} frequency points", net.f.len());
+/// println!("Loaded {} frequency points", net.frequencies().len());
 /// ```
 #[doc(alias = "S-parameters")]
 #[doc(alias = "S2P")]
@@ -143,7 +145,7 @@ pub struct Network {
     pub warnings: Vec<TouchstoneWarning>,
 
     /// Frequency vector in Hz.
-    pub f: Vec<f64>,
+    f: Vec<f64>,
     /// S-parameter data at each frequency point.
     s: Vec<data_line::ParsedDataLine>,
 }
@@ -296,10 +298,27 @@ impl ops::Div for Complex {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let denominator = rhs.re * rhs.re + rhs.im * rhs.im;
+        // Normalize the divisor before squaring so finite large and small
+        // divisors do not overflow or underflow their squared magnitude.
+        let scale = rhs.re.abs().max(rhs.im.abs());
+        let re = rhs.re / scale;
+        let im = rhs.im / scale;
+        let denominator = re * re + im * im;
+        let numerator_re = self.re / scale;
+        let numerator_im = self.im / scale;
+        if numerator_re.abs().max(numerator_im.abs()) > f64::MAX / 2.0 {
+            // Divide before summing when the normalized numerator could
+            // overflow even though the final quotient is representable.
+            let numerator_re = (self.re / denominator) / scale;
+            let numerator_im = (self.im / denominator) / scale;
+            return Self {
+                re: numerator_re * re + numerator_im * im,
+                im: numerator_im * re - numerator_re * im,
+            };
+        }
         Self {
-            re: (self.re * rhs.re + self.im * rhs.im) / denominator,
-            im: (self.im * rhs.re - self.re * rhs.im) / denominator,
+            re: (numerator_re * re + numerator_im * im) / denominator,
+            im: (numerator_im * re - numerator_re * im) / denominator,
         }
     }
 }
@@ -375,6 +394,7 @@ impl SMatrix {
             PARAMETER_CONVERSION_TOLERANCE,
         )?;
         let data = matrix_scale(&matrix_mul(&numerator, &denominator_inverse), 1.0 / z0);
+        validate_matrix_data("Y", self.rank, &data)?;
 
         Ok(ParameterMatrix {
             rank: self.rank,
@@ -401,6 +421,7 @@ impl SMatrix {
             PARAMETER_CONVERSION_TOLERANCE,
         )?;
         let data = matrix_scale(&matrix_mul(&numerator, &denominator_inverse), z0);
+        validate_matrix_data("Z", self.rank, &data)?;
 
         Ok(ParameterMatrix {
             rank: self.rank,
@@ -518,6 +539,7 @@ impl ParameterMatrix {
 
         let identity = identity_matrix(self.rank);
         let scaled_y = matrix_scale(&self.data, z0);
+        validate_matrix_data("z0*Y", self.rank, &scaled_y)?;
         let numerator = matrix_sub(&identity, &scaled_y);
         let denominator = matrix_add(&identity, &scaled_y);
         let denominator_inverse = invert_matrix(
@@ -526,6 +548,7 @@ impl ParameterMatrix {
             PARAMETER_CONVERSION_TOLERANCE,
         )?;
         let data = matrix_mul(&numerator, &denominator_inverse);
+        validate_matrix_data("S", self.rank, &data)?;
 
         Ok(SMatrix {
             rank: self.rank,
@@ -552,6 +575,7 @@ impl ParameterMatrix {
             PARAMETER_CONVERSION_TOLERANCE,
         )?;
         let data = matrix_mul(&numerator, &denominator_inverse);
+        validate_matrix_data("S", self.rank, &data)?;
 
         Ok(SMatrix {
             rank: self.rank,
@@ -648,7 +672,7 @@ impl Network {
     ///
     /// let net = Network::new("files/ntwk1.s2p")?;
     /// assert_eq!(net.rank, 2);
-    /// assert!(!net.f.is_empty());
+    /// assert!(!net.frequencies().is_empty());
     /// # Ok::<(), touchstone::TouchstoneError>(())
     /// ```
     pub fn new<P: AsRef<std::path::Path>>(file_path: P) -> Result<Self, TouchstoneError> {
@@ -742,7 +766,7 @@ impl Network {
     ///
     /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let freqs = net.f();
-    /// assert_eq!(freqs.len(), net.f.len());
+    /// assert_eq!(freqs.len(), net.frequencies().len());
     /// ```
     #[must_use]
     pub fn f(&self) -> Vec<f64> {
@@ -760,7 +784,7 @@ impl Network {
     ///
     /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let s21 = net.s_db(2, 1);
-    /// assert_eq!(s21.len(), net.f.len());
+    /// assert_eq!(s21.len(), net.frequencies().len());
     /// println!("S21 at first freq: {} dB", s21[0].s_db.0);
     /// ```
     #[must_use]
@@ -793,7 +817,7 @@ impl Network {
     ///
     /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let s11 = net.s_ri(1, 1);
-    /// assert_eq!(s11.len(), net.f.len());
+    /// assert_eq!(s11.len(), net.frequencies().len());
     /// println!("S11 at first freq: {} + j{}", s11[0].s_ri.0, s11[0].s_ri.1);
     /// ```
     #[must_use]
@@ -823,7 +847,7 @@ impl Network {
     ///
     /// let net = Network::new("files/ntwk1.s2p").unwrap();
     /// let s11 = net.s_ma(1, 1);
-    /// assert_eq!(s11.len(), net.f.len());
+    /// assert_eq!(s11.len(), net.frequencies().len());
     /// println!("S11 at first freq: {} ∠ {}°", s11[0].s_ma.0, s11[0].s_ma.1);
     /// ```
     #[must_use]
@@ -1016,7 +1040,7 @@ impl Network {
     ///     Extrapolation::Error,
     /// )?;
     ///
-    /// assert_eq!(resampled.f, vec![1.0e9, 1.5e9, 2.0e9]);
+    /// assert_eq!(resampled.frequencies(), &[1.0e9, 1.5e9, 2.0e9]);
     /// assert_eq!(resampled.try_s_ri_at(1, 1, 1)?.re, 1.0);
     /// # Ok::<(), touchstone::TouchstoneError>(())
     /// ```
@@ -1121,10 +1145,7 @@ impl Network {
             .f
             .binary_search_by(|frequency| frequency.partial_cmp(&lookup_frequency).unwrap())
         {
-            return Ok(parsed_data_line_with_frequency(
-                &self.s[index],
-                frequency_hz,
-            ));
+            return parsed_data_line_with_frequency(&self.s[index], frequency_hz);
         }
 
         let upper_index = self
@@ -1143,21 +1164,18 @@ impl Network {
                 }
             }
             Interpolation::Linear => {
-                return Ok(interpolate_data_lines(
+                return interpolate_data_lines(
                     frequency_hz,
                     lookup_frequency,
                     self.f[lower_index],
                     self.f[upper_index],
                     &self.s[lower_index],
                     &self.s[upper_index],
-                ));
+                );
             }
         };
 
-        Ok(parsed_data_line_with_frequency(
-            &self.s[selected_index],
-            frequency_hz,
-        ))
+        parsed_data_line_with_frequency(&self.s[selected_index], frequency_hz)
     }
 
     /// Cascade two 2-port networks (standard connection: port 2 → port 1).
@@ -1166,7 +1184,7 @@ impl Network {
     ///
     /// # Panics
     ///
-    /// Panics on incompatible inputs, singular conversions, or nonfinite results.
+    /// Panics on incompatible inputs, singular internal connections, or nonfinite results.
     /// Use [`try_cascade`](Self::try_cascade) to handle these errors explicitly.
     ///
     /// # Examples
@@ -1196,8 +1214,11 @@ impl Network {
     ///
     /// Both networks must have a finite positive common reference impedance, the same frequency
     /// unit and exact frequency grid, and nonempty aligned frequency and data vectors. Each data
-    /// row must be a two-port S matrix with finite values. The conversion uses the shared
-    /// [`SMatrix::to_abcd`] and [`ABCDMatrix::to_s_matrix`] APIs.
+    /// row must be a two-port S matrix with finite values. Direct scattering composition
+    /// connects this network's port 2 to the other network's port 1. It supports zero forward
+    /// transmission and avoids ABCD determinant cancellation in deeply attenuating networks.
+    /// The internal denominator `1 - self.S22 * other.S11` must have magnitude above `1e-12`.
+    /// This cutoff is not an accuracy bound near resonance. Computed S values must be finite.
     pub fn try_cascade(&self, other: &Network) -> Result<Network, TouchstoneError> {
         if self.rank != 2 || other.rank != 2 {
             return Err(TouchstoneError::CascadeRankMismatch {
@@ -1283,10 +1304,32 @@ impl Network {
         let mut s_new = Vec::new();
         for i in 0..self.s.len() {
             let freq = self.f[i];
-            let abcd1 = self.s_matrix_at(i)?.to_abcd(self_z0)?;
-            let abcd2 = other.s_matrix_at(i)?.to_abcd(other_z0)?;
-            let abcd_new = multiply_abcd(abcd1, abcd2);
-            let s_matrix = abcd_new.to_s_matrix(self_z0)?;
+            let first = self.s_matrix_at(i)?;
+            let second = other.s_matrix_at(i)?;
+            let denominator = Complex::one() - first.data[1][1] * second.data[0][0];
+            ensure_non_singular_value(
+                "cascade internal connection",
+                i,
+                denominator,
+                PARAMETER_CONVERSION_TOLERANCE,
+            )?;
+            let s_matrix = SMatrix {
+                rank: 2,
+                data: vec![
+                    vec![
+                        first.data[0][0]
+                            + first.data[0][1] * second.data[0][0] * first.data[1][0] / denominator,
+                        first.data[0][1] * second.data[0][1] / denominator,
+                    ],
+                    vec![
+                        second.data[1][0] * first.data[1][0] / denominator,
+                        second.data[1][1]
+                            + second.data[1][0] * first.data[1][1] * second.data[0][1]
+                                / denominator,
+                    ],
+                ],
+            };
+            validate_matrix_data("cascaded S", s_matrix.rank, &s_matrix.data)?;
             let s_new_ri = crate::data_pairs::RealImaginaryMatrix::from_vec(
                 s_matrix
                     .data
@@ -1423,7 +1466,7 @@ impl Network {
             other.rank
         );
 
-        // For 2-port networks: use existing ABCD-based cascade
+        // For 2-port networks: use the standard direct scattering cascade.
         if self.rank == 2 && other.rank == 2 {
             // Currently only support standard connection (port 2 → port 1)
             if from_port != 2 || to_port != 1 {
@@ -1834,6 +1877,7 @@ fn invert_matrix(
     tolerance: f64,
 ) -> Result<Vec<Vec<Complex>>, TouchstoneError> {
     let rank = matrix.len();
+    validate_matrix_data(operation, rank, &matrix)?;
     let mut inverse = identity_matrix(rank);
 
     for pivot_index in 0..rank {
@@ -1882,6 +1926,7 @@ fn invert_matrix(
         }
     }
 
+    validate_matrix_data(operation, rank, &inverse)?;
     Ok(inverse)
 }
 
@@ -1901,15 +1946,6 @@ fn ensure_non_singular_value(
             pivot_magnitude: magnitude,
             tolerance,
         })
-    }
-}
-
-fn multiply_abcd(first: ABCDMatrix, second: ABCDMatrix) -> ABCDMatrix {
-    ABCDMatrix {
-        a: first.a * second.a + first.b * second.c,
-        b: first.a * second.b + first.b * second.d,
-        c: first.c * second.a + first.d * second.c,
-        d: first.c * second.b + first.d * second.d,
     }
 }
 
@@ -1965,7 +2001,7 @@ fn validate_frequency_slice(frequencies: &[f64]) -> Result<(), TouchstoneError> 
 }
 
 fn validate_sample_frequency(point_index: usize, frequency: f64) -> Result<(), TouchstoneError> {
-    if frequency.is_finite() {
+    if frequency.is_finite() && frequency >= 0.0 {
         Ok(())
     } else {
         Err(TouchstoneError::InvalidFrequency {
@@ -1978,8 +2014,39 @@ fn validate_sample_frequency(point_index: usize, frequency: f64) -> Result<(), T
 fn parsed_data_line_with_frequency(
     data_line: &data_line::ParsedDataLine,
     frequency: f64,
-) -> data_line::ParsedDataLine {
-    data_line::parsed_data_line_from_ri_matrix(frequency, data_line.s_ri.clone())
+) -> Result<data_line::ParsedDataLine, TouchstoneError> {
+    validate_sample_values(data_line)?;
+    Ok(data_line::parsed_data_line_from_ri_matrix(
+        frequency,
+        data_line.s_ri.clone(),
+    ))
+}
+
+fn validate_sample_values(data_line: &data_line::ParsedDataLine) -> Result<(), TouchstoneError> {
+    for row in 1..=data_line.s_ri.size() {
+        for column in 1..=data_line.s_ri.size() {
+            let value = data_line.s_ri.get(row, column);
+            if !value.0.is_finite() || !value.1.is_finite() {
+                return Err(TouchstoneError::InvalidParameterMatrixValue {
+                    matrix: "sampled S".to_string(),
+                    row,
+                    column,
+                    re: value.0,
+                    im: value.1,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn interpolate_component(lower: f64, upper: f64, t: f64) -> f64 {
+    if lower.is_sign_negative() != upper.is_sign_negative() {
+        // The difference of large endpoints with opposite signs can overflow.
+        (1.0 - t) * lower + t * upper
+    } else {
+        lower + (upper - lower) * t
+    }
 }
 
 fn interpolate_data_lines(
@@ -1989,7 +2056,9 @@ fn interpolate_data_lines(
     upper_frequency: f64,
     lower: &data_line::ParsedDataLine,
     upper: &data_line::ParsedDataLine,
-) -> data_line::ParsedDataLine {
+) -> Result<data_line::ParsedDataLine, TouchstoneError> {
+    validate_sample_values(lower)?;
+    validate_sample_values(upper)?;
     let n = lower.s_ri.size();
     let t = (lookup_frequency - lower_frequency) / (upper_frequency - lower_frequency);
     let mut data = Vec::with_capacity(n);
@@ -2001,18 +2070,20 @@ fn interpolate_data_lines(
             let lower_value = lower.s_ri.get(row, col);
             let upper_value = upper.s_ri.get(row, col);
             row_data.push(data_pairs::RealImaginary(
-                lower_value.0 + (upper_value.0 - lower_value.0) * t,
-                lower_value.1 + (upper_value.1 - lower_value.1) * t,
+                interpolate_component(lower_value.0, upper_value.0, t),
+                interpolate_component(lower_value.1, upper_value.1, t),
             ));
         }
 
         data.push(row_data);
     }
 
-    data_line::parsed_data_line_from_ri_matrix(
+    let result = data_line::parsed_data_line_from_ri_matrix(
         output_frequency,
         data_pairs::RealImaginaryMatrix::from_vec(data),
-    )
+    );
+    validate_sample_values(&result)?;
+    Ok(result)
 }
 
 fn network_point_from_data_line(data_line: &data_line::ParsedDataLine) -> NetworkPoint {
@@ -3063,6 +3134,23 @@ mod tests {
                 re: 1.0e-155,
                 im: 0.0,
             },
+        };
+        // Scaled complex division avoids overflow in the denominator's
+        // squared magnitude, so this finite conversion now succeeds.
+        let converted = abcd.to_s_matrix(50.0).unwrap();
+        assert_eq!(converted.data[0][0], Complex::one());
+        assert_eq!(converted.data[1][1], -Complex::one());
+        for value in [converted.data[0][1], converted.data[1][0]] {
+            assert!((value.re / 2.0e-155 - 1.0).abs() < 1.0e-14);
+            assert_eq!(value.im, 0.0);
+        }
+
+        let abcd = ABCDMatrix {
+            d: Complex {
+                re: 1.0e155,
+                im: 0.0,
+            },
+            ..abcd
         };
         assert!(matches!(
             abcd.to_s_matrix(50.0),

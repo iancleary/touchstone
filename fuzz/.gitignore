@@ -1,0 +1,4 @@
+artifacts/
+target/
+# Keep named regression seeds; libFuzzer generates hexadecimal corpus names.
+corpus/*/[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*

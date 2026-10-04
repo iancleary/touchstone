@@ -143,6 +143,6 @@ fn assert_same_parse(path: &str, left: &Network, right: &Network) {
         "{path}"
     );
     assert_eq!(left.warnings, right.warnings, "{path}");
-    assert_eq!(left.f, right.f, "{path}");
+    assert_eq!(left.frequencies(), right.frequencies(), "{path}");
     assert_eq!(left.points().unwrap(), right.points().unwrap(), "{path}");
 }

@@ -1,0 +1,12 @@
+reference.s2p
+[Version] 2.1
+# MHz S MA R 50
+[Number of Ports] 2
+[Two-Port Data Order] 12_21
+[Number of Frequencies] 1
+[Reference]
+50 75
+[Matrix Format] Full
+[Network Data]
+1 0.1 45 0.2 30 0.3 15 0.4 -15
+[End]

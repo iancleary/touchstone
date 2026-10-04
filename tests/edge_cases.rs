@@ -10,7 +10,7 @@ use touchstone::{Network, TouchstoneError};
 fn parse_s1p_hfss_oneport() {
     let ntwk = Network::new("files/hfss_oneport.s1p").unwrap();
     assert_eq!(ntwk.rank, 1);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
     assert_eq!(ntwk.frequency_unit, "GHz");
     assert_eq!(ntwk.format, "MA");
 }
@@ -19,7 +19,7 @@ fn parse_s1p_hfss_oneport() {
 fn parse_s1p_powerwave() {
     let ntwk = Network::new("files/hfss_oneport_powerwave.s1p").unwrap();
     assert_eq!(ntwk.rank, 1);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
 }
 
 #[test]
@@ -31,9 +31,9 @@ fn s1p_s_parameters_all_formats() {
     let s11_ri = ntwk.s_ri(1, 1);
     let s11_ma = ntwk.s_ma(1, 1);
 
-    assert_eq!(s11_db.len(), ntwk.f.len());
-    assert_eq!(s11_ri.len(), ntwk.f.len());
-    assert_eq!(s11_ma.len(), ntwk.f.len());
+    assert_eq!(s11_db.len(), ntwk.frequencies().len());
+    assert_eq!(s11_ri.len(), ntwk.frequencies().len());
+    assert_eq!(s11_ma.len(), ntwk.frequencies().len());
 
     for i in 0..s11_db.len() {
         assert!(s11_db[i].s_db.decibel().is_finite());
@@ -50,7 +50,7 @@ fn s1p_s_parameters_all_formats() {
 fn parse_s4p_agilent() {
     let ntwk = Network::new("files/Agilent_E5071B.s4p").unwrap();
     assert_eq!(ntwk.rank, 4);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
     // This file uses Hz and dB format with 75 ohm impedance
     assert_eq!(ntwk.frequency_unit, "Hz");
     assert_eq!(ntwk.format, "DB");
@@ -61,7 +61,7 @@ fn parse_s4p_agilent() {
 fn parse_s4p_rs_znb8() {
     let ntwk = Network::new("files/RS_ZNB8.s4p").unwrap();
     assert_eq!(ntwk.rank, 4);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
 }
 
 #[test]
@@ -72,7 +72,13 @@ fn s4p_all_port_combinations() {
     for j in 1..=4 {
         for k in 1..=4 {
             let s = ntwk.s_db(j, k);
-            assert_eq!(s.len(), ntwk.f.len(), "S{}{} length mismatch", j, k);
+            assert_eq!(
+                s.len(),
+                ntwk.frequencies().len(),
+                "S{}{} length mismatch",
+                j,
+                k
+            );
             for point in &s {
                 assert!(
                     point.s_db.decibel().is_finite(),
@@ -141,7 +147,7 @@ fn cascade_produces_valid_data() {
     let cascaded = net1.cascade(&net2);
 
     assert_eq!(cascaded.rank, 2);
-    assert_eq!(cascaded.f.len(), net1.f.len());
+    assert_eq!(cascaded.frequencies().len(), net1.frequencies().len());
 
     // All S-parameters should be finite
     for (j, k) in [(1, 1), (1, 2), (2, 1), (2, 2)] {
@@ -158,7 +164,7 @@ fn cascade_matches_reference_file() {
     let cascaded = net1.cascade(&net2);
     let reference = Network::new("files/cascade_ntwk1_ntwk2.s2p").unwrap();
 
-    assert_eq!(cascaded.f.len(), reference.f.len());
+    assert_eq!(cascaded.frequencies().len(), reference.frequencies().len());
 
     // Compare S21 dB values within tolerance
     let cas_s21 = cascaded.s_db(2, 1);
@@ -179,13 +185,13 @@ fn cascade_matches_reference_file() {
 #[test]
 fn mul_trait_cascade() {
     let net1 = Network::new("files/ntwk1.s2p").unwrap();
-    let expected_len = net1.f.len();
+    let expected_len = net1.frequencies().len();
     let net2 = Network::new("files/ntwk2.s2p").unwrap();
 
     // Mul trait should also work
     let cascaded = net1 * net2;
     assert_eq!(cascaded.rank, 2);
-    assert_eq!(cascaded.f.len(), expected_len);
+    assert_eq!(cascaded.frequencies().len(), expected_len);
 }
 
 #[test]
@@ -282,18 +288,18 @@ fn round_trip_s2p() {
     let reloaded = Network::new(tmp).unwrap();
 
     assert_eq!(original.rank, reloaded.rank);
-    assert_eq!(original.f.len(), reloaded.f.len());
+    assert_eq!(original.frequencies().len(), reloaded.frequencies().len());
     assert!((original.z0 - reloaded.z0).abs() < 0.01);
 
     // Compare frequencies
-    for i in 0..original.f.len() {
-        let freq_diff = (original.f[i] - reloaded.f[i]).abs();
+    for i in 0..original.frequencies().len() {
+        let freq_diff = (original.frequencies()[i] - reloaded.frequencies()[i]).abs();
         assert!(
             freq_diff < 1e-3,
             "Frequency mismatch at {}: {} vs {}",
             i,
-            original.f[i],
-            reloaded.f[i]
+            original.frequencies()[i],
+            reloaded.frequencies()[i]
         );
     }
 
@@ -321,7 +327,7 @@ fn round_trip_s3p() {
     let reloaded = Network::new(tmp).unwrap();
 
     assert_eq!(original.rank, reloaded.rank);
-    assert_eq!(original.f.len(), reloaded.f.len());
+    assert_eq!(original.frequencies().len(), reloaded.frequencies().len());
 
     // Spot check S11
     let orig_s11 = original.s_db(1, 1);
@@ -350,7 +356,7 @@ fn round_trip_preserves_cascade_result() {
     cascaded.save(tmp).unwrap();
     let reloaded = Network::new(tmp).unwrap();
 
-    assert_eq!(cascaded.f.len(), reloaded.f.len());
+    assert_eq!(cascaded.frequencies().len(), reloaded.frequencies().len());
 
     let cas_s21 = cascaded.s_ri(2, 1);
     let rel_s21 = reloaded.s_ri(2, 1);
@@ -374,21 +380,21 @@ fn round_trip_preserves_cascade_result() {
 fn parse_s32p() {
     let ntwk = Network::new("files/ntwk.s32p").unwrap();
     assert_eq!(ntwk.rank, 32);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
 }
 
 #[test]
 fn parse_s8p() {
     let ntwk = Network::new("files/hfss_19.2.s8p").unwrap();
     assert_eq!(ntwk.rank, 8);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
 }
 
 #[test]
 fn parse_s10p() {
     let ntwk = Network::new("files/hfss_19.2.s10p").unwrap();
     assert_eq!(ntwk.rank, 10);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
 }
 
 // ============================================================
@@ -408,6 +414,10 @@ fn parse_all_threeport_variants() {
     for file in files {
         let ntwk = Network::new(file).unwrap();
         assert_eq!(ntwk.rank, 3, "Wrong rank for {}", file);
-        assert!(!ntwk.f.is_empty(), "No frequencies for {}", file);
+        assert!(
+            !ntwk.frequencies().is_empty(),
+            "No frequencies for {}",
+            file
+        );
     }
 }

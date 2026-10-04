@@ -54,8 +54,8 @@ fn public_roundtrip(s: &S) -> Result<S, String> {
         .map_err(|e| e.to_string())
 }
 
-// The fallible network API now shares the public matrix conversion path.
-// The saved investigation output records behavior before that consolidation.
+// The fallible network API now uses checked direct scattering composition.
+// The saved investigation output records the previous ABCD-based behavior.
 fn network_pair(a: &S, b: &S) -> Result<S, String> {
     let a = NetworkBuilder::new("a.s2p", 2)
         .point(1.0e9, a.clone())

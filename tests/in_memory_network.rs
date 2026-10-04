@@ -12,7 +12,7 @@ fn new_reads_existing_touchstone_file() {
 
     assert_eq!(network.name, "files/ntwk1.s2p");
     assert_eq!(network.rank, 2);
-    assert!(!network.f.is_empty());
+    assert!(!network.frequencies().is_empty());
 }
 
 #[test]
@@ -23,7 +23,7 @@ fn from_str_parses_uploaded_touchstone_data_without_file() {
     assert_eq!(network.rank, 2);
     assert_eq!(network.frequency_unit, "GHz");
     assert_eq!(network.z0, 50.0);
-    assert_eq!(network.f, vec![1.0e9]);
+    assert_eq!(network.frequencies(), vec![1.0e9]);
     assert_eq!(network.s_ri(2, 1)[0].s_ri.0, 4.0);
     assert_eq!(network.s_ri(1, 2)[0].s_ri.0, 0.01);
 }
@@ -281,7 +281,7 @@ fn assert_same_network_shape(path: &str, left: &Network, right: &Network) {
         "{path}"
     );
     assert_eq!(left.warnings, right.warnings, "{path}");
-    assert_eq!(left.f, right.f, "{path}");
+    assert_eq!(left.frequencies(), right.frequencies(), "{path}");
     assert_eq!(left.points().unwrap(), right.points().unwrap(), "{path}");
 
     for j in 1..=left.rank {

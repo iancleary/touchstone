@@ -2,9 +2,12 @@
 
 This report records the Rust f64 investigation at commit `84f57bc`, before
 the shared conversion implementation. Its saved output is historical evidence.
-The current example uses `try_cascade`, so invalid inputs now produce errors
-instead of the old NaN cascade results. See [the consistency contract](cascade-consistency.md)
-for the implemented follow-up. The Bend experiments remain archived outside
+The current example uses `try_cascade` with checked direct scattering composition.
+Deep-loss and zero-forward cascades now pass the production regressions in
+`tests/numerical_guarantees.rs`. Public ABCD conversion remains a separate API
+with the determinant-cancellation limitation described below. See
+[the consistency contract](cascade-consistency.md) for the implemented follow-up.
+The Bend experiments remain archived outside
 this repository; this investigation is self-contained.
 
 ## Reproduce
@@ -99,22 +102,25 @@ pre-existing `useless_borrows_in_formatting` warnings in `src/cli.rs` at lines
   nonzero transmission must also bound relative or dB error, or a zero result
   can pass. Reflection near zero needs an absolute tolerance instead.
 
-## Candidate direction
+## Implemented follow-up
 
-Prefer investigating direct S composition for `Network::cascade`. Retain ABCD
-conversion for callers who need circuit transmission matrices. If preserving
-ABCD internally is required, use a separate determinant-carrying representation
-constructed from S parameters. Do not change the existing public `ABCDMatrix`
-fields merely to hide metadata.
+`Network::try_cascade` now uses direct S composition with a `1e-12` absolute
+cutoff on the internal denominator `1-L22*R11`. Invalid connections return
+`SingularMatrix`; nonfinite computed S entries return
+`InvalidParameterMatrixValue`. `cascade` and multiplication retain their
+convenience behavior and panic on these errors. Zero forward transmission is
+supported. The implementation does not force reciprocity or clamp invalid values.
 
-Before a production change, define errors for singular connections and nonfinite
-outputs. An additive fallible cascade method can preserve the existing method's
-return type. Review singularity policy separately from arithmetic. Avoid
-clamping invalid outputs or silently forcing reciprocity.
+Complex division now scales the divisor before calculating its squared magnitude.
+RI magnitude uses `hypot`. Parameter conversions and sampling validate their
+computed complex entries. Interpolation uses a weighted sum for endpoints with
+opposite signs to avoid overflow in their difference.
 
-Keep f64. Evaluate dimensionless scaling and robust complex division only with
-tests that establish their required operating envelope. Measure performance
-separately on representative frequency sweeps and Monte Carlo batches.
+ABCD conversion remains available for callers who need transmission matrices.
+Its singularity policy and determinant reconstruction remain unchanged. Arbitrary
+ABCD entries cannot recover information already lost to cancellation. Direct
+composition can also lose accuracy near resonance and can underflow below f64's
+range. Finite-result validation is not a universal accuracy guarantee.
 
 ## External context
 

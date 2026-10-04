@@ -294,7 +294,7 @@ pub enum TouchstoneError {
         /// Expected row and column count.
         expected_rank: usize,
     },
-    /// A generated, parsed, or requested frequency was not finite.
+    /// A generated, parsed, or requested frequency was negative or not finite.
     InvalidFrequency {
         /// 0-based frequency point index.
         point_index: usize,
@@ -612,7 +612,7 @@ impl fmt::Display for TouchstoneError {
             Self::InvalidFrequency {
                 point_index,
                 frequency,
-            } => write!(f, "frequency at point {point_index} is not finite: {frequency}"),
+            } => write!(f, "frequency at point {point_index} must be finite and nonnegative: {frequency}"),
             Self::DuplicateFrequency {
                 first_index,
                 duplicate_index,

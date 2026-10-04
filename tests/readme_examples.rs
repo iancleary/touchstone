@@ -1,6 +1,6 @@
 //! Integration tests matching every code example in README.md
 
-use touchstone::{Network, TouchstoneWarning};
+use touchstone::{Complex, Network, NetworkBuilder, SMatrix, TouchstoneWarning};
 
 // --- Section 2: Loading a Network ---
 
@@ -12,7 +12,7 @@ fn loading_a_network() {
     assert!(!ntwk.frequency_unit.is_empty());
     assert!(!ntwk.format.is_empty());
     assert!(ntwk.z0 > 0.0);
-    assert!(!ntwk.f.is_empty());
+    assert!(!ntwk.frequencies().is_empty());
 }
 
 #[test]
@@ -26,6 +26,21 @@ fn parser_warnings() {
 }
 
 // --- Section 3: Accessing S-Parameters ---
+
+#[test]
+fn checked_construction_and_borrowed_points() -> Result<(), touchstone::TouchstoneError> {
+    let matrix = SMatrix::try_new(vec![vec![Complex { re: 0.5, im: 0.0 }]])?;
+    let network = NetworkBuilder::new("generated.s1p", 1)
+        .point(0.0, matrix.clone())
+        .point(1.0e9, matrix)
+        .build()?;
+    assert_eq!(network.frequencies(), &[0.0, 1.0e9]);
+    for point in network.iter_points() {
+        println!("{} Hz: {:?}", point.frequency(), point.s().get(1, 1)?);
+        assert_eq!(point.s().get(1, 1)?, Complex { re: 0.5, im: 0.0 });
+    }
+    Ok(())
+}
 
 #[test]
 fn s_parameter_accessors_return_independent_values() {
@@ -78,7 +93,7 @@ fn s_parameters_db() {
     let ntwk = Network::new("files/ntwk1.s2p").unwrap();
 
     let s11_db = ntwk.s_db(1, 1);
-    assert_eq!(s11_db.len(), ntwk.f.len());
+    assert_eq!(s11_db.len(), ntwk.frequencies().len());
     for point in &s11_db {
         assert!(point.frequency > 0.0);
         // decibel can be negative, angle can be any value — just check they're finite
@@ -92,7 +107,7 @@ fn s_parameters_ri() {
     let ntwk = Network::new("files/ntwk1.s2p").unwrap();
 
     let s21_ri = ntwk.s_ri(2, 1);
-    assert_eq!(s21_ri.len(), ntwk.f.len());
+    assert_eq!(s21_ri.len(), ntwk.frequencies().len());
     for point in &s21_ri {
         assert!(point.frequency > 0.0);
         assert!(point.s_ri.real().is_finite());
@@ -105,7 +120,7 @@ fn s_parameters_ma() {
     let ntwk = Network::new("files/ntwk1.s2p").unwrap();
 
     let s21_ma = ntwk.s_ma(2, 1);
-    assert_eq!(s21_ma.len(), ntwk.f.len());
+    assert_eq!(s21_ma.len(), ntwk.frequencies().len());
     for point in &s21_ma {
         assert!(point.frequency > 0.0);
         assert!(point.s_ma.magnitude().is_finite());
@@ -173,7 +188,7 @@ fn save_network() {
     // Verify round-trip
     let reloaded = Network::new(tmp_path).unwrap();
     assert_eq!(reloaded.rank, ntwk.rank);
-    assert_eq!(reloaded.f.len(), ntwk.f.len());
+    assert_eq!(reloaded.frequencies().len(), ntwk.frequencies().len());
 
     // Clean up
     std::fs::remove_file(tmp_path).unwrap();
@@ -190,8 +205,11 @@ fn cascade_networks() {
     let checked = net1.try_cascade(&net2).unwrap();
     assert_eq!(checked.points().unwrap(), cascaded.points().unwrap());
     assert_eq!(cascaded.rank, 2);
-    assert!(!cascaded.f.is_empty());
-    println!("Cascaded network has {} data points", cascaded.f.len());
+    assert!(!cascaded.frequencies().is_empty());
+    println!(
+        "Cascaded network has {} data points",
+        cascaded.frequencies().len()
+    );
 }
 
 #[test]
@@ -201,7 +219,7 @@ fn cascade_ports() {
 
     let cascaded = net1.cascade_ports(&net2, 2, 1);
     assert_eq!(cascaded.rank, 2);
-    assert!(!cascaded.f.is_empty());
+    assert!(!cascaded.frequencies().is_empty());
 }
 
 // --- Multi-port loading (verifies N-port support mentioned in docs) ---

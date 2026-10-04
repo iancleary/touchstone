@@ -65,10 +65,14 @@ fn assert_s_close(label: &str, actual: &SMatrix, expected: &SMatrix) {
 }
 
 fn assert_network_s_close(label: &str, actual: &Network, expected: &Network) {
-    assert_eq!(actual.f, expected.f, "{label}: frequency grid");
-    for point_index in 0..actual.f.len() {
+    assert_eq!(
+        actual.frequencies(),
+        expected.frequencies(),
+        "{label}: frequency grid"
+    );
+    for point_index in 0..actual.frequencies().len() {
         assert_s_close(
-            &format!("{label} at {} Hz", actual.f[point_index]),
+            &format!("{label} at {} Hz", actual.frequencies()[point_index]),
             &actual.s_matrix_at(point_index).unwrap(),
             &expected.s_matrix_at(point_index).unwrap(),
         );
@@ -248,11 +252,19 @@ fn ordinary_complex_s_to_abcd_to_s_round_trip_preserves_all_four_values() {
 }
 
 #[test]
-fn zero_forward_transmission_reports_conversion_and_cascade_errors() {
+fn zero_forward_transmission_cascades_without_an_abcd_representation() {
     let blocked = matched("blocked.s2p", c(0.0, 0.0), c(0.2, 0.0));
     let thru = matched("thru.s2p", c(1.0, 0.0), c(1.0, 0.0));
 
     assert!(blocked.s_matrix_at(0).unwrap().to_abcd(Z0).is_err());
-    assert!(blocked.try_cascade(&thru).is_err());
-    assert!(thru.try_cascade(&blocked).is_err());
+    assert_network_s_close(
+        "blocked then thru",
+        &blocked.try_cascade(&thru).unwrap(),
+        &blocked,
+    );
+    assert_network_s_close(
+        "thru then blocked",
+        &thru.try_cascade(&blocked).unwrap(),
+        &blocked,
+    );
 }
