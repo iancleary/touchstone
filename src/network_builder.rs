@@ -7,6 +7,8 @@ use crate::{Network, NetworkPoint, ReferenceImpedance, SMatrix, TouchstoneError}
 /// Frequencies passed to [`point`](Self::point) and [`push_point`](Self::push_point) are in Hz.
 /// The `frequency_unit` setting controls how those frequencies are written when the network is
 /// serialized.
+/// The grid must be nonempty, finite, nonnegative, and strictly increasing.
+/// Duplicate frequencies are rejected. DC (0 Hz) is allowed.
 ///
 /// # Examples
 ///
@@ -132,7 +134,7 @@ impl NetworkBuilder {
         }
 
         for (point_index, point) in self.points.iter().enumerate() {
-            validate_frequency(point_index, point.frequency)?;
+            crate::validate_sample_frequency(point_index, point.frequency)?;
             validate_matrix(point_index, self.rank, &point.s)?;
         }
 
@@ -141,6 +143,7 @@ impl NetworkBuilder {
             .iter()
             .map(|point| point.frequency)
             .collect::<Vec<_>>();
+        crate::validate_frequency_slice(&f)?;
         let s = self
             .points
             .iter()
@@ -184,17 +187,6 @@ fn validate_extension_rank(name: &str, rank: usize) -> Result<(), TouchstoneErro
     }
 
     Ok(())
-}
-
-fn validate_frequency(point_index: usize, frequency: f64) -> Result<(), TouchstoneError> {
-    if frequency.is_finite() {
-        Ok(())
-    } else {
-        Err(TouchstoneError::InvalidFrequency {
-            point_index,
-            frequency,
-        })
-    }
 }
 
 fn validate_matrix(

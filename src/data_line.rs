@@ -119,7 +119,7 @@ pub(crate) fn try_parse_data_line_with_order(
     // values, whose meaning is determined by the format option specified in the option line.
     // therefore, the total number of numeric values on a 2-port data line is 1 + (2 × (2^2)) = 9.
     // generally, for an n-port data line, the total number of numeric values is 1 + (2 × (n^2)).
-    let expect_number_of_parts = 1 + (2 * (n * n));
+    let expect_number_of_parts = expected_data_values(*n)?;
     // println!("expected number of parts: {:?}", expect_number_of_parts);
 
     // Combine all lines into a single vector of parts
@@ -139,16 +139,15 @@ pub(crate) fn try_parse_data_line_with_order(
     let len_parts = parts.len();
     // println!("Data Line Parts (len {}): {:?}", len_parts, parts);
 
-    if len_parts != expect_number_of_parts as usize {
+    if len_parts != expect_number_of_parts {
         return Err(TouchstoneError::InvalidDataLineParts {
-            expected: expect_number_of_parts as usize,
+            expected: expect_number_of_parts,
             actual: len_parts,
         });
     }
 
     // split into f64 parts, after checking the expected length
     let f64_parts: Vec<_> = parts
-        .clone()
         .into_iter()
         .map(try_str_to_f64)
         .collect::<Result<_, _>>()?;
@@ -312,6 +311,20 @@ pub(crate) fn try_parse_data_line_with_order(
             format: format.clone(),
         })
     }
+}
+
+/// Calculate a full matrix's token count before any allocation based on its rank.
+/// An untrusted extension can declare far more ports than its input contains.
+pub(crate) fn expected_data_values(ports: i32) -> Result<usize, TouchstoneError> {
+    usize::try_from(ports)
+        .ok()
+        .filter(|&ports| ports > 0)
+        .and_then(|ports| ports.checked_mul(ports))
+        .and_then(|pairs| pairs.checked_mul(2))
+        .and_then(|values| values.checked_add(1))
+        .ok_or_else(|| TouchstoneError::InvalidNumberOfPorts {
+            value: ports.to_string(),
+        })
 }
 
 fn parse_pairs<T, F>(f64_parts: &[f64], n_usize: usize, pair_constructor: F) -> Vec<T>

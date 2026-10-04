@@ -48,15 +48,13 @@ impl RealImaginary {
     }
 
     pub fn magnitude(self) -> f64 {
-        (f64::powf(self.0, 2.0) + f64::powf(self.1, 2.0)).sqrt()
+        self.0.hypot(self.1)
     }
 
     pub fn decibel(self) -> f64 {
         // format specifies the format of the network parameter data pairs. Legal values are:
         // DB for decibel-angle (decibel = 20 × log10|magnitude|)
-        20.0 * (f64::powf(self.0, 2.0) + f64::powf(self.1, 2.0))
-            .sqrt()
-            .log10()
+        20.0 * self.magnitude().log10()
     }
 
     pub fn angle(self) -> f64 {
@@ -139,11 +137,14 @@ impl ops::Div for RealImaginary {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
-        let denominator = other.0 * other.0 + other.1 * other.1;
-        RealImaginary(
-            (self.0 * other.0 + self.1 * other.1) / denominator,
-            (self.1 * other.0 - self.0 * other.1) / denominator,
-        )
+        let quotient = crate::Complex {
+            re: self.0,
+            im: self.1,
+        } / crate::Complex {
+            re: other.0,
+            im: other.1,
+        };
+        RealImaginary(quotient.re, quotient.im)
     }
 }
 

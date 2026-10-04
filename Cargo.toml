@@ -12,6 +12,7 @@ readme = "README.md"
 repository = "https://github.com/iancleary/touchstone"
 version = "0.15.0"
 exclude = [
+    "fuzz/*",
     ".vscode/*",
     "docs/*.pdf",
     "examples/*.html",

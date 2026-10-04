@@ -1,0 +1,4 @@
+nonfinite.s1p
+# GHz S DB R 50
+NaN inf -inf
+1e309 -1e309 1e309

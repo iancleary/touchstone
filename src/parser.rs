@@ -10,7 +10,6 @@ use crate::{
 
 #[derive(Debug)]
 struct ParserState {
-    data_lines: Vec<String>,
     option_line_parsed: bool,
     two_port_data_order: data_line::TwoPortDataOrder,
     expected_number_of_frequencies: Option<usize>,
@@ -46,7 +45,6 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
 
     let mut parser_state = ParserState {
         option_line_parsed: false,
-        data_lines: Vec::new(),
         two_port_data_order: data_line::TwoPortDataOrder::default(),
         expected_number_of_frequencies: None,
         reference_impedance: None,
@@ -75,7 +73,7 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
     };
 
     // Expected number of values per complete data entry
-    let expected_values = (1 + 2 * n_ports * n_ports) as usize;
+    let expected_values = data_line::expected_data_values(n_ports)?;
 
     let mut current_data_segment: Vec<String> = Vec::new();
     let mut current_value_count: usize = 0;
@@ -186,8 +184,6 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
                 f.push(line_matrix_data.frequency);
                 s.push(line_matrix_data);
 
-                parser_state.data_lines.extend(current_data_segment.clone());
-
                 // Reset for next segment
                 current_data_segment.clear();
                 current_value_count = 0;
@@ -216,8 +212,6 @@ pub fn parse_str(source_name: &str, contents: &str) -> Result<Network, Touchston
 
         f.push(line_matrix_data.frequency);
         s.push(line_matrix_data);
-
-        parser_state.data_lines.extend(current_data_segment);
     }
 
     if let Some(expected_number_of_frequencies) = parser_state.expected_number_of_frequencies {

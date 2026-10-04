@@ -44,7 +44,7 @@ fn matched_one_port_s_parameter_fixture_round_trips() {
     );
 
     let reparsed = round_trip_from_string(&network);
-    assert_eq!(reparsed.f, vec![1.0e6, 2.0e6]);
+    assert_eq!(reparsed.frequencies(), vec![1.0e6, 2.0e6]);
     assert_eq!(
         reparsed.s_matrix_at(0).unwrap().get(1, 1).unwrap(),
         c(0.0, 0.0)

@@ -3,9 +3,12 @@
 [![Crates.io](https://img.shields.io/crates/v/touchstone.svg)](https://crates.io/crates/touchstone)
 [![Docs.rs](https://docs.rs/touchstone/badge.svg)](https://docs.rs/touchstone)
 
-Touchstone (SNP) parser for RF Engineering — Full N-Port Support
+Touchstone (SNP) parser for RF engineering with N-port network analysis
 
 Parse, analyze, and manipulate Touchstone files with any number of ports (1-port, 2-port, 3-port, 4-port, and beyond).
+
+See the [support table](docs/support.md) for separate parsing, writing, plotting,
+and numerical contracts, including supported file versions and metadata limits.
 
 ## When To Use This Crate
 
@@ -72,7 +75,7 @@ fn main() -> Result<(), touchstone::TouchstoneError> {
     println!("Frequency unit: {}", ntwk.frequency_unit);
     println!("Format: {}", ntwk.format);
     println!("Reference impedance: {} Ω", ntwk.z0);
-    println!("Data points: {}", ntwk.f.len());
+    println!("Data points: {}", ntwk.frequencies().len());
     Ok(())
 }
 ```
@@ -167,6 +170,31 @@ For matrix-oriented workflows, use `s_matrix_at(point_index)` to get a stable fu
 matrix for one frequency point. `NetworkPoint` is returned by `sample_at`, and also exposes the
 full `SMatrix` at the requested frequency.
 
+For reads without copying matrices, use `frequencies()`, `point_ref(index)`, or
+`iter_points()`. The stored frequency grid is private. `f()` still returns an
+owned copy. Borrowed points expose `frequency()` and a read-only `s()` view:
+
+```rust
+use touchstone::{Complex, NetworkBuilder, SMatrix};
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let matrix = SMatrix::try_new(vec![vec![Complex { re: 0.5, im: 0.0 }]])?;
+    let network = NetworkBuilder::new("generated.s1p", 1)
+        .point(0.0, matrix.clone())
+        .point(1.0e9, matrix)
+        .build()?;
+    for point in network.iter_points() {
+        println!("{} Hz: {:?}", point.frequency(), point.s().get(1, 1)?);
+    }
+    Ok(())
+}
+```
+
+Use `try_new` on `SMatrix`, `ParameterMatrix`, `ABCDMatrix`, and `NetworkPoint`
+to validate new values. Generated networks and sampling require finite,
+nonnegative, strictly increasing frequencies. Duplicate frequencies are rejected.
+DC (0 Hz) is supported.
+
 ### Interpolation and Resampling
 
 `sample_at(frequency_hz, interpolation, extrapolation)` samples a network at one frequency.
@@ -252,7 +280,7 @@ let touchstone = ntwk.to_touchstone_string()?;
 
 ## 5. Cascading 2-Port Networks
 
-Combine two 2-port networks in series using the ABCD parameter method.
+Combine two 2-port networks in series using direct S-parameter composition.
 The standard `cascade` connects port 2 of the first network to port 1 of the second:
 
 ```rust
@@ -262,17 +290,19 @@ let net1 = Network::new("files/ntwk1.s2p")?;
 let net2 = Network::new("files/ntwk2.s2p")?;
 
 let cascaded = net1.cascade(&net2);
-println!("Cascaded network has {} data points", cascaded.f.len());
+println!("Cascaded network has {} data points", cascaded.frequencies().len());
 ```
 
 For error handling, use `net1.try_cascade(&net2)?`. It returns a structured error
-for incompatible inputs, singular ABCD conversions, or nonfinite results.
+for incompatible inputs, singular internal connections, or nonfinite results.
 `cascade`, multiplication, and `cascade_ports` retain their convenience signatures
 and panic on those errors. Both networks must use the same common reference
 impedance, frequency unit, and aligned frequency grid; unequal grids are rejected
 instead of silently truncating. Resample explicitly when needed.
 
-The matrix and network APIs share one checked f64 ABCD conversion implementation.
+Direct S composition avoids the ABCD determinant cancellation that can corrupt
+reverse transmission at deep attenuation. ABCD conversion remains available as
+a separate API. Zero forward transmission is valid for a solvable connection.
 See [cascade consistency](docs/cascade-consistency.md) for practical examples,
 accuracy checks, and numerical limitations.
 
@@ -402,7 +432,9 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 
 ### Frequency Units
 
-`Hz`, `kHz`, `MHz`, `GHz`, `THz` — all supported with automatic conversion.
+`Hz`, `kHz`, `MHz`, and `GHz` are supported for parsing and writing with automatic
+conversion. The builder/writer can emit `THz`, but the parser does not correctly
+recognize it. See the [support table](docs/support.md) before using this extension.
 
 ---
 
@@ -418,8 +450,12 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `ReferenceImpedance::PerPort(values)` | Per-port Touchstone v2 reference impedances |
 | `Complex { re, im }`         | Stable complex value used by public matrices |
 | `SMatrix`                    | Stable full S-parameter matrix for one frequency |
+| `SMatrix::try_new(data)`      | Validate a nonempty, finite square S matrix |
 | `ParameterMatrix`            | Stable Y- or Z-parameter matrix              |
+| `ParameterMatrix::try_new(data)` | Validate a nonempty, finite square parameter matrix |
 | `ABCDMatrix`                 | Stable two-port ABCD transmission matrix     |
+| `ABCDMatrix::try_new(a, b, c, d)` | Validate finite ABCD entries             |
+| `NetworkPoint::try_new(frequency, s)` | Validate a nonnegative finite frequency and S matrix |
 | `Interpolation`              | `Linear` or `Nearest` sampling policy        |
 | `Extrapolation`              | `Error` or `Clamp` out-of-range policy       |
 | `network.rank`                | Number of ports                              |
@@ -428,8 +464,10 @@ If you use `touchstone` as a library, install any `tracing` subscriber in your a
 | `network.z0`                  | Reference impedance (Ω)                      |
 | `network.reference_impedance()` | Common or per-port reference metadata      |
 | `network.warnings`            | Non-fatal parser diagnostics                 |
-| `network.f`                   | Frequency vector (`Vec<f64>`)                |
+| `network.frequencies()`                   | Borrowed frequency grid (`&[f64]`)                |
 | `network.f()`                 | Clone of frequency vector                    |
+| `network.point_ref(index)`    | Borrow one frequency point and its S matrix |
+| `network.iter_points()`      | Iterate over borrowed frequency points     |
 | `network.s_db(j, k)`         | S_jk in dB+angle — `Vec<FrequencyDB>`       |
 | `network.s_ri(j, k)`         | S_jk in real+imag — `Vec<FrequencyRI>`       |
 | `network.s_ma(j, k)`         | S_jk in mag+angle — `Vec<FrequencyMA>`       |

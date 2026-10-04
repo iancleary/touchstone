@@ -2,7 +2,7 @@
 
 ## Overview
 
-Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading via ABCD parameters. Published on crates.io; current release target is v0.15.0.
+Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading by direct S-parameter composition. Published on crates.io; current release target is v0.15.0.
 
 ## Agent Usage
 
@@ -87,6 +87,7 @@ just cut-release --notes-file /tmp/touchstone-release.md            # Cut releas
 | `option_line` | `src/option_line.rs` | `#` option line parsing (freq unit, format, Z0) |
 | `data_line` | `src/data_line.rs` | `ParsedDataLine` — per-frequency S-parameter data |
 | `data_pairs` | `src/data_pairs.rs` | `RealImaginary`, `MagnitudeAngle`, `DecibelAngle` + matrix types |
+| `network_access` | `src/network_access.rs` | Checked value constructors and borrowed frequency/point views |
 | `network_builder` | `src/network_builder.rs` | `NetworkBuilder` for generated S-parameter networks |
 | `file_extension` | `src/file_extension.rs` | `.sNp` extension detection and port count extraction |
 | `utils` | `src/utils.rs` | Math utilities (complex conversions, ABCD ↔ S) |
@@ -116,16 +117,21 @@ just cut-release --notes-file /tmp/touchstone-release.md            # Cut releas
 - README examples or public quick-start changes: `README.md` and
   `tests/readme_examples.rs`.
 
+Parser robustness is covered by `tests/parser_adversarial.rs` in normal CI.
+Run `just fuzz 60` for a bounded coverage-guided campaign after installing the
+prerequisites in `fuzz/README.md`. The capability contract is in `docs/support.md`.
+
 ## Key Types
 
 - `Network` — main struct; created via `Network::new(path)`, `Network::from_str(name, contents)`, or `Network::from_bytes(name, bytes)`; has `s_db()`, `s_ri()`, `s_ma()`, `sample_at()`, `resample()`, `try_cascade()`, `cascade()`, and `save()`
+- `NetworkPointRef`, `SMatrixRef` — borrowed read-only data views; use `Network::frequencies` for the immutable frequency grid
 - `NetworkBuilder` — generated S-parameter network construction from in-memory matrices
 - `ReferenceImpedance` — common or per-port Touchstone v2 reference impedance metadata
 - `SMatrix`, `ParameterMatrix`, `ABCDMatrix`, `Complex` — stable matrix and complex value APIs for simulation-oriented workflows
 - `Interpolation`, `Extrapolation` — sampling and resampling policy enums
 - `FrequencyRI`, `FrequencyDB`, `FrequencyMA` — per-point S-parameter accessors
 - S-parameter port indices are **1-indexed** (S₁₁, S₂₁, etc.)
-- `Network * Network` — `Mul` trait implements cascade via ABCD
+- `Network * Network` — `Mul` trait wraps fallible direct S-parameter cascading
 
 ## Where to Look
 

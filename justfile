@@ -25,6 +25,14 @@ lint-fix:
 test:
     cargo test --all-features
 
+# run the parser mutation regressions included in ordinary CI
+test-adversarial:
+    cargo test --test parser_adversarial
+
+# bounded coverage-guided parser fuzzing (requires cargo-fuzz and nightly)
+fuzz seconds="60":
+    cargo +nightly fuzz run parse -- -max_len=4096 -max_total_time={{seconds}} -rss_limit_mb=2048
+
 # check documentation with rustdoc warnings denied
 doc-check:
     RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
