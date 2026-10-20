@@ -35,11 +35,16 @@ mod open;
 mod option_line;
 mod parser;
 mod plot;
+mod quality;
 mod utils;
 
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 pub use network_access::{NetworkPointRef, SMatrixRef};
 pub use network_builder::NetworkBuilder;
+pub use quality::{
+    BoundaryClassification, SampledQualityLocation, SampledQualityOptions, SampledQualityPoint,
+    SampledQualityReport,
+};
 
 const PARAMETER_CONVERSION_TOLERANCE: f64 = 1.0e-12;
 
