@@ -177,9 +177,12 @@ of warnings; do not rely only on returning to the original impedance.
 Scattering Parameters: Theory and Simulation* (1995) is the foundational RF
 reference [7]. The actual file contract is Touchstone 2.1, pages 20–23 [6].
 
-**Current gap.** N-port matrices are available, but `[Mixed-Mode Order]` is treated
-as an unknown keyword. Its semantics are not implemented or preserved. The
-support table correctly warns against writing such input through this API.
+**Implemented first slice.** The checked lazy `MixedModeView` now covers known
+single-ended S networks; see the [mixed-mode guide](mixed-mode.md) for its public
+contract, analytic physical evidence, and runnable lazy-versus-cache comparison.
+**Remaining gap:** `[Mixed-Mode Order]` is still treated as an unknown keyword;
+its file semantics are not implemented or preserved. The support table correctly
+warns against writing such input through this API.
 
 **Production slice.** First provide a checked mixed-mode **view/result type** of a
 known single-ended network, not a `Network` with ambiguous port identities. An

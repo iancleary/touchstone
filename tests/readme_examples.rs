@@ -2,6 +2,29 @@
 
 use touchstone::{Complex, Network, NetworkBuilder, SMatrix, TouchstoneWarning};
 
+#[test]
+fn checked_mixed_mode_views() -> Result<(), Box<dyn std::error::Error>> {
+    use touchstone::{MixedModeLayout, MixedModeView, ModePort, Network, PortPair};
+
+    let source = Network::from_str("pair.s2p", "# Hz S RI R 50\n1e9 0 0 1 0 1 0 0 0\n")?;
+    let pair = PortPair {
+        positive: 1,
+        negative: 2,
+    };
+    let layout = MixedModeLayout::new(
+        2,
+        vec![ModePort::Differential(pair), ModePort::Common(pair)],
+    )?;
+    let view = MixedModeView::new(&source, layout)?;
+    assert_eq!(view.modal_references(), &[100.0, 25.0]);
+    let modal = view.s_matrix_at(0)?;
+    // Output index 1 is differential, index 2 is common, according to layout.
+    assert!((modal.get(1, 1)?.re + 1.0).abs() < 1e-14);
+    assert!(modal.get(2, 1)?.re.abs() < 1e-14);
+    assert_eq!(view.source().warnings, source.warnings);
+    Ok(())
+}
+
 // --- Section 2: Loading a Network ---
 
 #[test]
