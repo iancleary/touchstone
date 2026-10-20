@@ -86,6 +86,22 @@ impl fmt::Display for TouchstoneWarning {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum TouchstoneError {
+    /// Invalid single-pair connection request or source metadata.
+    InvalidConnection {
+        /// Explanation of the violated connection contract.
+        reason: String,
+    },
+    /// A failure while eliminating internal waves at a sampled frequency.
+    Connection {
+        /// Operation being performed.
+        operation: String,
+        /// Zero-based frequency point index.
+        point_index: usize,
+        /// Sample frequency in Hz.
+        frequency_hz: f64,
+        /// Structured numerical or source-data failure.
+        source: Box<TouchstoneError>,
+    },
     /// A parse error with source-location context.
     Parse {
         /// Source location where the parser detected the error.
@@ -439,7 +455,7 @@ impl TouchstoneError {
         }
     }
 
-    /// Return the deepest structured error wrapped by parser context.
+    /// Return the deepest structured error wrapped by parser or connection context.
     ///
     /// # Examples
     ///
@@ -459,7 +475,7 @@ impl TouchstoneError {
     #[must_use]
     pub fn root_cause(&self) -> &TouchstoneError {
         let mut current = self;
-        while let Self::Parse { source, .. } = current {
+        while let Self::Parse { source, .. } | Self::Connection { source, .. } = current {
             current = source;
         }
         current
@@ -469,6 +485,8 @@ impl TouchstoneError {
 impl fmt::Display for TouchstoneError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidConnection { reason } => write!(f, "invalid connection: {reason}"),
+            Self::Connection { operation, point_index, frequency_hz, source } => write!(f, "{operation} at point {point_index} ({frequency_hz} Hz): {source}"),
             Self::Parse { context, source } => write!(f, "{source} at {context}"),
             Self::Io(err) => write!(f, "failed to read Touchstone file: {err}"),
             Self::InvalidUtf8(err) => write!(f, "Touchstone data is not valid UTF-8: {err}"),
@@ -712,7 +730,7 @@ impl fmt::Display for TouchstoneError {
 impl std::error::Error for TouchstoneError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Parse { source, .. } => Some(source),
+            Self::Parse { source, .. } | Self::Connection { source, .. } => Some(source),
             Self::Io(err) => Some(err),
             Self::InvalidUtf8(err) => Some(err),
             _ => None,
