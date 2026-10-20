@@ -25,6 +25,15 @@ fn parser_warnings() {
     ));
 }
 
+#[test]
+fn common_real_reference_renormalization() -> Result<(), touchstone::TouchstoneError> {
+    let load = Network::from_str("load.s1p", "# Hz S RI R 50\n1 0.2 0\n")?;
+    let at_75 = load.renormalize(75.0)?;
+    assert!(at_75.try_s_ri_at(0, 1, 1)?.re.abs() < 1e-14);
+    assert_eq!(at_75.z0, 75.0);
+    Ok(())
+}
+
 // --- Section 3: Accessing S-Parameters ---
 
 #[test]

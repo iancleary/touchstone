@@ -36,6 +36,7 @@ mod open;
 mod option_line;
 mod parser;
 mod plot;
+mod renormalization;
 mod utils;
 
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};

@@ -133,6 +133,12 @@ samples. There is no automatic repair in this first feature.
 
 ## 3. Renormalize real reference impedances without an unnecessary Z detour
 
+**Implemented bounded slice.** `Network::renormalize(new_z0)` now supports common
+positive finite real references through the numerical-solves primitive. See
+[the implemented contract and experiment](renormalization.md), including explicit
+ratio-range rejection. The gap and production-slice rationale below describe the
+original proposal; per-port and complex-reference extensions remain deferred.
+
 **Literature.** Marks and Williams develop changes of reference impedance and
 multiport transformations in sections 3.7–3.8 [5]. Kurokawa explains why the wave
 convention matters [4]. Touchstone 2.1 restricts its reference values to real,
