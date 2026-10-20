@@ -36,6 +36,9 @@ mod option_line;
 mod parser;
 mod plot;
 mod utils;
+/// EXPERIMENTAL bounded shared-pole rational modeling (not passivity certification).
+#[cfg(feature = "experimental-vector-fitting")]
+pub mod vector_fitting;
 
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 pub use network_access::{NetworkPointRef, SMatrixRef};

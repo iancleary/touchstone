@@ -37,6 +37,23 @@ cargo install touchstone
 
 This installs an executable in your `.cargo/bin` directory (`.cargo/bin/touchstone`).
 
+### EXPERIMENTAL optional vector fitting
+
+The non-default `experimental-vector-fitting` Cargo feature adds bounded
+one/two-port, one/two-shared-pole real-rational modeling, separate from ordinary
+interpolation. It adds no dependencies. Read the [modeling guide and limitations](docs/vector-fitting.md)
+before use: synthetic accuracy is demonstrated, but the attempted real measured
+filter **fails suitability**. Convergence and stable poles do not certify accuracy
+or passivity; evaluation is in-band only.
+
+Run the executable comparison (analytic resonator, delay failure, and untouched
+held-out vendor measurements), with or without the default CLI feature:
+
+```sh
+cargo run --release --features experimental-vector-fitting --example vector_fitting
+cargo run --release --no-default-features --features experimental-vector-fitting --example vector_fitting
+```
+
 ---
 
 ## 1. What Are Touchstone Files?
