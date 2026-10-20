@@ -98,8 +98,8 @@ example probes demonstrate both directions (no existing tests were weakened):
    LU on `D^T` rejects its second pivot (`1e-12`).
 
 Both are exercised as Z→S with `Z = D - z0 I`. The second case is a remaining
-compatibility risk for callers operating near the absolute threshold; parent
-review should explicitly consider it. There is no hidden threshold relaxation,
+compatibility change for callers operating near the absolute threshold. Review
+both cases before adopting the conversion migration. There is no hidden threshold relaxation,
 pseudoinverse, regularization, equilibration, or iterative refinement. Exact
 singular denominators, overflowed calculations, and nonfinite results still
 error. Direct two-port cascade formulas/cutoffs and the ABCD contract are
@@ -156,7 +156,7 @@ error was about `1.3e-26`: a concrete reason not to equate residual with accurac
 | Identity-column inverse-norm calculation | Chosen only for opt-in reporting: easy to audit at bounded ranks, costly O(n³), not a cheap condition estimator. |
 | Relative cutoff / equilibration / refinement | Deferred pending a distinct compatibility and accuracy study; not silently bundled into this migration. |
 
-## Verification and self-review
+## Verification
 
 [`tests/numerical_solves.rs`](../tests/numerical_solves.rs) covers exact rational
 complex nonreciprocal references in all directions, a `75+j25` ohm circuit,
@@ -179,14 +179,14 @@ cargo run --offline --release --example numerical_solves
 All five commands passed. The all-features test run passed 306 tests (148 library,
 130 integration, and 28 doctests), with zero failures; the release example's 12
 regular accuracy assertions also passed. `git diff --check` passed. No existing
-tests or tolerances were changed. The first Clippy run found three range-loop
-style warnings in the new solver; these were fixed before the passing full run.
+tests or tolerances were changed. A separate review checked pivot permutation,
+ordinary transpose, RHS order, norm identities, finite-report behavior, and
+preservation of cascade/ABCD behavior. Additional complex four-port probes used
+finite nilpotent-series references rather than the production inverse/solve.
 
-Full package validation is deferred until the parent commit because the packaging
-gate requires a clean checkout. Self-review checked pivot permutation, ordinary
-transpose, RHS order, norm identities, finite-report behavior, cheap-path work,
-and preservation of cascade/ABCD code. Architect/arena/comment-review tooling was
-unavailable; no independent review is claimed here. Parent review remains required.
+`just check` also passed on the committed implementation, including clean-checkout
+package creation and compilation. Re-run it after changing the solver; the
+bounded examples do not establish accuracy for every ill-conditioned input.
 
 Throughput checkpoint (single implementation owner, no internal fan-out):
 
