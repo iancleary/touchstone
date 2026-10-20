@@ -399,6 +399,18 @@ pub enum TouchstoneError {
         /// Singularity tolerance used for the operation.
         tolerance: f64,
     },
+    /// The scalar reference transform rounded to an endpoint and lost the reference ratio.
+    UnrepresentableReferenceRatio {
+        /// Source reference impedance in ohms.
+        old_z0: f64,
+        /// Destination reference impedance in ohms.
+        new_z0: f64,
+    },
+    /// Renormalization cannot interpret a known ignored semantic keyword.
+    UnsupportedRenormalizationKeyword {
+        /// Ignored keyword identifying unsupported wave/port semantics.
+        keyword: String,
+    },
     /// A reference impedance was not finite and positive.
     InvalidReferenceImpedance {
         /// Invalid reference impedance in ohms.
@@ -701,6 +713,14 @@ impl fmt::Display for TouchstoneError {
             } => write!(
                 f,
                 "{operation} is singular at pivot {pivot_index}: magnitude {pivot_magnitude} <= tolerance {tolerance}"
+            ),
+            Self::UnrepresentableReferenceRatio { old_z0, new_z0 } => write!(
+                f,
+                "renormalization from {old_z0} to {new_z0} ohms loses the reference ratio in f64 (g rounds to +/-1)"
+            ),
+            Self::UnsupportedRenormalizationKeyword { keyword } => write!(
+                f,
+                "renormalization cannot interpret ignored [{keyword}] semantics"
             ),
             Self::InvalidReferenceImpedance { z0 } => {
                 write!(f, "reference impedance must be finite and positive: {z0}")

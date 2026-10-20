@@ -238,6 +238,36 @@ matrix and `SolveDiagnostics`. Reports add numerical work and are not
 forward-accuracy guarantees. See [numerical solves](docs/numerical-solves.md) for
 norm definitions, examples, experiments, and near-cutoff compatibility limits.
 
+### Common Real Reference Renormalization
+
+Use `network.renormalize(new_z0)` to transform S values, rather than just editing
+reference metadata. It returns a new network, preserves supported metadata and
+in-memory parser warnings, and updates both reference fields and RI/MA/DB caches.
+For example, a 75-ohm load represented at 50 ohms has `S11 = 0.2`:
+
+```rust
+use touchstone::Network;
+
+fn main() -> Result<(), touchstone::TouchstoneError> {
+    let load = Network::from_str("load.s1p", "# Hz S RI R 50\n1 0.2 0\n")?;
+    let at_75 = load.renormalize(75.0)?;
+    assert!(at_75.try_s_ri_at(0, 1, 1)?.re.abs() < 1e-14);
+    assert_eq!(at_75.z0, 75.0);
+    Ok(())
+}
+```
+
+Only common positive finite real references and S source data are supported;
+per-port references (even equal), complex references, and ignored mixed-mode
+semantics are rejected. Source format must be exactly `RI`/`MA`/`DB` and frequency
+unit exactly `Hz`/`kHz`/`MHz`/`GHz`, including for same-reference calls. Writer-only
+`THz` is rejected because the parser does not round-trip it correctly. Direct S
+solves avoid an unnecessary S→Z singularity for ideal opens, but singular/near-cutoff
+denominators and ratios whose transform
+rounds to an endpoint still return errors. See [renormalization](docs/renormalization.md)
+for the numerical contract, metadata limits, circuit references, and runnable
+comparison/throughput experiment.
+
 ### Field Aliases
 
 Each S-parameter data pair struct offers multiple accessors for the same underlying data:
