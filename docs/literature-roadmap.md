@@ -5,7 +5,9 @@
 This is a research shortlist, **not the implemented capability contract**. The
 baseline is commit `43916b1` (v0.16.0); see [supported capabilities](support.md)
 for what works today. Proposed API names below are illustrative, not promises.
-No runtime behavior or dependencies were changed for this investigation.
+The original investigation changed no runtime behavior or dependencies. Section 6
+now links a subsequently implemented, much narrower experimental fitting slice;
+the remainder remains a research proposal.
 
 Prioritize a trustworthy numerical foundation, then two bounded user features:
 **sampled passivity diagnostics** and **real-reference renormalization**.
@@ -250,6 +252,17 @@ cost depends cubically on the number of internal wave unknowns; no sparse circui
 engine is required for the first implementation.
 
 ## 6. Vector fitting as an explicit broadband modeling subsystem
+
+**Implementation update (bounded experiment).** The optional non-default
+`experimental-vector-fitting` feature now implements genuine shared-pole
+relocation only for full S 1/2-port, order 1/2 models, without new dependencies.
+See [the modeling guide](vector-fitting.md) for the algorithm, API, reproducible
+held-out comparisons, and operational bounds. Synthetic accuracy is demonstrated;
+the attempted real passive-component fixture fails suitability (nonconvergence
+and large withheld errors). The generalized production proposal below remains
+broader and is **not** delivered by that experiment. In particular, there is no
+accepted accurate measured fit, delay treatment, arbitrary-order backend, or
+passivity certification/enforcement.
 
 **Literature.** Gustavsen and Semlyen's *Rational Approximation of Frequency Domain
 Responses by Vector Fitting* (1999) fits partial-fraction models by pole relocation,

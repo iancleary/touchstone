@@ -23,6 +23,26 @@ have finite complex entries. A zero S-parameter has a valid dB representation
 of negative infinity. This is distinct from a non-finite complex result.
 See [numerical acceptance tests and limits](cascade-consistency.md).
 
+## Optional experimental modeling
+
+`experimental-vector-fitting` is **off by default**, independent of `cli`, and
+adds no dependencies. It exposes a separate immutable `RationalNetworkModel` for
+full known single-ended S 1/2-port matrices: proper real D plus 1/2 shared poles,
+explicit normalized seeds, 8..512 training samples and 1..12 relocation iterations.
+Numerical convergence is explicit and separate from accuracy. Rank loss is an
+error; exhausted budgets return a model labelled `IterationLimit`. Evaluation
+cannot extrapolate. Separate disjoint in-band assessment compares against actual
+`Network::sample_at` RI-linear interpolation. The fitting boundary validates current
+S metadata, stored matrix rank, coherent references, warnings, finite values and
+grids; current ignored mixed-mode warnings are rejected. The model snapshots the
+validated training network. Metadata retagging or warning deletion before fitting
+cannot be detected and is not physical conversion/renormalization.
+
+See [vector fitting](vector-fitting.md) for the tested algorithm and exact limits.
+Synthetic held-out accuracy is demonstrated; the attempted measured vendor filter
+**fails suitability**. This is not general broadband fitting, delay modeling,
+passivity enforcement, or a physical certificate.
+
 ## File versions and matrix representation
 
 | Construct | Read behavior | Write behavior |

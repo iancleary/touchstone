@@ -30,3 +30,8 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"], optional =
 [features]
 default = ["cli"]
 cli = ["dep:tracing-subscriber"]
+experimental-vector-fitting = []
+
+[[example]]
+name = "vector_fitting"
+required-features = ["experimental-vector-fitting"]
