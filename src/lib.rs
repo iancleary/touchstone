@@ -24,6 +24,7 @@
 use std::{io::Write, ops};
 /// Command-line interface helpers for the touchstone binary.
 pub mod cli;
+mod connection;
 mod data_line;
 mod data_pairs;
 mod error;
@@ -38,6 +39,7 @@ mod parser;
 mod plot;
 mod utils;
 
+pub use connection::{ConnectedNetwork, NetworkSide, SourcePort};
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 pub use network_access::{NetworkPointRef, SMatrixRef};
 pub use network_builder::NetworkBuilder;
@@ -1528,7 +1530,7 @@ impl Network {
     ///
     /// # Current Limitations
     /// - Only 2-port networks with standard connection (2→1) are currently supported
-    /// - N-port cascade (N > 2) will be implemented in a future release
+    /// - For arbitrary ranks or port pairs, use the separate fallible [`Self::connect`] API
     ///
     /// # Panics
     /// - If port numbers are out of range

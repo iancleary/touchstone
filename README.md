@@ -318,7 +318,14 @@ a separate API. Zero forward transmission is valid for a solvable connection.
 See [cascade consistency](docs/cascade-consistency.md) for practical examples,
 accuracy checks, and numerical limitations.
 
-For explicit port specification, use `cascade_ports`:
+For an arbitrary single port pair or a one-port reflection load, use the fallible
+`network.connect(&other, left_port, right_port)` API. It returns a `ConnectedNetwork`
+with the resulting `network` and ordered `surviving_ports` identities. Exact Hz
+grids and equal joined-port references are required; display units and unjoined
+references may differ. See [N-port connections and terminations](docs/nport-connection.md)
+for examples, the internal-wave solve, port order, and singularity policy.
+
+For the legacy explicit two-port connection (only 2→1), use `cascade_ports`:
 
 ```rust
 use touchstone::Network;
