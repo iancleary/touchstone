@@ -14,14 +14,16 @@ Touchstone standard conformance. The reference is the
 | Construct | `NetworkBuilder`; checked matrix and point constructors | Generated networks require a nonempty, finite, nonnegative, strictly increasing frequency grid and finite square S matrices of the declared rank. DC is valid. |
 | Read without copying | `frequencies`, `point_ref`, `iter_points` | Borrowed views expose values without mutable parser storage. Frequency-point indexes are 0-based; RF port indexes are 1-based. |
 | Sample and resample | Linear interpolation of real/imaginary components, or nearest point; error or clamp extrapolation | Source and output grids must be nonempty, finite, nonnegative, and strictly increasing. Parsed grids that violate these rules can be inspected but cannot be sampled. |
-| Convert S/Y/Z | Full square matrices with a common positive, finite, real reference impedance | Singular or non-finite calculations return errors. Network-level conversions reject non-S source data and per-port reference impedances. |
+| Convert S/Y/Z | Full square matrices with a common positive, finite, real reference impedance; pivoted complex LU right solves | Pivots must have finite magnitude greater than the absolute `1e-12` cutoff; non-finite calculations return errors. Transposed pivoting can change near-cutoff acceptance from the historical inverse path. Network-level conversions reject non-S source data and per-port reference impedances. |
+| Diagnose S/Y/Z solves | Four matrix-level `*_with_diagnostics` variants return `SolveDiagnostics` | Opt-in infinity-norm reciprocal condition measure and normwise backward error, before final scalar unit scaling. Identity-column solves and residual evaluation cost O(n³) extra; diagnostic range overflow returns an error. Not a forward-error guarantee or physical validation. |
 | Convert S/ABCD | Two-port matrices with a common real reference impedance | ABCD conversion requires nonzero forward transmission and applies a `1e-12` denominator cutoff. Large attenuation can lose information in the ABCD representation. |
 | Cascade | Two-port networks with matching frequency grids and a common reference impedance | Uses direct S composition. Zero forward transmission is valid when the internal connection is solvable. A near-singular internal connection returns an error. Display frequency units must currently also match. |
 
 Numerical results returned by successful conversions, sampling, and cascading
 have finite complex entries. A zero S-parameter has a valid dB representation
 of negative infinity. This is distinct from a non-finite complex result.
-See [numerical acceptance tests and limits](cascade-consistency.md).
+See [numerical acceptance tests and limits](cascade-consistency.md) and
+[complex solves, diagnostic meanings, and cutoff compatibility](numerical-solves.md).
 
 ## File versions and matrix representation
 

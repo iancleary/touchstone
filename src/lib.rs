@@ -31,6 +31,7 @@ mod file_extension;
 mod file_operations;
 mod network_access;
 mod network_builder;
+mod numerics;
 mod open;
 mod option_line;
 mod parser;
@@ -40,6 +41,7 @@ mod utils;
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
 pub use network_access::{NetworkPointRef, SMatrixRef};
 pub use network_builder::NetworkBuilder;
+pub use numerics::SolveDiagnostics;
 
 const PARAMETER_CONVERSION_TOLERANCE: f64 = 1.0e-12;
 
@@ -382,24 +384,46 @@ impl SMatrix {
     ///
     /// Uses `Y = (1 / z0) * (I - S) * (I + S)^-1`.
     pub fn to_y_matrix(&self, z0: f64) -> Result<ParameterMatrix, TouchstoneError> {
+        self.convert_to_y(z0, false).map(|(matrix, _)| matrix)
+    }
+
+    /// Convert S to Y with diagnostics before the final `1/z0` scaling.
+    /// See [`SolveDiagnostics`] for norms, cost, and limitations.
+    pub fn to_y_matrix_with_diagnostics(
+        &self,
+        z0: f64,
+    ) -> Result<(ParameterMatrix, SolveDiagnostics), TouchstoneError> {
+        self.convert_to_y(z0, true)
+            .map(|(matrix, report)| (matrix, report.expect("diagnostics requested")))
+    }
+
+    fn convert_to_y(
+        &self,
+        z0: f64,
+        diagnostics: bool,
+    ) -> Result<(ParameterMatrix, Option<SolveDiagnostics>), TouchstoneError> {
         validate_reference_impedance(z0)?;
         validate_matrix_data("S", self.rank, &self.data)?;
 
         let identity = identity_matrix(self.rank);
         let numerator = matrix_sub(&identity, &self.data);
         let denominator = matrix_add(&identity, &self.data);
-        let denominator_inverse = invert_matrix(
+        let (solution, report) = numerics::solve_right(
             denominator,
+            numerator,
             "S to Y matrix inversion",
             PARAMETER_CONVERSION_TOLERANCE,
+            diagnostics,
         )?;
-        let data = matrix_scale(&matrix_mul(&numerator, &denominator_inverse), 1.0 / z0);
+        let data = matrix_scale(&solution, 1.0 / z0);
         validate_matrix_data("Y", self.rank, &data)?;
-
-        Ok(ParameterMatrix {
-            rank: self.rank,
-            data,
-        })
+        Ok((
+            ParameterMatrix {
+                rank: self.rank,
+                data,
+            },
+            report,
+        ))
     }
 
     /// Convert this S-parameter matrix to an impedance-parameter matrix.
@@ -409,24 +433,46 @@ impl SMatrix {
     ///
     /// Uses `Z = z0 * (I + S) * (I - S)^-1`.
     pub fn to_z_matrix(&self, z0: f64) -> Result<ParameterMatrix, TouchstoneError> {
+        self.convert_to_z(z0, false).map(|(matrix, _)| matrix)
+    }
+
+    /// Convert S to Z with diagnostics before the final `z0` scaling.
+    /// See [`SolveDiagnostics`] for norms, cost, and limitations.
+    pub fn to_z_matrix_with_diagnostics(
+        &self,
+        z0: f64,
+    ) -> Result<(ParameterMatrix, SolveDiagnostics), TouchstoneError> {
+        self.convert_to_z(z0, true)
+            .map(|(matrix, report)| (matrix, report.expect("diagnostics requested")))
+    }
+
+    fn convert_to_z(
+        &self,
+        z0: f64,
+        diagnostics: bool,
+    ) -> Result<(ParameterMatrix, Option<SolveDiagnostics>), TouchstoneError> {
         validate_reference_impedance(z0)?;
         validate_matrix_data("S", self.rank, &self.data)?;
 
         let identity = identity_matrix(self.rank);
         let numerator = matrix_add(&identity, &self.data);
         let denominator = matrix_sub(&identity, &self.data);
-        let denominator_inverse = invert_matrix(
+        let (solution, report) = numerics::solve_right(
             denominator,
+            numerator,
             "S to Z matrix inversion",
             PARAMETER_CONVERSION_TOLERANCE,
+            diagnostics,
         )?;
-        let data = matrix_scale(&matrix_mul(&numerator, &denominator_inverse), z0);
+        let data = matrix_scale(&solution, z0);
         validate_matrix_data("Z", self.rank, &data)?;
-
-        Ok(ParameterMatrix {
-            rank: self.rank,
-            data,
-        })
+        Ok((
+            ParameterMatrix {
+                rank: self.rank,
+                data,
+            },
+            report,
+        ))
     }
 
     /// Convert this two-port S-parameter matrix to ABCD transmission parameters.
@@ -534,6 +580,23 @@ impl ParameterMatrix {
     ///
     /// Uses `S = (I - z0Y) * (I + z0Y)^-1`.
     pub fn to_s_matrix_from_y(&self, z0: f64) -> Result<SMatrix, TouchstoneError> {
+        self.convert_from_y(z0, false).map(|(matrix, _)| matrix)
+    }
+
+    /// Convert Y to S with opt-in diagnostics; see [`SolveDiagnostics`].
+    pub fn to_s_matrix_from_y_with_diagnostics(
+        &self,
+        z0: f64,
+    ) -> Result<(SMatrix, SolveDiagnostics), TouchstoneError> {
+        self.convert_from_y(z0, true)
+            .map(|(matrix, report)| (matrix, report.expect("diagnostics requested")))
+    }
+
+    fn convert_from_y(
+        &self,
+        z0: f64,
+        diagnostics: bool,
+    ) -> Result<(SMatrix, Option<SolveDiagnostics>), TouchstoneError> {
         validate_reference_impedance(z0)?;
         validate_matrix_data("Y", self.rank, &self.data)?;
 
@@ -542,18 +605,21 @@ impl ParameterMatrix {
         validate_matrix_data("z0*Y", self.rank, &scaled_y)?;
         let numerator = matrix_sub(&identity, &scaled_y);
         let denominator = matrix_add(&identity, &scaled_y);
-        let denominator_inverse = invert_matrix(
+        let (data, report) = numerics::solve_right(
             denominator,
+            numerator,
             "Y to S matrix inversion",
             PARAMETER_CONVERSION_TOLERANCE,
+            diagnostics,
         )?;
-        let data = matrix_mul(&numerator, &denominator_inverse);
         validate_matrix_data("S", self.rank, &data)?;
-
-        Ok(SMatrix {
-            rank: self.rank,
-            data,
-        })
+        Ok((
+            SMatrix {
+                rank: self.rank,
+                data,
+            },
+            report,
+        ))
     }
 
     /// Convert this impedance-parameter matrix to an S-parameter matrix.
@@ -563,24 +629,44 @@ impl ParameterMatrix {
     ///
     /// Uses `S = (Z - z0I) * (Z + z0I)^-1`.
     pub fn to_s_matrix_from_z(&self, z0: f64) -> Result<SMatrix, TouchstoneError> {
+        self.convert_from_z(z0, false).map(|(matrix, _)| matrix)
+    }
+
+    /// Convert Z to S with opt-in diagnostics; see [`SolveDiagnostics`].
+    pub fn to_s_matrix_from_z_with_diagnostics(
+        &self,
+        z0: f64,
+    ) -> Result<(SMatrix, SolveDiagnostics), TouchstoneError> {
+        self.convert_from_z(z0, true)
+            .map(|(matrix, report)| (matrix, report.expect("diagnostics requested")))
+    }
+
+    fn convert_from_z(
+        &self,
+        z0: f64,
+        diagnostics: bool,
+    ) -> Result<(SMatrix, Option<SolveDiagnostics>), TouchstoneError> {
         validate_reference_impedance(z0)?;
         validate_matrix_data("Z", self.rank, &self.data)?;
 
         let z0_identity = matrix_scale(&identity_matrix(self.rank), z0);
         let numerator = matrix_sub(&self.data, &z0_identity);
         let denominator = matrix_add(&self.data, &z0_identity);
-        let denominator_inverse = invert_matrix(
+        let (data, report) = numerics::solve_right(
             denominator,
+            numerator,
             "Z to S matrix inversion",
             PARAMETER_CONVERSION_TOLERANCE,
+            diagnostics,
         )?;
-        let data = matrix_mul(&numerator, &denominator_inverse);
         validate_matrix_data("S", self.rank, &data)?;
-
-        Ok(SMatrix {
-            rank: self.rank,
-            data,
-        })
+        Ok((
+            SMatrix {
+                rank: self.rank,
+                data,
+            },
+            report,
+        ))
     }
 }
 
@@ -1852,82 +1938,6 @@ fn matrix_scale(matrix: &[Vec<Complex>], scalar: f64) -> Vec<Vec<Complex>> {
         .iter()
         .map(|row| row.iter().map(|value| *value * scalar).collect())
         .collect()
-}
-
-fn matrix_mul(left: &[Vec<Complex>], right: &[Vec<Complex>]) -> Vec<Vec<Complex>> {
-    let rank = left.len();
-    let mut result = vec![vec![Complex::zero(); rank]; rank];
-
-    for row in 0..rank {
-        for column in 0..rank {
-            let mut sum = Complex::zero();
-            for inner in 0..rank {
-                sum = sum + left[row][inner] * right[inner][column];
-            }
-            result[row][column] = sum;
-        }
-    }
-
-    result
-}
-
-fn invert_matrix(
-    mut matrix: Vec<Vec<Complex>>,
-    operation: &str,
-    tolerance: f64,
-) -> Result<Vec<Vec<Complex>>, TouchstoneError> {
-    let rank = matrix.len();
-    validate_matrix_data(operation, rank, &matrix)?;
-    let mut inverse = identity_matrix(rank);
-
-    for pivot_index in 0..rank {
-        let mut pivot_row = pivot_index;
-        let mut pivot_magnitude = matrix[pivot_index][pivot_index].magnitude();
-
-        for (row_index, row) in matrix.iter().enumerate().skip(pivot_index + 1) {
-            let magnitude = row[pivot_index].magnitude();
-            if magnitude > pivot_magnitude {
-                pivot_row = row_index;
-                pivot_magnitude = magnitude;
-            }
-        }
-
-        if pivot_row != pivot_index {
-            matrix.swap(pivot_index, pivot_row);
-            inverse.swap(pivot_index, pivot_row);
-        }
-
-        let pivot = matrix[pivot_index][pivot_index];
-        ensure_non_singular_value(operation, pivot_index, pivot, tolerance)?;
-
-        for column in 0..rank {
-            matrix[pivot_index][column] = matrix[pivot_index][column] / pivot;
-            inverse[pivot_index][column] = inverse[pivot_index][column] / pivot;
-        }
-
-        let normalized_pivot_row = matrix[pivot_index].clone();
-        let normalized_inverse_row = inverse[pivot_index].clone();
-
-        for row in 0..rank {
-            if row == pivot_index {
-                continue;
-            }
-
-            let factor = matrix[row][pivot_index];
-            if factor.magnitude() == 0.0 {
-                continue;
-            }
-
-            for column in 0..rank {
-                matrix[row][column] = matrix[row][column] - factor * normalized_pivot_row[column];
-                inverse[row][column] =
-                    inverse[row][column] - factor * normalized_inverse_row[column];
-            }
-        }
-    }
-
-    validate_matrix_data(operation, rank, &inverse)?;
-    Ok(inverse)
 }
 
 fn ensure_non_singular_value(

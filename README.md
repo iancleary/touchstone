@@ -229,6 +229,15 @@ and circuit-simulation workflows:
 | `network.z_matrix_at(point_index)` | Z matrix for one parsed frequency point |
 | `network.abcd_at(point_index)` | ABCD matrix for one two-port frequency point |
 
+S/Y/Z conversions use pivoted complex linear solves, not explicit inverses.
+For opt-in conditioning and backward-error reports, use
+`SMatrix::to_y_matrix_with_diagnostics`, `SMatrix::to_z_matrix_with_diagnostics`,
+`ParameterMatrix::to_s_matrix_from_y_with_diagnostics`, or
+`ParameterMatrix::to_s_matrix_from_z_with_diagnostics`. Each returns the converted
+matrix and `SolveDiagnostics`. Reports add numerical work and are not
+forward-accuracy guarantees. See [numerical solves](docs/numerical-solves.md) for
+norm definitions, examples, experiments, and near-cutoff compatibility limits.
+
 ### Field Aliases
 
 Each S-parameter data pair struct offers multiple accessors for the same underlying data:
