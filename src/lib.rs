@@ -29,6 +29,7 @@ mod data_pairs;
 mod error;
 mod file_extension;
 mod file_operations;
+mod mixed_mode;
 mod network_access;
 mod network_builder;
 mod open;
@@ -38,6 +39,7 @@ mod plot;
 mod utils;
 
 pub use error::{TouchstoneError, TouchstoneErrorContext, TouchstoneWarning};
+pub use mixed_mode::{MixedModeError, MixedModeLayout, MixedModeView, ModePort, PortPair};
 pub use network_access::{NetworkPointRef, SMatrixRef};
 pub use network_builder::NetworkBuilder;
 

@@ -14,6 +14,7 @@ Touchstone standard conformance. The reference is the
 | Construct | `NetworkBuilder`; checked matrix and point constructors | Generated networks require a nonempty, finite, nonnegative, strictly increasing frequency grid and finite square S matrices of the declared rank. DC is valid. |
 | Read without copying | `frequencies`, `point_ref`, `iter_points` | Borrowed views expose values without mutable parser storage. Frequency-point indexes are 0-based; RF port indexes are 1-based. |
 | Sample and resample | Linear interpolation of real/imaginary components, or nearest point; error or clamp extrapolation | Source and output grids must be nonempty, finite, nonnegative, and strictly increasing. Parsed grids that violate these rules can be inspected but cannot be sampled. |
+| Mixed-mode view | Checked lazy `MixedModeView` of known single-ended S data; explicit differential/common pair polarity, ordering, and unpaired ports | Equal positive finite real references within each pair; physical modal references 2R and R/2 must remain finite positive. Rejects ignored mixed-mode declarations. No mixed-mode file parsing, serialization, or implicit conversion to `Network`. See [guide](mixed-mode.md). |
 | Convert S/Y/Z | Full square matrices with a common positive, finite, real reference impedance | Singular or non-finite calculations return errors. Network-level conversions reject non-S source data and per-port reference impedances. |
 | Convert S/ABCD | Two-port matrices with a common real reference impedance | ABCD conversion requires nonzero forward transmission and applies a `1e-12` denominator cutoff. Large attenuation can lose information in the ABCD representation. |
 | Cascade | Two-port networks with matching frequency grids and a common reference impedance | Uses direct S composition. Zero forward transmission is valid when the internal connection is solvable. A near-singular internal connection returns an error. Display frequency units must currently also match. |
@@ -39,7 +40,7 @@ See [numerical acceptance tests and limits](cascade-consistency.md).
 | Hz, kHz, MHz, GHz | Converted to Hz on input | Converts stored Hz to the selected output unit |
 | THz | Not correctly recognized by the option-line parser; do not use as an input unit | Builder/writer can emit THz as an extension, but it is not a supported round trip |
 | Y, Z, H, G file parameters | Tokens and values can be parsed, but S accessors do not convert their meaning | Unsupported semantic round trip, including legacy normalization differences |
-| Mixed-mode data | `[Mixed-Mode Order]` is treated as an unknown keyword; its meaning is not implemented | Declaration is not preserved; do not save mixed-mode input through this API |
+| Mixed-mode file data | `[Mixed-Mode Order]` is treated as an unknown keyword; its file semantics are not implemented. `MixedModeView` rejects sources carrying this warning. | Declaration is not preserved; do not save mixed-mode input through this API. The separate view only transforms known single-ended data. |
 | Noise records | Unsupported; bundled noise fixtures return errors | Not emitted |
 
 ## Metadata and diagnostics

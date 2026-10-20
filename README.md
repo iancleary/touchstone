@@ -229,6 +229,40 @@ and circuit-simulation workflows:
 | `network.z_matrix_at(point_index)` | Z matrix for one parsed frequency point |
 | `network.abcd_at(point_index)` | ABCD matrix for one two-port frequency point |
 
+### Checked Mixed-Mode Views
+
+For **known single-ended S data**, specify every output mode explicitly. Port pairs are ordered
+(positive, negative), and RF port numbers are 1-based. This is a separate lazy view, not a `Network`
+with changed port meanings; it cannot be serialized as Touchstone.
+
+```rust
+use touchstone::{MixedModeLayout, MixedModeView, ModePort, Network, PortPair};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let source = Network::from_str("pair.s2p", "# Hz S RI R 50\n1e9 0 0 1 0 1 0 0 0\n")?;
+    let pair = PortPair { positive: 1, negative: 2 };
+    let layout = MixedModeLayout::new(2, vec![
+        ModePort::Differential(pair), ModePort::Common(pair),
+    ])?;
+    let view = MixedModeView::new(&source, layout)?;
+    assert_eq!(view.modal_references(), &[100.0, 25.0]);
+    let modal = view.s_matrix_at(0)?;
+    // Output index 1 is differential, index 2 is common, according to layout.
+    assert!((modal.get(1, 1)?.re + 1.0).abs() < 1e-14);
+    assert!(modal.get(2, 1)?.re.abs() < 1e-14);
+    assert_eq!(view.source().warnings, source.warnings);
+    Ok(())
+}
+```
+
+Pairs must be disjoint and contain exactly one differential and one common mode with identical
+orientation; unpaired ports use `ModePort::SingleEnded(port)`. References must be positive finite
+real values, exactly equal within a pair. Different pairs may use different references.
+Ignored `[Mixed-Mode Order]` declarations are rejected to avoid double transformation.
+**Mixed-mode file parsing/writing remains unsupported.** See the
+[mixed-mode guide](docs/mixed-mode.md) for the derivation, physical checks, numerical limits,
+and runnable lazy-versus-cache comparison (`cargo run --offline --release --example mixed_mode`).
+
 ### Field Aliases
 
 Each S-parameter data pair struct offers multiple accessors for the same underlying data:
