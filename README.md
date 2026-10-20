@@ -9,6 +9,10 @@ Parse, analyze, and manipulate Touchstone files with any number of ports (1-port
 
 See the [support table](docs/support.md) for separate parsing, writing, plotting,
 and numerical contracts, including supported file versions and metadata limits.
+For opt-in **sampled passivity and matrix symmetry** reports on single-ended
+1/2-port S networks, see the [quality workflow](docs/sampled-quality.md) and
+[runnable example](examples/sampled_quality.rs). Reports do not repair data or
+certify broadband passivity, causality, or universal electromagnetic reciprocity.
 For proposed improvements grounded in published RF and numerical literature, see
 [the literature-backed roadmap](docs/literature-roadmap.md); these are research
 recommendations, not implemented capabilities.

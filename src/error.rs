@@ -86,6 +86,15 @@ impl fmt::Display for TouchstoneWarning {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum TouchstoneError {
+    /// Sampled quality reporting could not interpret or evaluate the network safely.
+    SampledQuality {
+        /// Network name supplied by the caller.
+        source_name: String,
+        /// 0-based sample index, when the failure concerns a particular point.
+        point_index: Option<usize>,
+        /// Explanation, including frequency in Hz for point-specific numeric failures.
+        message: String,
+    },
     /// A parse error with source-location context.
     Parse {
         /// Source location where the parser detected the error.
@@ -469,6 +478,13 @@ impl TouchstoneError {
 impl fmt::Display for TouchstoneError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::SampledQuality { source_name, point_index, message } => {
+                write!(f, "sampled quality for {source_name}")?;
+                if let Some(index) = point_index {
+                    write!(f, " at point {index}")?;
+                }
+                write!(f, ": {message}")
+            }
             Self::Parse { context, source } => write!(f, "{source} at {context}"),
             Self::Io(err) => write!(f, "failed to read Touchstone file: {err}"),
             Self::InvalidUtf8(err) => write!(f, "Touchstone data is not valid UTF-8: {err}"),
