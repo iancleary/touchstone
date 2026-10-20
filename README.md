@@ -9,6 +9,9 @@ Parse, analyze, and manipulate Touchstone files with any number of ports (1-port
 
 See the [support table](docs/support.md) for separate parsing, writing, plotting,
 and numerical contracts, including supported file versions and metadata limits.
+For proposed improvements grounded in published RF and numerical literature, see
+[the literature-backed roadmap](docs/literature-roadmap.md); these are research
+recommendations, not implemented capabilities.
 
 ## When To Use This Crate
 
